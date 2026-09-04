@@ -1,0 +1,9 @@
+# Challenge data: distributed under the competition's own terms, never committed.
+data/*.parquet
+data/*.csv
+
+build/
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
