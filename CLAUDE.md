@@ -74,10 +74,9 @@ ctest --test-dir sim/build
 `ctest` runs doctest cases individually, so `-R <name>` selects one. The first
 configure fetches doctest v2.4.11 over the network.
 
-**The MSVC toolchain is not currently installed on this machine**, so none of
-the C++ commands work yet. CMake is. Installing the compiler needs an elevated
-shell; a silent install without elevation exits 5007 having done nothing.
-
+CMake is not on this shell's PATH; prepend `C:\Program Files\CMakein`.
+The MSVC generator is multi-config, so `--config Debug` is needed on the
+build and `-C Debug` on `ctest`.
 There is no Python test suite.
 
 ## Architecture
