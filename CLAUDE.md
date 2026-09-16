@@ -121,6 +121,15 @@ double.
 
 ## Competition rules
 
+Scored on **RMSE in seconds** over January and July 2026 movements, which is
+why `train.py` optimises RMSE — confirmed on the challenge site, not assumed.
+RMSE is dominated by the worst predictions, so the target's -12s..87,177s
+tail matters more than its bulk.
+
+The rules require the final solution to be on a **public** GitHub repo. This
+one is private today; the history has been checked and has never contained a
+parquet or a credential, so flipping it is safe when the time comes.
+
 These come from the provisioning email and are reproduced in `README.md`:
 team `gentle-octopus`, submissions named `gentle-octopus_v<N>.parquet` into
 `prc-2026-gentle-octopus`, deadline 11 October 2026 23:59:59 CET. A submission

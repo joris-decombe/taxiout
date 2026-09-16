@@ -11,6 +11,45 @@ Two tracks that meet in the middle:
   apron transit, runway queue with wake separation, arrival preemption. This is
   the part that was meant to beat the yardstick.
 
+## What the competition is
+
+The PRC Data Challenge is run annually by EUROCONTROL's Performance Review
+Commission with the OpenSky Network. The 2026 edition asks for the most
+accurate prediction of **taxi-out time** — the seconds between a departing
+flight leaving its stand and getting airborne — at 10 major European hubs.
+
+The stated motivation is that taxi-out is hard to predict and worth
+predicting: it identifies periods of constrained airport operations, and
+the excess is directly convertible into fuel burn and CO2.
+
+| | |
+|---|---|
+| Metric | **RMSE**, in seconds |
+| Ranked on | January and July 2026 movements |
+| Training data | all movements at the 10 airports, full year 2025 |
+| Prize | EUR 5,000 shared between the top three teams |
+| Open | 1 September → 11 October 2026, 23:59:59 CET |
+
+RMSE is worth taking literally: it is dominated by the worst predictions,
+so the long tail in the target (see Status) matters more than its bulk.
+
+**Entries must be open-sourced.** The rules require sharing the final
+solution — code and documentation — on a *public* GitHub repo, and
+encourage an open-access paper in the Journal of Open Aviation Science.
+This repo is currently **private**, which is right for now and wrong by the
+deadline. Flipping it is a deliberate step, not something to leave to the
+last day: check first that nothing under `data/` was ever committed and
+that no credential ever landed in the history.
+
+Teams from sanctioned countries are excluded; the full terms are on the
+eligibility page linked from the challenge site.
+
+Source: <https://ansperformance.eu/study/data-challenge/dc2026/> (redirects
+to the 2026 site). Note the announcement email says 11 airports and the
+site says both 10 and 11 in different places; the data itself has 10, which
+is what this repo goes by. The site does not document the submission file
+format — that comes from `submitting.parquet` and the provisioning email.
+
 ## Why simulate at all
 
 Taxi-out decomposes into unimpeded transit plus queue delay, and the queue
