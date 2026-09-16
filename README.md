@@ -136,6 +136,14 @@ python pipeline/taxiout/synthetic.py data/synthetic.csv
 One airport per invocation — the surface model is only meaningful within a
 single aerodrome, and running them separately parallelises for free.
 
+### Looking at the result
+
+<https://claude.ai/artifact/V6pWhi5jVwR7V4ZeotiFSt> reads both CSVs and draws
+the run: each departure as a bar from pushback to wheels-up, split into apron
+transit and queue delay, with arrivals marked on the runway lane. Load the two
+files with the pickers at the top — nothing is uploaded, it parses in the page.
+It ships with a sample run so it is not an empty shell on first open.
+
 ## Validation split
 
 Train on 2025 minus January and July; validate on January and July 2025. The
