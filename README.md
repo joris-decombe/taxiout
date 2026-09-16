@@ -12,80 +12,33 @@ Two tracks that meet in the middle:
 
 ## Why simulate at all
 
-Taxi-out decomposes into unimpeded transit plus queue delay, and the queue delay
-is where all the variance lives. The strongest congestion features need takeoff
-times — which are blanked on the ranking set. They depend on the very quantity
-being predicted, so they cannot be measured, only *reconstructed* by running the
-whole airport forward in time. That is the simulator's job, and its output
-(`queue_delay_sec`) becomes a feature for the model.
+Taxi-out decomposes into unimpeded transit plus queue delay, and the queue
+delay is where all the variance lives.
 
+The scaffold assumed takeoff times were blanked on the ranking set, which
+would have made congestion features unmeasurable and the simulator the only
+way to get them. **That is backwards.** The real ranking set blanks
+`BLOCK_TIME_UTC_mvt` and the target, and keeps `MVT_TIME_UTC_mvt`. Since the
+target is exactly `MVT_TIME - BLOCK_TIME`, the two had to be blanked
+together -- the task is reconstructing the *off-block* time from the takeoff
+time, not the reverse.
+
+So congestion features around takeoff are directly computable and need no
+simulator. What the simulator can still offer is the counterfactual: how
+much of the gap between pushback and takeoff was queueing rather than
+transit. Its input assumptions need revisiting first, since it was written
+to consume off-block times that the ranking set does not provide.
+
+The strongest single feature is `MVT_TIME - AOBT_3_flt`: the Network
+Manager's off-block time is *not* blanked, and differs from the movement
+table's by a standard deviation of 374s. On its own it predicts the target
+at 377s RMSE against a target sd of 605s.
 ## Status
 
-Scaffold only. No real data yet — bucket keys arrive with team approval.
-
-Everything in `pipeline/taxiout/schema.py` is transcribed from the challenge's
-published data page, **not** from the actual files. Run `verify_schema` against
-the first training parquet before trusting any of it.
-
-## Build
-
-```
-cmake -S sim -B sim/build
-cmake --build sim/build
-ctest --test-dir sim/build
-```
-
-Needs a C++20 compiler and CMake 3.20+. Tests pull doctest via FetchContent, so
-the first configure needs network access.
-
-## Run the simulator on synthetic movements
-
-```
-python pipeline/taxiout/synthetic.py data/synthetic.csv
-./sim/build/taxiout_sim data/synthetic.csv data/predictions.csv
-```
-
-One airport per invocation — the surface model is only meaningful within a
-single aerodrome, and running them separately parallelises for free.
-
-## Getting the data
-
-The console login is interactive SSO, so the first download is a manual
-step: sign in, then either save the parquets into `data/` by hand or
-generate an access key pair and use `taxiout.bucket`.
-
-```
-export TAXIOUT_S3_ENDPOINT=...   # S3 API endpoint, not the console URL
-export AWS_ACCESS_KEY_ID=...
-export AWS_SECRET_ACCESS_KEY=...
-```
-
-`bucket.pull_dataset` then fetches the parquets, and `bucket.upload_submission`
-pushes one under the mandated `gentle-octopus_v<N>.parquet` name --
-`bucket.next_version()` reads the bucket to pick N so a previous
-submission's result file is never overwritten.
-
-## Working before the data arrives
-
-`taxiout.fixtures` writes parquets shaped like the real ones, so the
-pipeline can be run end to end today:
-
-```
-python -m taxiout.fixtures data
-python -c "from taxiout import data, train; print(train.train(data.load_training()).validation_rmse)"
-```
-
-The RMSE this produces is meaningless -- the fixtures are random. What it
-checks is that the code path from parquet to trained model has no errors
-in it, which is worth knowing before the real files land rather than after.
-Delete the module once they do.
-
-## Validation split
-
-Train on 2025 minus January and July; validate on January and July 2025. The
-test set is January and July 2026, and taxi-out has a strong seasonal signal, so
-any other split flatters the model.
-
+Full 2025 dataset local (12 monthly training files, `ranking.parquet`,
+`submitting.parquet`). Python baseline runs end to end: **471s validation
+RMSE**, honest features only. The C++ simulator compiles nowhere yet -- the
+MSVC toolchain is not installed -- and its premise needs the rethink above.
 ## Team and submission rules
 
 From the provisioning email (OpenSky Network, 4 September 2026). These are

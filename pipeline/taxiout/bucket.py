@@ -1,21 +1,22 @@
 """Pulling challenge data and pushing submissions to the team bucket.
 
-Credentials are never read from a file in this repo and never passed as
-arguments. Set them in the environment before running:
+Credentials are never stored in this repo. They come from either:
 
-    TAXIOUT_S3_ENDPOINT   the S3 API endpoint (NOT the console URL)
-    AWS_ACCESS_KEY_ID     access key generated in the OpenSky S3 console
-    AWS_SECRET_ACCESS_KEY its secret
+  * the environment -- AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY, or
+  * the JSON blob the OpenSky console issues, kept outside the tree
+    (default ~/.opensky/object_store_creds.json, override with
+    TAXIOUT_S3_CREDENTIALS).
 
-The console at https://s3-console.opensky-network.org is a web UI reached by
-SSO; it is not an S3 API endpoint, so `TAXIOUT_S3_ENDPOINT` has to be the
-address the console shows under its access-key page. It is left unset by
-default deliberately -- guessing it wrong produces a confusing TLS error
-rather than an honest "you have not configured this yet".
+The console at https://s3-console.opensky-network.org is a web UI reached
+by SSO and is NOT the S3 API endpoint; the API lives at
+https://s3.opensky-network.org, which is what the credentials authenticate
+against. The store is MinIO, so it needs path-style addressing -- virtual
+host style resolves per-bucket subdomains that do not exist.
 """
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 
@@ -23,7 +24,14 @@ from . import data
 
 TEAM = "gentle-octopus"
 BUCKET = f"prc-2026-{TEAM}"
+
+# The challenge data is in a bucket of its own, readable by every team.
+DATASET_BUCKET = "prc-2026-datasets"
+
+DEFAULT_ENDPOINT = "https://s3.opensky-network.org"
 ENDPOINT_VAR = "TAXIOUT_S3_ENDPOINT"
+CREDENTIALS_VAR = "TAXIOUT_S3_CREDENTIALS"
+DEFAULT_CREDENTIALS = Path.home() / ".opensky" / "object_store_creds.json"
 
 
 def submission_name(version: int) -> str:
@@ -38,23 +46,41 @@ def submission_name(version: int) -> str:
     return f"{TEAM}_v{version}.parquet"
 
 
+def _credentials() -> tuple[str, str]:
+    """Access key and secret, from the environment or the console's JSON."""
+    key = os.environ.get("AWS_ACCESS_KEY_ID")
+    secret = os.environ.get("AWS_SECRET_ACCESS_KEY")
+    if key and secret:
+        return key, secret
+
+    path = Path(os.environ.get(CREDENTIALS_VAR, DEFAULT_CREDENTIALS))
+    if not path.exists():
+        raise RuntimeError(
+            f"no credentials: set AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY, or put "
+            f"the console's JSON at {path} (or point {CREDENTIALS_VAR} at it)."
+        )
+    blob = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        return blob["accessKey"], blob["secretKey"]
+    except KeyError as error:
+        raise RuntimeError(f"{path} has no {error.args[0]!r} field") from error
+
+
 def _client():
     try:
         import boto3
+        from botocore.config import Config
     except ModuleNotFoundError as error:  # pragma: no cover - dependency hint
         raise RuntimeError("boto3 is required: pip install -r pipeline/requirements.txt") from error
 
-    endpoint = os.environ.get(ENDPOINT_VAR)
-    if not endpoint:
-        raise RuntimeError(
-            f"{ENDPOINT_VAR} is unset. Set it to the S3 API endpoint from the "
-            "OpenSky console's access-key page, along with AWS_ACCESS_KEY_ID "
-            "and AWS_SECRET_ACCESS_KEY."
-        )
-    if not os.environ.get("AWS_ACCESS_KEY_ID"):
-        raise RuntimeError("AWS_ACCESS_KEY_ID is unset -- generate a key in the OpenSky console.")
-
-    return boto3.client("s3", endpoint_url=endpoint)
+    key, secret = _credentials()
+    return boto3.client(
+        "s3",
+        endpoint_url=os.environ.get(ENDPOINT_VAR, DEFAULT_ENDPOINT),
+        aws_access_key_id=key,
+        aws_secret_access_key=secret,
+        config=Config(signature_version="s3v4", s3={"addressing_style": "path"}),
+    )
 
 
 def list_objects(bucket: str = BUCKET, prefix: str = "") -> list[tuple[str, int]]:
@@ -74,11 +100,13 @@ def download(key: str, destination: Path, bucket: str = BUCKET) -> Path:
     return destination
 
 
-def pull_dataset(bucket: str, data_dir: Path = data.DATA_DIR, prefix: str = "") -> list[Path]:
+def pull_dataset(
+    bucket: str = DATASET_BUCKET, data_dir: Path = data.DATA_DIR, prefix: str = ""
+) -> list[Path]:
     """Downloads every parquet under `prefix`, skipping ones already local.
 
-    The challenge dataset lives in a bucket separate from the team's own
-    submission bucket, so the source bucket is required rather than defaulted.
+    The challenge dataset lives in `prc-2026-datasets`, separate from the
+    team's own submission bucket, which holds only what we upload.
     """
     pulled: list[Path] = []
     for key, size in list_objects(bucket, prefix):
