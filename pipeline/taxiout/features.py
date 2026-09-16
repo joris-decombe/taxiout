@@ -71,9 +71,9 @@ def add_pushback_congestion(frame: pl.LazyFrame) -> pl.LazyFrame:
     for minutes in CONGESTION_WINDOWS_MIN:
         window = f"{minutes}m"
         expressions.append(
-            pl.col(schema.MVT_ID)
-            .count()
-            .rolling(index_column=schema.MVT_TIME, period=window, by=schema.ADEP)
+            pl.len()
+            .rolling(index_column=schema.MVT_TIME, period=window)
+            .over(schema.ADEP)
             .alias(f"movements_prev_{minutes}m")
         )
     return frame.with_columns(expressions)
