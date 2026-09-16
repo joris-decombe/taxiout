@@ -1,5 +1,7 @@
 #include "taxiout/csv_io.hpp"
 
+#include <iomanip>
+#include <limits>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -66,6 +68,9 @@ std::vector<Movement> read_movements_csv(std::istream& input) {
 }
 
 void write_predictions_csv(std::ostream& output, const std::vector<Prediction>& predictions) {
+  // Default stream precision is 6 significant digits, which silently rounds a
+  // Unix-epoch takeoff_time (~1.8e9) to the nearest few hundred seconds.
+  output << std::setprecision(std::numeric_limits<double>::max_digits10);
   output << "id,takeoff_time,taxi_out_sec,queue_delay_sec\n";
   for (const Prediction& prediction : predictions) {
     output << prediction.id << ',' << prediction.takeoff_time << ',' << prediction.taxi_out_sec << ','

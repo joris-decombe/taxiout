@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import lightgbm as lgb
+import pandas as pd
 import numpy as np
 import polars as pl
 
@@ -34,11 +35,23 @@ class TrainedModel:
     validation_rmse: float
 
 
-def _to_dataset(frame: pl.DataFrame) -> lgb.Dataset:
+def _to_frame(frame: pl.DataFrame) -> "pd.DataFrame":
+    """Feature matrix with the categorical columns typed as categories.
+
+    Both training and prediction go through here. They must: LightGBM
+    compares the categorical dtypes of the two and refuses to predict when
+    they differ, so casting in only one place fails at the last line of a
+    long training run.
+    """
     columns = features.FEATURE_COLUMNS + features.CATEGORICAL_COLUMNS
     x = frame.select(columns).to_pandas()
     for column in features.CATEGORICAL_COLUMNS:
         x[column] = x[column].astype("category")
+    return x
+
+
+def _to_dataset(frame: pl.DataFrame) -> lgb.Dataset:
+    x = _to_frame(frame)
     y = frame.select(schema.TARGET).to_numpy().ravel()
     return lgb.Dataset(x, label=y, categorical_feature=features.CATEGORICAL_COLUMNS)
 
@@ -59,9 +72,7 @@ def train(training: pl.LazyFrame, num_rounds: int = 3000) -> TrainedModel:
         callbacks=[lgb.early_stopping(100), lgb.log_evaluation(100)],
     )
 
-    predictions = booster.predict(
-        validation_frame.select(features.FEATURE_COLUMNS + features.CATEGORICAL_COLUMNS).to_pandas()
-    )
+    predictions = booster.predict(_to_frame(validation_frame))
     truth = validation_frame.select(schema.TARGET).to_numpy().ravel()
     rmse = float(np.sqrt(np.mean((predictions - truth) ** 2)))
 
