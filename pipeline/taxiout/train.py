@@ -57,9 +57,13 @@ def _to_dataset(frame: pl.DataFrame) -> lgb.Dataset:
 
 
 def train(training: pl.LazyFrame, num_rounds: int = 3000) -> TrainedModel:
-    unimpeded = features.unimpeded_taxi_reference(training)
     departures = data.departures(training)
     train_frame, validation_frame = data.train_validation_split(departures)
+
+    # Fit the unimpeded reference on the training half ONLY. It is a low
+    # quantile of the target, so deriving it from all of `training` would
+    # feed validation targets back in and flatter the score.
+    unimpeded = features.unimpeded_taxi_reference(train_frame)
 
     train_frame = features.build(train_frame, unimpeded).collect()
     validation_frame = features.build(validation_frame, unimpeded).collect()

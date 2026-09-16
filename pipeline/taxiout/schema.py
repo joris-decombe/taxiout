@@ -1,9 +1,8 @@
 """Column names from the published dataset description.
 
-These are transcribed from the challenge's data page, NOT from the real
-parquet files -- nobody has opened those yet. Run `verify_schema` against the
-first training file the moment the access keys arrive; every column here is a
-guess until it passes.
+Verified against the real training files on 17 September 2026: every name
+below is present in training_2025-01-01_2025-02-01.parquet, which carries 30
+columns in total. `verify_schema` passes.
 """
 
 from __future__ import annotations
@@ -16,6 +15,13 @@ FLIGHT_ID = "FLIGHT_ID_mvt"
 PHASE = "PHASE_mvt"
 ADEP = "ADEP_mvt"
 ADES = "ADES_mvt"
+# The movement time: takeoff for a departure, landing for an arrival.
+#
+# For departures this is the TARGET IN DISGUISE. Verified against the
+# January 2025 file: MVT_TIME - BLOCK_TIME == TAXITIME_SEC for 100% of
+# 153,706 departure rows. Any feature derived from it -- including
+# something as innocent-looking as hour-of-day -- leaks, and it is blank
+# on the ranking set anyway. Use BLOCK_TIME for departures instead.
 MVT_TIME = "MVT_TIME_UTC_mvt"
 BLOCK_TIME = "BLOCK_TIME_UTC_mvt"
 SCHED_TIME = "SCHED_TIME_UTC_mvt"

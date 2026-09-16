@@ -42,6 +42,10 @@ def departures(frame: pl.LazyFrame) -> pl.LazyFrame:
 
 
 def train_validation_split(frame: pl.LazyFrame) -> tuple[pl.LazyFrame, pl.LazyFrame]:
-    month = pl.col(schema.MVT_TIME).dt.month()
+    # Split on off-block, not MVT_TIME: for a departure MVT_TIME is the
+    # takeoff time, so a flight that pushed back at 23:50 on 31 January
+    # would land in the training half purely because it taxied past
+    # midnight -- exactly the flights whose taxi-out was worst.
+    month = pl.col(schema.BLOCK_TIME).dt.month()
     is_validation = month.is_in(VALIDATION_MONTHS)
     return frame.filter(~is_validation), frame.filter(is_validation)

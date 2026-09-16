@@ -7,3 +7,11 @@ __pycache__/
 *.pyc
 .venv/
 *.egg-info/
+
+# Object-store credentials. The challenge issues these as a JSON blob with
+# an accessKey/secretKey pair; keep them out of the tree entirely, but
+# ignore the shapes they arrive in so a stray `git add -A` cannot win.
+*creds*.json
+*credentials*.json
+.env
+.env.*

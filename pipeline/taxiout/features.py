@@ -18,6 +18,25 @@ from . import schema
 
 CONGESTION_WINDOWS_MIN = (15, 30, 60)
 
+# Scratch column: the leak-free clock, dropped again once the windows are cut.
+_EVENT_TIME = "_surface_event_time"
+
+
+def surface_event_time() -> pl.Expr:
+    """When a movement actually occupies the surface, without leaking.
+
+    MVT_TIME is takeoff for a departure, which is off-block plus the target:
+    using it anywhere in a departure's features leaks, and it is blanked on
+    the ranking set regardless. Off-block time is the honest substitute.
+
+    Arrivals keep MVT_TIME -- their landing time is known in advance of any
+    departure's takeoff, so it carries no information about the target.
+    """
+    return (
+        pl.when(pl.col(schema.PHASE) == schema.DEPARTURE)
+        .then(pl.col(schema.BLOCK_TIME))
+        .otherwise(pl.col(schema.MVT_TIME))
+    )
 
 def unimpeded_taxi_reference(training: pl.LazyFrame) -> pl.LazyFrame:
     """Per stand/runway pair, the taxi time when the airport is quiet.
@@ -37,7 +56,9 @@ def unimpeded_taxi_reference(training: pl.LazyFrame) -> pl.LazyFrame:
 
 
 def add_calendar_features(frame: pl.LazyFrame) -> pl.LazyFrame:
-    time = pl.col(schema.MVT_TIME)
+    # Off-block, not takeoff: hour-of-day looks innocent but is derived
+    # from the target when taken off MVT_TIME.
+    time = surface_event_time()
     return frame.with_columns(
         time.dt.hour().alias("hour"),
         time.dt.weekday().alias("weekday"),
@@ -62,21 +83,22 @@ def add_schedule_features(frame: pl.LazyFrame) -> pl.LazyFrame:
 def add_pushback_congestion(frame: pl.LazyFrame) -> pl.LazyFrame:
     """Movements per airport in the windows before each pushback.
 
-    Uses off-block and landing times only -- never takeoff times -- so these
-    compute identically on training and ranking data. That constraint is what
-    makes them trustworthy; richer queue-state features come from the sim.
+    Uses off-block and landing times only -- never takeoff times, which are
+    the target in disguise -- so these compute identically on training and
+    ranking data. That constraint is what makes them trustworthy; richer
+    queue-state features come from the sim.
     """
-    frame = frame.sort(schema.MVT_TIME)
+    frame = frame.with_columns(surface_event_time().alias(_EVENT_TIME)).sort(_EVENT_TIME)
     expressions = []
     for minutes in CONGESTION_WINDOWS_MIN:
         window = f"{minutes}m"
         expressions.append(
             pl.len()
-            .rolling(index_column=schema.MVT_TIME, period=window)
+            .rolling(index_column=_EVENT_TIME, period=window)
             .over(schema.ADEP)
             .alias(f"movements_prev_{minutes}m")
         )
-    return frame.with_columns(expressions)
+    return frame.with_columns(expressions).drop(_EVENT_TIME)
 
 
 def build(frame: pl.LazyFrame, unimpeded: pl.LazyFrame) -> pl.LazyFrame:
