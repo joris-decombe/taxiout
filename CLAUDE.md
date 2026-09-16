@@ -72,11 +72,12 @@ ctest --test-dir sim/build
 ```
 
 `ctest` runs doctest cases individually, so `-R <name>` selects one. The first
-configure fetches doctest v2.4.11 over the network.
+configure fetches doctest v2.4.12 over the network.
 
 CMake is not on this shell's PATH; prepend `C:\Program Files\CMakein`.
 The MSVC generator is multi-config, so `--config Debug` is needed on the
 build and `-C Debug` on `ctest`.
+
 There is no Python test suite.
 
 ## Architecture
