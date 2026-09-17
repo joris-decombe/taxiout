@@ -69,29 +69,51 @@ of the gap between pushback and takeoff was queueing rather than transit. Its
 input assumptions need revisiting first, since it was written to consume
 off-block times that the ranking set does not provide.
 
-The strongest single feature is `MVT_TIME - AOBT_3_flt`: the Network Manager's
-off-block time is *not* blanked, and differs from the movement table's by a
-standard deviation of 374s. On its own it predicts the target at 377s RMSE
-against a target sd of 605s.
+`MVT_TIME - AOBT_3_flt` is the strongest single feature: the Network
+Manager's off-block time is not blanked, and differs from the movement
+table's by a standard deviation of 384s. Predicting the target with it
+alone, on the rows that have it, gives 385s RMSE against a 417s standard
+deviation for those rows — a real edge, but a modest one.
 
+The bigger structure is elsewhere. See Status.
 ## Status
 
 Full 2025 dataset local: 12 monthly training files, `ranking.parquet`,
-`submitting.parquet`.
+`submitting.parquet`. Nothing submitted yet — the bucket is empty.
 
 | | |
 |---|---|
-| Python baseline | **471s validation RMSE**, honest features only |
-| Bar to beat | 377s — `MVT_TIME - AOBT` with no model at all |
-| Target spread | 605s standard deviation |
+| Python baseline | **416s validation RMSE** (Jan + Jul 2025) |
+| Target sd, those months | 686s — the two hardest months of the year |
+| Target sd, full year | 546s |
 | C++ simulator | builds, 11/11 tests pass, premise needs the rethink above |
 
-The simulator's `queue_delay_sec` is not yet wired into `features.py`, so the
-two tracks do not actually meet yet.
+### The thing that dominates everything
 
-Known data-quality issues not yet handled: the target runs from -12s to
-87,177s, so both tails need a decision before they distort the loss.
+About 1.5% of departures fail to join to a Network Manager flight record:
+no AOBT, and with it no callsign, no market segment, no flight rule. It is
+one join failing, not four independent gaps.
 
+Those rows carry **62% of the squared error**. Their RMSE is ~2,970s against
+~293s for everything else, because their target distribution is a different
+animal — sd ~3,960s against ~476s, and 98.6% of all departures over six
+hours live there. Fitting them as a separate, much smaller model is worth
+55s of RMSE on its own (471s → 416s).
+
+Two plausible alternatives were measured and rejected: substituting the
+group's mean instead of modelling it (574s), and explicit missingness flags
+in a single model (475s).
+
+Open issues, in the order they are worth attacking:
+
+- The orphan group is still at ~2,700s RMSE. Everything else is noise next
+  to it.
+- 369 training rows have a negative target, minimum -12s, mostly LSZH.
+- 69 rows exceed six hours, up to 131,167s. These are *not* clean
+  day-boundary artifacts — that was tested and only 20% of them land in a
+  plausible range after subtracting 24h.
+- The simulator's `queue_delay_sec` is not yet wired into `features.py`, so
+  the two tracks do not actually meet yet.
 ## Getting the data
 
 The console login is interactive SSO, so the first credential is a manual step:

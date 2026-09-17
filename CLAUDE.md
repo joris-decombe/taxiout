@@ -24,9 +24,17 @@ once in this repo's history:
   the reverse. Anything phrased the other way round is confused.
 - **`AOBT_3_flt` is not `BLOCK_TIME`.** The Network Manager's off-block time
   survives on the ranking set and is a genuinely different quantity — they
-  agree within a minute only 21% of the time, sd of the difference 374s.
-  `MVT_TIME - AOBT` alone scores 377s RMSE against a target sd of 605s. That is
-  the number any change has to beat, not zero.
+  agree within a minute only 21% of the time, sd of the difference 384s.
+  `MVT_TIME - AOBT` alone scores 385s RMSE against a 417s sd on the rows that
+  have it: a real edge, not a dramatic one.
+- **~1.5% of departures have no Network Manager record at all** (no AOBT, no
+  callsign, no market segment) and those rows carry **62% of the squared
+  error** — RMSE ~2,970s against ~293s for the rest. `train.py` fits them as
+  a separate small model, worth 55s of RMSE. Any modelling effort that is not
+  aimed at this group is aimed at the 38%.
+- **Do not clip predictions tightly.** Real taxi-out exceeds two hours often
+  enough that clipping there cost 92s of RMSE in a measured run. `submit.py`
+  caps at 86,400s purely as a runaway guard.
 - Fit anything derived from the target — `unimpeded_taxi_reference` is a low
   quantile of it — on the training half only, never on all of `training`.
 
