@@ -118,16 +118,10 @@ we got it backwards, the error decomposition, and the five strategies tried.
 Written to be read with no prior knowledge of the dataset or of aviation,
 and intended as the basis for the open-access write-up the rules encourage.
 
-Open issues, in the order they are worth attacking:
-
-- The orphan group is still at ~2,700s RMSE. Everything else is noise next
-  to it.
-- 369 training rows have a negative target, minimum -12s, mostly LSZH.
-- 69 rows exceed six hours, up to 131,167s. These are not clean
-  day-boundary artifacts: only 20% of them land in a
-  plausible range after subtracting 24h.
-- The simulator's `queue_delay_sec` is not yet wired into `features.py`, so
-  the two tracks do not actually meet yet.
+Open work is tracked in [TODO.md](TODO.md). The short version: the unmatched
+group is 62% of the score and everything else is noise next to it, submissions
+are blocked on a rules question, and the simulator's `queue_delay_sec` is not
+yet wired into `features.py`, so the two tracks do not actually meet.
 ## Getting the data
 
 The console login is interactive SSO, so the first credential is a manual step:

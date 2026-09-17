@@ -23,7 +23,7 @@ once in this repo's history:
 - The task is reconstructing the *off-block* time from the takeoff time, not
   the reverse. Anything phrased the other way round is confused.
 - **`AOBT_3_flt` is not `BLOCK_TIME`.** The Network Manager's off-block time
-  survives on the ranking set and is a genuinely different quantity, which
+  survives on the ranking set and is a genuinely different quantity. The two
   agree within a minute only 21% of the time, sd of the difference 384s.
   `MVT_TIME - AOBT` alone scores 385s RMSE against a 417s sd on the rows that
   have it: a real edge, not a dramatic one.
@@ -88,6 +88,12 @@ The MSVC generator is multi-config, so `--config Debug` is needed on the
 build and `-C Debug` on `ctest`. All 11 tests pass.
 
 There is no Python test suite.
+
+## Open work
+
+[TODO.md](TODO.md) is the working list: what is blocked, what is worth
+attacking next, and what is merely housekeeping. Update it there rather than
+scattering status across docstrings.
 
 ## Architecture
 
