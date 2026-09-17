@@ -33,13 +33,23 @@ the excess is directly convertible into fuel burn and CO2.
 RMSE is worth taking literally: it is dominated by the worst predictions,
 so the long tail in the target (see Status) matters more than its bulk.
 
-**Entries must be open-sourced.** The rules require sharing the final
-solution, code and documentation, on a *public* GitHub repo, and
-encourage an open-access paper in the Journal of Open Aviation Science.
-This repo is currently **private**, which is right for now and wrong by the
-deadline. Flipping it is a deliberate step, not something to leave to the
-last day: check first that nothing under `data/` was ever committed and
-that no credential ever landed in the history.
+**Entries must be open-sourced.** The final solution goes on a *public* GitHub
+repo under **GNU GPLv3** (`LICENSE` holds the text), with enough documentation
+to reproduce the results and any external dataset openly licensed. The
+organisers fork the repo for administration. Failing any of those makes an
+entry ineligible for a prize, though not for scoring. An open-access paper in
+the Journal of Open Aviation Science is encouraged.
+
+This repo is currently **private**, which suits work in progress and does not
+suit the deadline. The history has been checked and has never contained a
+parquet or a credential, so the flip is safe whenever it happens.
+
+**Submissions are on hold.** Neither the challenge site nor the eligibility
+page documents how many submissions a team may make, whether there is a daily
+cap, or whether the final ranking takes the best submission or the most recent
+one. Nothing is uploaded until that is confirmed with the organisers, because
+the cost of a bad submission cannot be judged without it. Ask via the Discord
+or challenge@opensky-network.org.
 
 Teams from sanctioned countries are excluded; the full terms are on the
 eligibility page linked from the challenge site.

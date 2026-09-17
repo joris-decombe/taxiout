@@ -134,9 +134,17 @@ why `train.py` optimises RMSE, confirmed on the challenge site rather than assum
 RMSE is dominated by the worst predictions, so the target's -12s..87,177s
 tail matters more than its bulk.
 
-The rules require the final solution to be on a **public** GitHub repo. This
-one is private today; the history has been checked and has never contained a
-parquet or a credential, so flipping it is safe when the time comes.
+The rules require the final solution on a **public** GitHub repo under
+**GPLv3** (`LICENSE` holds the text), with reproducible documentation and any
+external data openly licensed. This repo is private today; the history has been
+checked and has never contained a parquet or a credential, so flipping it is
+safe when the time comes.
+
+**Do not upload a submission.** Neither the challenge site nor the eligibility
+page documents the submission limit, or whether the final ranking uses the best
+or the most recent upload. Until that is confirmed with the organisers the cost
+of a bad submission is unknown, so the bucket stays empty.
+`bucket.upload_submission` works and is deliberately unused.
 
 These come from the provisioning email and are reproduced in `README.md`:
 team `gentle-octopus`, submissions named `gentle-octopus_v<N>.parquet` into
