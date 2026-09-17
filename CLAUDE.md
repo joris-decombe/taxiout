@@ -23,20 +23,20 @@ once in this repo's history:
 - The task is reconstructing the *off-block* time from the takeoff time, not
   the reverse. Anything phrased the other way round is confused.
 - **`AOBT_3_flt` is not `BLOCK_TIME`.** The Network Manager's off-block time
-  survives on the ranking set and is a genuinely different quantity — they
+  survives on the ranking set and is a genuinely different quantity, which
   agree within a minute only 21% of the time, sd of the difference 384s.
   `MVT_TIME - AOBT` alone scores 385s RMSE against a 417s sd on the rows that
   have it: a real edge, not a dramatic one.
 - **~1.5% of departures have no Network Manager record at all** (no AOBT, no
   callsign, no market segment) and those rows carry **62% of the squared
-  error** — RMSE ~2,970s against ~293s for the rest. `train.py` fits them as
+  error**: RMSE ~2,970s against ~293s for the rest. `train.py` fits them as
   a separate small model, worth 55s of RMSE. Any modelling effort that is not
   aimed at this group is aimed at the 38%.
 - **Do not clip predictions tightly.** Real taxi-out exceeds two hours often
   enough that clipping there cost 92s of RMSE in a measured run. `submit.py`
   caps at 86,400s purely as a runaway guard.
-- Fit anything derived from the target — `unimpeded_taxi_reference` is a low
-  quantile of it — on the training half only, never on all of `training`.
+- Fit anything derived from the target (`unimpeded_taxi_reference` is a low
+  quantile of it) on the training half only, never on all of `training`.
 
 `pipeline/taxiout/schema.py` carries this contract in its docstring. Update it
 there when something new is learned about the data.
@@ -104,8 +104,8 @@ write a partial file rather than shipping zeros for missing rows.
 `bucket.py` talks to the object store: the challenge data is in the shared
 `prc-2026-datasets` bucket, submissions go to `prc-2026-gentle-octopus` under a
 filename pattern the scorer silently requires. The S3 API is at
-`https://s3.opensky-network.org` — the console URL in the provisioning email is
-a web UI, not an endpoint — and it is MinIO, so path-style addressing is
+`https://s3.opensky-network.org`. The console URL in the provisioning email is
+a web UI, not an endpoint, and it is MinIO, so path-style addressing is
 required.
 
 **`sim/`** is an event-driven C++20 model of the departure surface: aircraft
@@ -119,7 +119,7 @@ measurable only by reconstruction. The opposite is true, so congestion around
 takeoff is directly computable and the sim is not needed for it. It also
 consumes `off_block_time` as an input, which the ranking set does not provide.
 Its remaining case is estimating how much of the pushback-to-takeoff gap was
-queueing rather than transit — but that case has not been made or acted on, and
+queueing rather than transit, but that case has not been made or acted on, and
 its output is not yet wired into `features.py` as a feature.
 
 `pipeline/taxiout/fixtures.py` and `synthetic.py` generate stand-in data for the
@@ -130,7 +130,7 @@ double.
 ## Competition rules
 
 Scored on **RMSE in seconds** over January and July 2026 movements, which is
-why `train.py` optimises RMSE — confirmed on the challenge site, not assumed.
+why `train.py` optimises RMSE, confirmed on the challenge site rather than assumed.
 RMSE is dominated by the worst predictions, so the target's -12s..87,177s
 tail matters more than its bulk.
 
@@ -143,5 +143,5 @@ team `gentle-octopus`, submissions named `gentle-octopus_v<N>.parquet` into
 `prc-2026-gentle-octopus`, deadline 11 October 2026 23:59:59 CET. A submission
 whose filename does not match the pattern is dropped with no result file and no
 error, which is why `bucket.submission_name` centralises it. Derive N from
-`bucket.next_version()` rather than locally — overwriting a submission loses its
+`bucket.next_version()` rather than locally: overwriting a submission loses its
 result file.

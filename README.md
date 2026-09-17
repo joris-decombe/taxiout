@@ -1,13 +1,13 @@
 # taxiout
 
-PRC Data Challenge 2026 — predicting taxi-out time at 10 major European
+PRC Data Challenge 2026: predicting taxi-out time at 10 major European
 airports: EDDF, EDDM, EGLL, EHAM, LEBL, LEMD, LFPG, LIRF, LSZH, LTFM.
 
 Two tracks that meet in the middle:
 
-- **`pipeline/`** — Python. Loads the challenge parquet files, builds features,
+- **`pipeline/`**. Python. Loads the challenge parquet files, builds features,
   trains a LightGBM baseline, writes `submitting.parquet`. This is the yardstick.
-- **`sim/`** — C++20. An event-driven model of the departure surface: pushback,
+- **`sim/`**. C++20. An event-driven model of the departure surface: pushback,
   apron transit, runway queue with wake separation, arrival preemption. This is
   the part that was meant to beat the yardstick.
 
@@ -15,8 +15,8 @@ Two tracks that meet in the middle:
 
 The PRC Data Challenge is run annually by EUROCONTROL's Performance Review
 Commission with the OpenSky Network. The 2026 edition asks for the most
-accurate prediction of **taxi-out time** — the seconds between a departing
-flight leaving its stand and getting airborne — at 10 major European hubs.
+accurate prediction of **taxi-out time**, the seconds between a departing
+flight leaving its stand and getting airborne, at 10 major European hubs.
 
 The stated motivation is that taxi-out is hard to predict and worth
 predicting: it identifies periods of constrained airport operations, and
@@ -28,13 +28,13 @@ the excess is directly convertible into fuel burn and CO2.
 | Ranked on | January and July 2026 movements |
 | Training data | all movements at the 10 airports, full year 2025 |
 | Prize | EUR 5,000 shared between the top three teams |
-| Open | 1 September → 11 October 2026, 23:59:59 CET |
+| Open | 1 September to 11 October 2026, 23:59:59 CET |
 
 RMSE is worth taking literally: it is dominated by the worst predictions,
 so the long tail in the target (see Status) matters more than its bulk.
 
 **Entries must be open-sourced.** The rules require sharing the final
-solution — code and documentation — on a *public* GitHub repo, and
+solution, code and documentation, on a *public* GitHub repo, and
 encourage an open-access paper in the Journal of Open Aviation Science.
 This repo is currently **private**, which is right for now and wrong by the
 deadline. Flipping it is a deliberate step, not something to leave to the
@@ -48,43 +48,40 @@ Source: <https://ansperformance.eu/study/data-challenge/dc2026/> (redirects
 to the 2026 site). Note the announcement email says 11 airports and the
 site says both 10 and 11 in different places; the data itself has 10, which
 is what this repo goes by. The site does not document the submission file
-format — that comes from `submitting.parquet` and the provisioning email.
+format; that comes from `submitting.parquet` and the provisioning email.
 
 ## Why simulate at all
 
 Taxi-out decomposes into unimpeded transit plus queue delay, and the queue
 delay is where all the variance lives.
 
-The scaffold assumed takeoff times were blanked on the ranking set, which would
-have made congestion features unmeasurable and the simulator the only way to
-get them. **That is backwards.** The real ranking set blanks
-`BLOCK_TIME_UTC_mvt` and the target, and keeps `MVT_TIME_UTC_mvt`. Since the
-target is exactly `MVT_TIME - BLOCK_TIME`, the two had to be blanked together —
-the task is reconstructing the *off-block* time from the takeoff time, not the
-reverse.
+The scored set blanks `BLOCK_TIME_UTC_mvt` and the target, and keeps
+`MVT_TIME_UTC_mvt`. Since the target is exactly `MVT_TIME - BLOCK_TIME`, the
+two had to be blanked together. The prediction therefore runs from the
+takeoff time back to the off-block time, not forwards.
 
-So congestion features around takeoff are directly computable and need no
-simulator. What the simulator can still offer is the counterfactual: how much
-of the gap between pushback and takeoff was queueing rather than transit. Its
-input assumptions need revisiting first, since it was written to consume
-off-block times that the ranking set does not provide.
+That makes congestion features around takeoff directly computable, so the
+simulator is not needed for them. What it can still offer is the
+counterfactual: how much of the gap between pushback and takeoff was
+queueing rather than transit. Its input assumptions need revisiting first,
+since it consumes off-block times that the scored set does not provide.
 
-`MVT_TIME - AOBT_3_flt` is the strongest single feature: the Network
+`MVT_TIME - AOBT_3_flt` is the strongest single feature. The Network
 Manager's off-block time is not blanked, and differs from the movement
-table's by a standard deviation of 384s. Predicting the target with it
-alone, on the rows that have it, gives 385s RMSE against a 417s standard
-deviation for those rows — a real edge, but a modest one.
+table's by a standard deviation of 384s. On the rows that have it, that
+difference alone predicts the target at 385s RMSE against a 417s standard
+deviation: a real edge, but a modest one.
 
-The bigger structure is elsewhere. See Status.
+The structure that matters more is in Status.
 ## Status
 
 Full 2025 dataset local: 12 monthly training files, `ranking.parquet`,
-`submitting.parquet`. Nothing submitted yet — the bucket is empty.
+`submitting.parquet`. Nothing submitted yet; the bucket is empty.
 
 | | |
 |---|---|
 | Python baseline | **416s validation RMSE** (Jan + Jul 2025) |
-| Target sd, those months | 686s — the two hardest months of the year |
+| Target sd, those months | 686s, the two hardest months of the year |
 | Target sd, full year | 546s |
 | C++ simulator | builds, 11/11 tests pass, premise needs the rethink above |
 
@@ -95,8 +92,8 @@ no AOBT, and with it no callsign, no market segment, no flight rule. It is
 one join failing, not four independent gaps.
 
 Those rows carry **62% of the squared error**. Their RMSE is ~2,970s against
-~293s for everything else, because their target distribution is a different
-animal — sd ~3,960s against ~476s, and 98.6% of all departures over six
+~293s for everything else. Their target distribution is a different
+animal: sd ~3,960s against ~476s, and 98.6% of all departures over six
 hours live there. Fitting them as a separate, much smaller model is worth
 55s of RMSE on its own (471s → 416s).
 
@@ -104,7 +101,7 @@ Two plausible alternatives were measured and rejected: substituting the
 group's mean instead of modelling it (574s), and explicit missingness flags
 in a single model (475s).
 
-**Taxi-Out, Measured** — <https://claude.ai/artifact/Ez8LT8SdgrUbdp8oAeMq1i> —
+**Taxi-Out, Measured** (<https://claude.ai/artifact/Ez8LT8SdgrUbdp8oAeMq1i>)
 is the long-form account: what taxi-out is and why it is worth predicting,
 why a squared metric changes the question, the blanked-column trap and how
 we got it backwards, the error decomposition, and the five strategies tried.
@@ -116,8 +113,8 @@ Open issues, in the order they are worth attacking:
 - The orphan group is still at ~2,700s RMSE. Everything else is noise next
   to it.
 - 369 training rows have a negative target, minimum -12s, mostly LSZH.
-- 69 rows exceed six hours, up to 131,167s. These are *not* clean
-  day-boundary artifacts — that was tested and only 20% of them land in a
+- 69 rows exceed six hours, up to 131,167s. These are not clean
+  day-boundary artifacts: only 20% of them land in a
   plausible range after subtracting 24h.
 - The simulator's `queue_delay_sec` is not yet wired into `features.py`, so
   the two tracks do not actually meet yet.
@@ -138,7 +135,7 @@ The challenge data lives in the shared `prc-2026-datasets` bucket;
 `gentle-octopus_v<N>.parquet` name, and `bucket.next_version()` reads the
 bucket to pick N so a previous submission's result file is never overwritten.
 
-The S3 API is at `https://s3.opensky-network.org` — the console URL below is a
+The S3 API is at `https://s3.opensky-network.org`. The console URL below is a
 web UI, not an endpoint. The store is MinIO, so path-style addressing is
 required.
 
@@ -162,7 +159,7 @@ python pipeline/taxiout/synthetic.py data/synthetic.csv
 ./sim/build/taxiout_sim data/synthetic.csv data/predictions.csv
 ```
 
-One airport per invocation — the surface model is only meaningful within a
+One airport per invocation: the surface model is only meaningful within a
 single aerodrome, and running them separately parallelises for free.
 
 ### Looking at the result
@@ -170,7 +167,7 @@ single aerodrome, and running them separately parallelises for free.
 <https://claude.ai/artifact/V6pWhi5jVwR7V4ZeotiFSt> reads both CSVs and draws
 the run: each departure as a bar from pushback to wheels-up, split into apron
 transit and queue delay, with arrivals marked on the runway lane. Load the two
-files with the pickers at the top — nothing is uploaded, it parses in the page.
+files with the pickers at the top; nothing is uploaded, it parses in the page.
 It ships with a sample run so it is not an empty shell on first open.
 
 ## Validation split
@@ -179,13 +176,13 @@ Train on 2025 minus January and July; validate on January and July 2025. The
 test set is January and July 2026, and taxi-out has a strong seasonal signal, so
 any other split flatters the model.
 
-Note that the split keys on off-block month, which is blank on the ranking set —
-that is fine, because the split only ever runs over training data.
+Note that the split keys on off-block month, which is blank on the ranking set.
+That is fine, because the split only ever runs over training data.
 
 ## Team and submission rules
 
 From the provisioning email (OpenSky Network, 4 September 2026). These are the
-competition's rules, not our conventions — getting any of them wrong means the
+competition's rules, not our conventions. Getting any of them wrong means the
 submission is silently ignored.
 
 | | |
@@ -202,7 +199,7 @@ against the Keycloak IAM that it redirects to.
 
 **Getting a score.** Upload to the team bucket; a result file appears in the
 same bucket shortly afterwards if the submission parsed. No result file means
-the submission was rejected — check the filename against the pattern above
+the submission was rejected. Check the filename against the pattern above
 first, since that is the easiest thing to get wrong.
 
 **Contact.** Discord <https://discord.gg/RPh89jpVVz>, or
