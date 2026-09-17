@@ -54,10 +54,14 @@ def add_schedule_features(frame: pl.LazyFrame) -> pl.LazyFrame:
     ranking set, because the target is MVT_TIME minus it.
 
     AOBT is the Network Manager's off-block time and does survive, so
-    `aobt_to_takeoff_sec` is the closest honest thing to the target itself:
-    on January 2025 it predicts taxi-out with an RMSE of 377s on its own,
-    against a target standard deviation of 605s. Everything else in this
-    model exists to improve on that number.
+    `aobt_to_takeoff_sec` is the closest available thing to the target
+    itself. Measured over the full 2025 training set, on the rows that have
+    an AOBT, it predicts taxi-out at 385s RMSE against a 417s standard
+    deviation for those rows: a real edge, but a modest one.
+
+    It is null for the ~1.5% of departures with no Network Manager record,
+    which is why train.py fits those rows as a separate model -- this
+    feature carries zero gain there, by construction.
     """
     takeoff = pl.col(schema.MVT_TIME)
     return frame.with_columns(
@@ -65,6 +69,7 @@ def add_schedule_features(frame: pl.LazyFrame) -> pl.LazyFrame:
         (takeoff - pl.col(schema.SCHED_TIME)).dt.total_seconds().alias("sched_to_takeoff_sec"),
         (pl.col(schema.AOBT) - pl.col(schema.EOBT)).dt.total_seconds().alias("off_block_delay_sec"),
     )
+
 
 def add_pushback_congestion(frame: pl.LazyFrame) -> pl.LazyFrame:
     """Movements per airport in the windows before each pushback.
