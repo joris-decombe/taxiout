@@ -73,7 +73,9 @@ standard deviation for those months.
       it. The history has been audited: 28 paths ever added, no parquet, no
       credential, so the flip is safe.
 - [ ] **Reproducible documentation.** An eligibility requirement in its own
-      right, not just good practice.
+      right, not just good practice. Concretely: the scripts that generate
+      `report/findings.json` and the published figures live outside the repo,
+      so neither page can currently be regenerated from a clean checkout.
 - [ ] **Delete `pipeline/taxiout/fixtures.py`.** Scaffolding from before the
       real data arrived.
 - [ ] **Confirm the "Run the simulator on synthetic movements" README section.**

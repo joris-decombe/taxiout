@@ -1,6 +1,7 @@
-# Challenge data: distributed under the competition's own terms, never committed.
-data/*.parquet
-data/*.csv
+# Challenge data: distributed under the competition's own terms, never
+# committed. Ignore the whole directory rather than named extensions -- a
+# narrower rule let two derived .json files in via `git add -A`.
+data/
 
 build/
 __pycache__/
