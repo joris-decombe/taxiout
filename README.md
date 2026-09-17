@@ -104,6 +104,10 @@ Two plausible alternatives were measured and rejected: substituting the
 group's mean instead of modelling it (574s), and explicit missingness flags
 in a single model (475s).
 
+<https://claude.ai/artifact/Ez8LT8SdgrUbdp8oAeMq1i> shows the measurements
+behind all of this: the error-concentration curve, the two populations, the
+five strategies tried, and the clip curve.
+
 Open issues, in the order they are worth attacking:
 
 - The orphan group is still at ~2,700s RMSE. Everything else is noise next
