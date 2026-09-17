@@ -17,6 +17,19 @@ standard deviation for those months.
       challenge@opensky-network.org. **Everything under "Submitting" waits on
       this.**
 
+## Model, in priority order
+
+- [ ] **The unmatched group. This is the work.** 1.5% of departures, 62% of
+      the squared error, around 2,700s RMSE against 293s for everything else.
+      Their *median* taxi-out is normal (976s against 923s), so the question
+      is specifically what lengthens their tail. Untested: whether
+      missingness correlates with time of day or particular stands; whether
+      the long ones are cargo or non-scheduled; whether a quantile or
+      two-stage model beats least squares on a distribution that skewed.
+- [ ] **Congestion features carry almost nothing** (1.2% of gain combined),
+      which is odd for a problem whose physics is queueing. Either the
+      windows are wrong, the counts too coarse, or `unimpeded_taxi_sec`
+      already absorbs the signal.
 ## Submitting
 
 - [ ] **Write the pre-upload verification.** The dangerous failure is silent:
@@ -32,20 +45,6 @@ standard deviation for those months.
       partial-file guard in `submit.py` firing on a dropped row.
 - [ ] **Submit v1** and record what the result file contains.
 
-## Model
-
-- [ ] **The unmatched group.** 1.5% of departures, 62% of the squared error,
-      still around 2,700s RMSE. Their *median* taxi-out is normal (976s against
-      923s), so the question is specifically what lengthens their tail. Untested
-      ideas: whether missingness correlates with time of day or particular
-      stands; whether the long ones are cargo or non-scheduled traffic; whether
-      a quantile or two-stage model beats least squares on a distribution that
-      skewed.
-- [ ] **Congestion features carry almost nothing** (1.2% of gain combined),
-      which is odd for a problem whose physics is queueing. Either the windows
-      are wrong, the counts are too coarse, or `unimpeded_taxi_sec` already
-      absorbs the signal. Worth one experiment before adding more features.
-
 ## Data quality, unexplained
 
 - [ ] **289 training departures have a negative taxi-out**, 241 of them at LSZH,
@@ -58,14 +57,23 @@ standard deviation for those months.
 
 ## Simulator
 
-- [ ] **Decide its fate.** It builds and passes 11 tests, but it was written
-      believing takeoff times were blanked on the scored set, and they are not.
-      Its remaining case is estimating how much of the pushback-to-takeoff gap
-      was queueing rather than transit. Either feed it AOBT as the off-block
-      input, wire `queue_delay_sec` into `features.py` and measure whether it
-      beats the plain congestion counts, or retire it explicitly. Limbo is the
-      worst option with a public repo required.
+`surface.py` bridges it to the parquet data: AOBT as the off-block clock,
+one run per aerodrome-day, `queue_delay_sec` joined back by `MVT_ID`.
+Measured over March 2025, 163,367 departures:
 
+- Correlation with the real excess over geometry: **pearson +0.21**.
+- It reconstructs **17% of the real excess** (41s simulated against 241s
+  real). Departures it flags as queued averaged 292s of real excess against
+  205s for the rest, so the signal is real but weak.
+- EGLL is the exception: 195s simulated against 384s real, pearson +0.23.
+  The model bites hardest where the airfield is genuinely at capacity.
+
+- [ ] **Decide whether +0.21 earns a feature slot.** Add
+      `sim_queue_delay_sec` to `FEATURE_COLUMNS` and measure the RMSE
+      change. It is behind the unmatched group in priority.
+- [ ] **If it stays, calibrate the separation matrix per airport.** The
+      current values are ICAO defaults converted to time, and generating a
+      sixth of the real delay suggests they are too permissive.
 ## Compliance and housekeeping
 
 - [x] **GPLv3 licence.** `LICENSE` holds the canonical text.
