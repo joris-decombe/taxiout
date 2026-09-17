@@ -104,9 +104,12 @@ Two plausible alternatives were measured and rejected: substituting the
 group's mean instead of modelling it (574s), and explicit missingness flags
 in a single model (475s).
 
-<https://claude.ai/artifact/Ez8LT8SdgrUbdp8oAeMq1i> shows the measurements
-behind all of this: the error-concentration curve, the two populations, the
-five strategies tried, and the clip curve.
+**Taxi-Out, Measured** — <https://claude.ai/artifact/Ez8LT8SdgrUbdp8oAeMq1i> —
+is the long-form account: what taxi-out is and why it is worth predicting,
+why a squared metric changes the question, the blanked-column trap and how
+we got it backwards, the error decomposition, and the five strategies tried.
+Written to be read with no prior knowledge of the dataset or of aviation,
+and intended as the basis for the open-access write-up the rules encourage.
 
 Open issues, in the order they are worth attacking:
 
