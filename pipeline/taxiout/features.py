@@ -71,6 +71,25 @@ def add_schedule_features(frame: pl.LazyFrame) -> pl.LazyFrame:
     )
 
 
+def add_record_completeness(frame: pl.LazyFrame) -> pl.LazyFrame:
+    """Which fields the movement record is missing.
+
+    LightGBM routes nulls on its own, so these look redundant, and inside a
+    single model over all departures they are: adding them there measured
+    slightly worse. They earn their place in the model fitted to the ~1.5% of
+    departures with no Network Manager record, where they separate within the
+    group instead of restating what 2M nulls already say.
+
+    Worth 7.9s of RMSE (415.8s to 407.9s), 95% CI -13.6s to -2.9s on a paired
+    bootstrap. The unpaired intervals overlap almost entirely, so only the
+    paired comparison can see an effect this size.
+    """
+    return frame.with_columns(
+        pl.col(schema.AIRCRAFT_TYPE).is_null().cast(pl.Int8).alias("no_aircraft_type"),
+        pl.col(schema.STAND).is_null().cast(pl.Int8).alias("no_stand"),
+        pl.col(schema.ADES).is_null().cast(pl.Int8).alias("no_destination"),
+    )
+
 def add_pushback_congestion(frame: pl.LazyFrame) -> pl.LazyFrame:
     """Movements per airport in the windows before each pushback.
 
@@ -95,6 +114,7 @@ def build(frame: pl.LazyFrame, unimpeded: pl.LazyFrame) -> pl.LazyFrame:
     frame = frame.join(unimpeded, on=[schema.ADEP, schema.STAND, schema.RUNWAY], how="left")
     frame = add_calendar_features(frame)
     frame = add_schedule_features(frame)
+    frame = add_record_completeness(frame)
     frame = add_pushback_congestion(frame)
     return frame
 
@@ -109,6 +129,9 @@ FEATURE_COLUMNS = [
     "aobt_to_takeoff_sec",
     "sched_to_takeoff_sec",
     "off_block_delay_sec",
+    "no_aircraft_type",
+    "no_stand",
+    "no_destination",
     *[f"movements_prev_{m}m" for m in CONGESTION_WINDOWS_MIN],
 ]
 

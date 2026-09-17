@@ -3,7 +3,7 @@
 Submissions close **11 October 2026, 23:59:59 CET**. Nothing has been submitted;
 the team bucket is empty.
 
-Current model: **416s validation RMSE** on January + July 2025, against a 686s
+Current model: **409s validation RMSE** on January + July 2025, against a 686s
 standard deviation for those months.
 
 ## Blocked
@@ -19,13 +19,24 @@ standard deviation for those months.
 
 ## Model, in priority order
 
-- [ ] **The unmatched group. This is the work.** 1.5% of departures, 62% of
-      the squared error, around 2,700s RMSE against 293s for everything else.
-      Their *median* taxi-out is normal (976s against 923s), so the question
-      is specifically what lengthens their tail. Untested: whether
-      missingness correlates with time of day or particular stands; whether
-      the long ones are cargo or non-scheduled; whether a quantile or
-      two-stage model beats least squares on a distribution that skewed.
+**Measure improvements with a paired bootstrap, not a single RMSE.** The
+unmatched group has ~5,400 validation rows and a target sd near 4,000s, and
+one row carries 22% of its squared error, five rows carry 52%. An
+independent 95% CI on its RMSE is 1,276s wide, so a lone score from that
+group means almost nothing. Resampling the validation set once and scoring
+both models on the same resample cancels most of that and can resolve
+differences under 10s. `pipeline/experiments_paired_bootstrap.py` is the
+harness.
+
+- [ ] **The unmatched group, continued.** 1.5% of departures, still the
+      majority of the error. What is known: their long flights concentrate
+      hard at LIRF (50% of its unmatched departures exceed an hour, against
+      a 4.84% base rate) and on runways 25 and 34L; 69% of all long ones
+      have a null aircraft type; two days in February 2025 hold 15% of them.
+      Untested: whether LIRF deserves its own treatment, whether the
+      February days are an outage worth excluding from training, and whether
+      a quantile or two-stage model beats least squares on a distribution
+      this skewed.
 - [ ] **Congestion features carry almost nothing** (1.2% of gain combined),
       which is odd for a problem whose physics is queueing. Either the
       windows are wrong, the counts too coarse, or `unimpeded_taxi_sec`
