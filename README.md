@@ -121,8 +121,9 @@ from 409s to 384s (paired-bootstrap 95% CI −46s to −11s).
 
 **Taxi-Out, Measured** (<https://claude.ai/artifact/Ez8LT8SdgrUbdp8oAeMq1i>)
 is the long-form account: what taxi-out is and why it is worth predicting,
-why a squared metric changes the question, the blanked-column trap and how
-we got it backwards, the error decomposition, and the five strategies tried.
+why a squared metric changes the question, which timestamps the scored data
+keeps, the error decomposition, the at-schedule recording artifact, and the
+eight strategies tried.
 Written to be read with no prior knowledge of the dataset or of aviation,
 and intended as the basis for the open-access write-up the rules encourage.
 

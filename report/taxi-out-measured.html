@@ -178,7 +178,7 @@ code{font-family:var(--mono);font-size:.88em;background:var(--line-soft);padding
 </section>
 
 <section class="col">
-  <p class="num">04 · a trap in the data</p>
+  <p class="num">04 · what the scored data keeps</p>
   <h2>The target is arithmetic, not a measurement</h2>
   <p>Each departure in the dataset carries several timestamps. The two that matter here are the moment the aircraft came off its stand, and the moment it took off. Taxi-out is not measured separately. It <em>is</em> the difference between them. Across all <span id="ident-rows"></span> departure rows in the 2025 data, takeoff minus off-block equals the published taxi-out exactly: maximum discrepancy zero.</p>
   <p>That creates a problem for whoever builds the competition. If both timestamps were present in the scored set, subtracting one from the other would score a perfect zero and demonstrate nothing. One of them has to be removed, and <em>which</em> one defines the entire task.</p>
@@ -244,7 +244,7 @@ code{font-family:var(--mono);font-size:.88em;background:var(--line-soft);padding
 <section class="col">
   <p class="num">05 · the first model</p>
   <h2>A respectable number that explains nothing</h2>
-  <p>With the leak understood, the rest is ordinary work. Build features that are available at prediction time (the airport, the stand, the runway, the aircraft type, the hour of day, how busy the airfield was, a per-stand estimate of how long the drive takes when nothing is in the way) and fit a gradient-boosted tree.</p>
+  <p>The model is a gradient-boosted tree over columns that survive on the scored data: the airport, the stand, the runway, the aircraft type, the hour of day, how busy the airfield was, and a per-stand estimate of how long the drive takes when nothing is in the way.</p>
   <p id="firstmodel"></p>
   <p>That is a real improvement over guessing, and it is the point where tuning usually begins: more features, deeper trees, an ensemble. None of that is worth doing before the number is decomposed.</p>
 </section>
