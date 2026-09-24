@@ -30,16 +30,16 @@ S2T_BINS_H = [1, 2, 3, 4, 6, 8, 12, 18, 24]
 
 # Measured on configurations since replaced; see the commit history.
 HISTORICAL = {
-    "mean": {"name": "Group mean for orphans", "rmse": 573.8, "verdict": "rejected",
-             "note": "the model beats the mean, so those rows are not noise"},
-    "flags": {"name": "Explicit missingness flags, one model", "rmse": 474.8, "verdict": "rejected",
-              "note": "worse than the 471.7s single model it was measured against"},
-    "split": {"name": "Two models, same params", "rmse": 442.5, "verdict": "kept",
-              "note": "splitting alone, before tuning the small one"},
-    "leaves": {"name": "Two models, 31 leaves for orphans", "rmse": 415.8, "verdict": "kept",
-               "note": "less capacity fits the small group better"},
-    "airline": {"name": "Airline as a feature", "rmse": 419.3, "verdict": "rejected",
-                "note": "worse than the 409.4s it was added to: predicts the artifact, overfits as a category"},
+    "mean": {"name": "Guess the group average for no-record flights", "rmse": 573.8, "verdict": "rejected",
+             "note": "much worse: the model does find a pattern in these flights"},
+    "flags": {"name": "Tell a single model which fields are blank", "rmse": 474.8, "verdict": "rejected",
+              "note": "slightly worse than the 471.7s single model it was tested against"},
+    "split": {"name": "A separate model for no-record flights", "rmse": 442.5, "verdict": "kept",
+              "note": "splitting the problem in two"},
+    "leaves": {"name": "Make that separate model simpler", "rmse": 415.8, "verdict": "kept",
+               "note": "a small group needs a small model, or it memorises"},
+    "airline": {"name": "Give the model the airline", "rmse": 419.3, "verdict": "rejected",
+                "note": "worse than the 409.4s it was added to: the model memorised airlines"},
 }
 
 
@@ -122,15 +122,15 @@ out["identity"] = {"max_abs_error": float(ident["e"][0]), "rows": int(ident["n"]
 out["strategies"] = [
     HISTORICAL["mean"],
     HISTORICAL["flags"],
-    {"name": "One model for everything", "rmse": out["rmse_single"], "verdict": "baseline",
-     "note": "where this started, refitted on today's features"},
+    {"name": "One model for every flight", "rmse": out["rmse_single"], "verdict": "baseline",
+     "note": "the starting point"},
     HISTORICAL["split"],
     HISTORICAL["airline"],
     HISTORICAL["leaves"],
-    {"name": "Record-completeness flags, orphan model", "rmse": out["rmse_before_mixture"], "verdict": "kept",
-     "note": "flags separate rows within the unmatched group"},
-    {"name": "Mixture around the at-schedule artifact", "rmse": out["rmse_final"], "verdict": "shipped",
-     "note": "p × (takeoff − schedule) + (1 − p) × a normal taxi"},
+    {"name": "Tell the separate model which fields are blank", "rmse": out["rmse_before_mixture"], "verdict": "kept",
+     "note": "helps tell no-record flights apart from each other"},
+    {"name": "Hedge between the schedule gap and a normal taxi", "rmse": out["rmse_final"], "verdict": "shipped",
+     "note": "the blend described in section 08"},
 ]
 
 # The recording artifact, over all of 2025's unmatched departures.

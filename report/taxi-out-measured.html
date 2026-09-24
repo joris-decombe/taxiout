@@ -37,7 +37,7 @@ h3{font-size:15px;font-weight:600;margin:0 0 8px;letter-spacing:-.005em}
 .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
   color:var(--ink-3);margin:0 0 18px}
 .lede{font-family:var(--serif);font-size:clamp(19px,3vw,22px);line-height:1.5;color:var(--ink-2);
-  margin:0 0 10px;max-width:38ch}
+  margin:0 0 10px;max-width:40ch}
 .byline{font-family:var(--mono);font-size:12px;color:var(--ink-3);margin:26px 0 0;
   padding-top:18px;border-top:1px solid var(--line)}
 section{margin:0;padding:46px 0 0}
@@ -93,6 +93,8 @@ tr.hl td{color:var(--orphan);font-weight:500}
   font-variant-numeric:tabular-nums;overflow-x:auto}
 .stamp .k{color:var(--ink-3);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;align-self:center}
 .stamp .eq{color:var(--orphan);font-weight:500}
+.formula{font-family:var(--mono);font-size:14px;text-align:center;margin:26px 0;padding:14px 12px;
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow-x:auto}
 ul{margin:0 0 20px;padding-left:22px}
 li{margin-bottom:10px}
 footer{margin-top:46px;padding-top:22px;border-top:1px solid var(--line);color:var(--ink-3);font-size:13.5px}
@@ -111,21 +113,21 @@ code{font-family:var(--mono);font-size:.88em;background:var(--line-soft);padding
 <header class="col">
   <p class="eyebrow">prc data challenge 2026 · working notes</p>
   <h1>Taxi-Out, Measured</h1>
-  <p class="lede">Most of the error in predicting aircraft ground delay sits in a handful of flights, and the largest share of those are not slow aircraft. They are clocks that were never read.</p>
-  <p class="byline">How long an aircraft spends between leaving its gate and getting airborne, why a squared error metric decides what the problem actually is, and what the measurements say.</p>
+  <p class="lede">Most of the error in predicting how long planes taxi comes from a handful of flights. Many of those were not slow planes at all. Their departure time was simply never recorded.</p>
+  <p class="byline">How long a plane spends between leaving its gate and taking off, how a competition scores predictions of it, and what turned up when we looked at where the predictions go wrong.</p>
 </header>
 
 <section class="col">
   <p class="num">01 · the thing being predicted</p>
   <h2>A plane leaves its gate. Nothing happens for a while.</h2>
-  <p>When an aircraft is ready to depart, a tug pushes it back from the gate. It then has to reach the runway and take off. The clock running between those two moments is called <strong>taxi-out time</strong>, and at a busy European hub it averages about seventeen minutes.</p>
-  <p>Very little of that is driving. The distance from stand to runway is typically a couple of kilometres at walking-to-cycling pace, five or six minutes of actual movement. The rest is waiting: for a tug, for a path across the apron, and above all in a queue at the runway threshold, where aircraft depart one at a time and each departure must be spaced from the one before it.</p>
+  <p>When a plane is ready to depart, a tug pushes it back from the gate. This moment is called <strong>pushback</strong>. The plane then drives to the runway and takes off. The time between pushback and takeoff is called <strong>taxi-out time</strong>, and at a busy European airport it averages about seventeen minutes.</p>
+  <p>Very little of that is driving. The trip from gate to runway is usually a couple of kilometres at cycling pace, five or six minutes of actual movement. The rest is waiting: for a clear path across the apron (the area around the gates), and above all in a queue at the end of the runway, where planes take off one at a time with a safety gap between each.</p>
 </section>
 
 <figure>
-  <svg width="100%" viewBox="0 0 880 210" role="img" aria-label="The stages of a departure from gate to airborne">
-    <title>A departure, gate to airborne</title>
-    <desc>Five stages: at the gate, pushback, apron transit, runway queue, and takeoff. Taxi-out spans from pushback to takeoff, and the queue is typically the largest part.</desc>
+  <svg width="100%" viewBox="0 0 880 210" role="img" aria-label="The stages of a departure from gate to takeoff">
+    <title>A departure, gate to takeoff</title>
+    <desc>Stages: at the gate, pushback, driving across the apron, waiting in the runway queue, and takeoff. Taxi-out runs from pushback to takeoff, and the queue is usually the largest part.</desc>
     <line x1="40" y1="96" x2="840" y2="96" stroke="var(--line)" stroke-width="1"/>
     <g>
       <circle cx="60" cy="96" r="5" fill="var(--dead)"/>
@@ -136,59 +138,59 @@ code{font-family:var(--mono);font-size:.88em;background:var(--line-soft);padding
     <text class="tm" x="152" y="100" text-anchor="middle" fill="var(--ink)">pushback</text>
     <rect x="224" y="82" width="186" height="28" rx="4" fill="var(--joined)" opacity="0.16"/>
     <rect x="224" y="82" width="186" height="28" rx="4" fill="none" stroke="var(--joined)" stroke-width="1"/>
-    <text class="tm" x="317" y="100" text-anchor="middle" fill="var(--ink)">apron transit</text>
+    <text class="tm" x="317" y="100" text-anchor="middle" fill="var(--ink)">drive to runway</text>
     <rect x="416" y="82" width="330" height="28" rx="4" fill="var(--orphan)" opacity="0.18"/>
     <rect x="416" y="82" width="330" height="28" rx="4" fill="none" stroke="var(--orphan)" stroke-width="1"/>
     <text class="tm" x="581" y="100" text-anchor="middle" fill="var(--ink)">waiting in the runway queue</text>
     <g>
       <circle cx="790" cy="96" r="5" fill="var(--dead)"/>
-      <text class="tm" x="790" y="76" text-anchor="middle">airborne</text>
+      <text class="tm" x="790" y="76" text-anchor="middle">takeoff</text>
     </g>
     <path d="M86 132 L86 144 L790 144 L790 132" fill="none" stroke="var(--ink-3)" stroke-width="1"/>
-    <text class="t" x="438" y="170" text-anchor="middle">taxi-out time: the quantity to predict</text>
-    <text class="ts" x="438" y="190" text-anchor="middle">the queue is the variable part, and the part worth predicting</text>
+    <text class="t" x="438" y="170" text-anchor="middle">taxi-out time: what we predict</text>
+    <text class="ts" x="438" y="190" text-anchor="middle">the queue is the part that varies, so it is the part worth predicting</text>
   </svg>
-  <figcaption>Stage widths are illustrative. The movement is fairly predictable from the geometry of the airport; the queue is not, and it is where nearly all the variation lives.</figcaption>
+  <figcaption>Widths are illustrative. The drive depends mostly on the airport's layout and is fairly predictable. The queue is not, and it is where nearly all the variation comes from.</figcaption>
 </figure>
 
 <section class="col">
-  <p class="num">02 · why anyone pays for this</p>
-  <h2>An engine burning fuel while going nowhere</h2>
-  <p>A twin-engine narrowbody burns something on the order of ten kilograms of fuel a minute while taxiing. Multiply by the minutes spent stationary in a queue, then by the couple of thousand departures a day at a large hub, and ground delay becomes a measurable share of an airport's total emissions, burned without moving a single passenger closer to anywhere.</p>
-  <p>Predicting taxi-out accurately does two things. It lets an airport identify when it is operating beyond comfortable capacity, and it lets a controller hold an aircraft at the gate with its engines off instead of in a queue with them running. The second is the one that saves the fuel.</p>
-  <p>This is the subject of the 2026 PRC Data Challenge, run by EUROCONTROL's Performance Review Commission with the OpenSky Network.</p>
+  <p class="num">02 · why it matters</p>
+  <h2>Engines burning fuel while going nowhere</h2>
+  <p>A typical short-haul jet burns around ten kilograms of fuel a minute while taxiing. Multiply by the minutes spent standing in a queue, then by the couple of thousand departures a day at a large airport, and ground delay becomes a real share of an airport's emissions, burned without taking anyone anywhere.</p>
+  <p>Good predictions help in two ways. They show an airport when it is running beyond comfortable capacity. And they let controllers keep a plane at the gate with its engines off, instead of in a queue with them running. That second one is what saves the fuel.</p>
+  <p>This is the subject of the 2026 PRC Data Challenge, a competition run by EUROCONTROL (the organisation that coordinates European air traffic) and the OpenSky Network.</p>
 </section>
 
 <div class="facts" id="facts"></div>
 
 <section class="col">
-  <p class="num">03 · the scoring rule, which is not a detail</p>
+  <p class="num">03 · how predictions are scored</p>
   <h2>What "most accurate" turns out to mean</h2>
-  <p>Entries are ranked by <strong>root mean square error</strong>. For each flight you take the difference between your prediction and the truth, square it, average across all flights, and take the square root. The squaring is the whole story, and it is worth slowing down on, because it quietly decides what the entire project should be about.</p>
-  <p>Squaring means a prediction that misses by ten minutes is not ten times worse than one that misses by one minute. It is a hundred times worse. A metric built this way barely notices a large number of small errors and is dominated by a small number of large ones.</p>
-  <p>Here is one model scored two different ways, on the same set of predictions:</p>
+  <p>Entries are ranked by a measure called <strong>root mean square error</strong>, or RMSE. For each flight you take how far off the prediction was, square it, average those squares over all flights, and take the square root to get back to seconds. From here on this page calls it simply <strong>the score</strong>. Lower is better.</p>
+  <p>The squaring is what matters. It means a prediction that misses by ten minutes does not count ten times as much as a one-minute miss. It counts a hundred times as much. A score built this way barely notices lots of small misses, and is dominated by a few big ones.</p>
+  <p>Here is one set of predictions, measured two ways:</p>
 </section>
 
 <div class="two" id="scorecard"></div>
 
 <section class="col">
-  <p>Nothing differs between those two numbers except the arithmetic used to summarise the errors. On a typical flight the model is off by under three minutes, which is respectable. The metric the entry is scored on reports more than twice that, and the entire gap is the tail.</p>
-  <p class="pull">A metric that squares its errors is not asking you to be right on average. It is asking you not to be badly wrong.</p>
-  <p>Under this metric the useful question is not how well a model predicts taxi-out in general. It is which flights it is badly wrong about, and why.</p>
+  <p>The predictions are identical. Only the arithmetic differs. On a typical flight the model is off by under three minutes. The score reports more than twice that, and the whole difference comes from a few very large misses.</p>
+  <p class="pull">A score that squares its errors is not asking you to be right on average. It is asking you never to be badly wrong.</p>
+  <p>So the useful question is not how well the model does in general. It is which flights it gets badly wrong, and why.</p>
 </section>
 
 <section class="col">
-  <p class="num">04 · what the scored data keeps</p>
-  <h2>The target is arithmetic, not a measurement</h2>
-  <p>Each departure in the dataset carries several timestamps. The two that matter here are the moment the aircraft came off its stand, and the moment it took off. Taxi-out is not measured separately. It <em>is</em> the difference between them. Across all <span id="ident-rows"></span> departure rows in the 2025 data, takeoff minus off-block equals the published taxi-out exactly: maximum discrepancy zero.</p>
-  <p>That creates a problem for whoever builds the competition. If both timestamps were present in the scored set, subtracting one from the other would score a perfect zero and demonstrate nothing. One of them has to be removed, and <em>which</em> one defines the entire task.</p>
+  <p class="num">04 · what the competition gives you</p>
+  <h2>Taxi-out is a subtraction, not a measurement</h2>
+  <p>Each departure in the data carries several timestamps. Two matter here: pushback and takeoff. Taxi-out is not measured on its own. It <em>is</em> takeoff minus pushback. Across all <span id="ident-rows"></span> departures in the 2025 data, that subtraction matches the published taxi-out to the second, every time.</p>
+  <p>So the competition cannot hand out both timestamps, or anyone could subtract one from the other and win. One has to be removed, and which one decides what the task is.</p>
 </section>
 
 <figure>
-  <svg width="100%" viewBox="0 0 880 300" role="img" aria-label="Which timestamps survive on the scored data">
-    <title>Which timestamps survive on the scored data</title>
-    <desc>In the training data all four timestamps are present and taxi-out is takeoff minus actual off-block. In the scored data the actual off-block time and taxi-out are removed, while the scheduled time, the network off-block time and the takeoff time remain.</desc>
-    <text class="t" x="40" y="26">Training data: everything present</text>
+  <svg width="100%" viewBox="0 0 880 300" role="img" aria-label="Which timestamps the competition data keeps">
+    <title>Which timestamps the competition data keeps</title>
+    <desc>In the practice data every timestamp is present and taxi-out is takeoff minus the airport's pushback time. In the data used for scoring, the airport's pushback time and taxi-out are removed, while the scheduled time, the flight-plan system's own pushback estimate and the takeoff time remain.</desc>
+    <text class="t" x="40" y="26">Practice data (2025): everything is there</text>
     <line x1="176" y1="66" x2="214" y2="66" stroke="var(--line)" stroke-width="1"/>
     <line x1="352" y1="66" x2="390" y2="66" stroke="var(--line)" stroke-width="1"/>
     <line x1="528" y1="66" x2="606" y2="66" stroke="var(--line)" stroke-width="1"/>
@@ -196,11 +198,11 @@ code{font-family:var(--mono);font-size:.88em;background:var(--line-soft);padding
       <text class="tmb" x="108" y="62" text-anchor="middle">scheduled</text>
       <text class="ts" x="108" y="78" text-anchor="middle">when it should go</text></g>
     <g><rect x="214" y="46" width="138" height="40" rx="4" fill="var(--panel)" stroke="var(--line)" stroke-width="1"/>
-      <text class="tmb" x="283" y="62" text-anchor="middle">network off-block</text>
-      <text class="ts" x="283" y="78" text-anchor="middle">a second source</text></g>
+      <text class="tmb" x="283" y="62" text-anchor="middle">flight-plan log</text>
+      <text class="ts" x="283" y="78" text-anchor="middle">a rougher pushback</text></g>
     <g><rect x="390" y="46" width="138" height="40" rx="4" fill="var(--panel)" stroke="var(--line)" stroke-width="1"/>
-      <text class="tmb" x="459" y="62" text-anchor="middle">actual off-block</text>
-      <text class="ts" x="459" y="78" text-anchor="middle">left the stand</text></g>
+      <text class="tmb" x="459" y="62" text-anchor="middle">pushback</text>
+      <text class="ts" x="459" y="78" text-anchor="middle">left the gate</text></g>
     <g><rect x="606" y="46" width="138" height="40" rx="4" fill="var(--panel)" stroke="var(--line)" stroke-width="1"/>
       <text class="tmb" x="675" y="62" text-anchor="middle">takeoff</text>
       <text class="ts" x="675" y="78" text-anchor="middle">wheels up</text></g>
@@ -208,9 +210,9 @@ code{font-family:var(--mono);font-size:.88em;background:var(--line-soft);padding
     <line x1="675" y1="86" x2="675" y2="102" stroke="var(--line)" stroke-width="1"/>
     <rect x="390" y="102" width="354" height="32" rx="4" fill="var(--joined)" opacity="0.15"/>
     <rect x="390" y="102" width="354" height="32" rx="4" fill="none" stroke="var(--joined)" stroke-width="1"/>
-    <text class="tm" x="567" y="122" text-anchor="middle" fill="var(--ink)">taxi-out = takeoff − actual off-block</text>
+    <text class="tm" x="567" y="122" text-anchor="middle" fill="var(--ink)">taxi-out = takeoff − pushback</text>
 
-    <text class="t" x="40" y="186">Scored data: what you actually get</text>
+    <text class="t" x="40" y="186">Scored data (2026): what you actually get</text>
     <line x1="176" y1="226" x2="214" y2="226" stroke="var(--line)" stroke-width="1"/>
     <line x1="352" y1="226" x2="390" y2="226" stroke="var(--line)" stroke-width="1"/>
     <line x1="528" y1="226" x2="606" y2="226" stroke="var(--line)" stroke-width="1"/>
@@ -218,11 +220,11 @@ code{font-family:var(--mono);font-size:.88em;background:var(--line-soft);padding
       <text class="tmb" x="108" y="222" text-anchor="middle">scheduled</text>
       <text class="ts" x="108" y="238" text-anchor="middle">present</text></g>
     <g><rect x="214" y="206" width="138" height="40" rx="4" fill="var(--panel)" stroke="var(--line)" stroke-width="1"/>
-      <text class="tmb" x="283" y="222" text-anchor="middle">network off-block</text>
+      <text class="tmb" x="283" y="222" text-anchor="middle">flight-plan log</text>
       <text class="ts" x="283" y="238" text-anchor="middle">present</text></g>
     <g><rect x="390" y="206" width="138" height="40" rx="4" fill="var(--orphan)" opacity="0.14"/>
       <rect x="390" y="206" width="138" height="40" rx="4" fill="none" stroke="var(--orphan)" stroke-width="1" stroke-dasharray="4 3"/>
-      <text class="tmb" x="459" y="222" text-anchor="middle">actual off-block</text>
+      <text class="tmb" x="459" y="222" text-anchor="middle">pushback</text>
       <text class="ts" x="459" y="238" text-anchor="middle" fill="var(--orphan)">removed</text></g>
     <g><rect x="606" y="206" width="138" height="40" rx="4" fill="var(--panel)" stroke="var(--line)" stroke-width="1"/>
       <text class="tmb" x="675" y="222" text-anchor="middle">takeoff</text>
@@ -232,32 +234,31 @@ code{font-family:var(--mono);font-size:.88em;background:var(--line-soft);padding
     <rect x="390" y="262" width="354" height="30" rx="4" fill="none" stroke="var(--orphan)" stroke-width="1" stroke-dasharray="4 3"/>
     <text class="tm" x="567" y="281" text-anchor="middle" fill="var(--orphan)">unknown: this is what you predict</text>
   </svg>
-  <figcaption>The actual off-block time and the target are removed together, because one determines the other. Everything else survives, including the takeoff time.</figcaption>
+  <figcaption>Pushback and taxi-out are removed together, because either one gives away the other. Everything else is kept, including the takeoff time. The "flight-plan log" is a second, independent record of pushback kept by EUROCONTROL; it is often minutes away from the airport's own.</figcaption>
 </figure>
 
 <section class="col">
-  <h3>The direction of the task</h3>
-  <p>The takeoff time is present and the off-block time is gone, so the prediction runs backwards from the intuitive direction: <strong>you know when the aircraft got airborne, and you work out when it must have left the gate.</strong></p>
-  <p>This is not deducible from the training data, where both timestamps are present. It is a property of the scored file, established by reading that file's null counts.</p>
+  <h3>Which way round the task runs</h3>
+  <p>The takeoff time is there and the pushback time is not. So the prediction works backwards from the intuitive direction: <strong>you know when the plane took off, and you work out when it left the gate.</strong> You cannot see this in the practice data, where both times are present. It shows only in the scoring file, where the pushback column is empty.</p>
 </section>
 
 <section class="col">
   <p class="num">05 · the first model</p>
   <h2>A respectable number that explains nothing</h2>
-  <p>The model is a gradient-boosted tree over columns that survive on the scored data: the airport, the stand, the runway, the aircraft type, the hour of day, how busy the airfield was, and a per-stand estimate of how long the drive takes when nothing is in the way.</p>
+  <p>The model is a standard machine-learning method (gradient-boosted decision trees) that learns patterns such as "from this gate to that runway at 7am, taxi-out usually takes fourteen minutes". It only uses information that is present in the scoring file: the airport, the gate, the runway, the aircraft type, the time of day, how busy the airport was, and how long the drive from that gate takes when nothing is in the way.</p>
   <p id="firstmodel"></p>
-  <p>That is a real improvement over guessing, and it is the point where tuning usually begins: more features, deeper trees, an ensemble. None of that is worth doing before the number is decomposed.</p>
+  <p>That is a real improvement over guessing, and it is the point where people usually start tuning. None of that is worth doing before finding out where the error actually comes from.</p>
 </section>
 
 <section>
   <div class="col">
-    <p class="num">06 · opening up the error</p>
-    <h2>Almost all of it is in almost none of the rows</h2>
-    <p>Sort every flight in the validation set by how badly it was predicted, worst first, then walk along that list adding up the squared errors. If the model's mistakes were spread evenly, the line would climb the diagonal. It does not.</p>
+    <p class="num">06 · where the error comes from</p>
+    <h2>Almost all of it is in almost none of the flights</h2>
+    <p>To test the model fairly, January and July 2025 were held back and never shown to it during training. Take every flight in those two months, sort them from worst prediction to best, and add up their squared misses as you go. If the error were spread evenly, the line would follow the diagonal. It does not.</p>
   </div>
   <figure>
     <div class="holder"><canvas id="c-conc" height="290"></canvas><div class="tip" id="t1" hidden></div></div>
-    <figcaption>Validation departures sorted worst-prediction-first, against the running share of total squared error, for the current model. The dashed diagonal is what an evenly-spread model would trace.</figcaption>
+    <figcaption>Held-back flights sorted from worst prediction to best (across), against the share of the total squared error they add up to (up). The dashed diagonal is what evenly spread errors would look like.</figcaption>
   </figure>
   <div class="col">
     <p id="conc-text"></p>
@@ -267,30 +268,30 @@ code{font-family:var(--mono);font-size:.88em;background:var(--line-soft);padding
 
 <section>
   <div class="col">
-    <p class="num">07 · the first answer, which is not about aviation</p>
+    <p class="num">07 · the first answer</p>
     <h2>The flights with no paperwork</h2>
-    <p>Each movement recorded by an airport is matched to a flight record from the European network manager, the system that holds the callsign, the operator, the aircraft type, and the network's own off-block time. For about fifteen departures in a thousand, that match fails. Not partially: when it fails, every field from that record is missing at once. One join failing, not four independent gaps.</p>
-    <p>These are the expensive rows.</p>
+    <p>The airport's record of each departure is linked to EUROCONTROL's flight-plan record for the same flight, which holds the callsign, the airline, the aircraft type and that second pushback time. For about fifteen departures in a thousand, the link fails. When it fails, everything from the flight plan is missing at once.</p>
+    <p>These <strong>no-record flights</strong> are the expensive ones.</p>
   </div>
   <figure>
     <div class="card scroll"><table id="tbl"></table></div>
-    <figcaption>January and July 2025 validation departures. The error rows show the model before and after the change described in the next section.</figcaption>
+    <figcaption>Held-back flights, January and July 2025. The bottom four rows show the model before and after the fix described in the next section.</figcaption>
   </figure>
   <div class="col">
-    <p>The row worth staring at is the median. A typical unmatched flight taxis for <span id="med-o"></span>; a typical matched one for <span id="med-j"></span>. About sixteen minutes each. <strong>In their ordinary behaviour the two groups are indistinguishable.</strong></p>
-    <p>What differs is how far their bad days go. The 99th percentile is more than four times higher, and <span id="over6-orphan"></span> of the <span id="over6-n"></span> departures in 2025 that took more than six hours belong to this small group.</p>
+    <p>Look at the typical flight first. A typical no-record flight taxis for <span id="med-o"></span>; a typical flight with a record, for <span id="med-j"></span>. About sixteen minutes each. <strong>Most of the time, the two groups behave the same.</strong></p>
+    <p>The difference is at the extremes. Their slowest 1% start more than four times later, and <span id="over6-orphan"></span> of the <span id="over6-n"></span> departures in 2025 that took more than six hours are no-record flights.</p>
   </div>
   <figure>
     <div class="legend">
-      <span><i class="sw" style="background:var(--joined)"></i>matched to a flight record</span>
-      <span><i class="sw" style="background:var(--orphan)"></i>no flight record</span>
+      <span><i class="sw" style="background:var(--joined)"></i>with a flight-plan record</span>
+      <span><i class="sw" style="background:var(--orphan)"></i>no record</span>
     </div>
     <div class="holder"><canvas id="c-dist" height="250"></canvas><div class="tip" id="t2" hidden></div></div>
-    <figcaption>Each curve is drawn as a share of its own group, because one group is sixty times larger. The shapes track each other closely to about half an hour, then separate.</figcaption>
+    <figcaption>How taxi-out times are spread in each group, each drawn as a share of its own group because one is sixty times bigger than the other. The shapes match closely up to about half an hour, then split apart.</figcaption>
   </figure>
   <div class="col">
-    <p class="pull">The hardest part of this aviation problem is a database join that sometimes does not fire.</p>
-    <p>A missing record is not a property of the flight. It is a property of the recording. That raises the obvious suspicion about the long tail: that it is a property of the recording too.</p>
+    <p class="pull">The hardest part of this aviation problem is a database link that sometimes fails.</p>
+    <p>A missing record says nothing about the plane. It says something about the paperwork. Which raises the obvious suspicion: maybe the extreme taxi times are a paperwork problem too.</p>
   </div>
 </section>
 
@@ -298,97 +299,97 @@ code{font-family:var(--mono);font-size:.88em;background:var(--line-soft);padding
   <div class="col">
     <p class="num">08 · the second answer</p>
     <h2>One airport writes the schedule where the pushback should be</h2>
-    <p>Split the unmatched flights by airport and one dominates. Rome Fiumicino (LIRF) has <span id="a-lirf-n"></span> of them in 2025, under a fifteenth of the group, and those flights carry <span id="a-lirf-dev"></span> of the group's spread.</p>
-    <p>The reason is in the timestamps. For <span id="a-lirf-at"></span> of LIRF's unmatched departures, the recorded off-block time is identical to the scheduled departure time, to the second. At every other airport, the same coincidence happens to <span id="a-other-at"></span> of unmatched flights. The aircraft did not push back at exactly its scheduled minute. The schedule was written into the field where the pushback should have been.</p>
+    <p>Split the no-record flights by airport and one stands out. Rome Fiumicino has <span id="a-lirf-n"></span> of them in 2025, under a fifteenth of the group, yet those flights account for <span id="a-lirf-dev"></span> of the group's variation.</p>
+    <p>The timestamps show why. For <span id="a-lirf-at"></span> of Rome's no-record departures, the pushback time is identical to the scheduled departure time, to the second. At the other nine airports, that happens to <span id="a-other-at"></span> of no-record flights. Those planes did not push back at exactly their scheduled second. Someone, or some system, wrote the scheduled time into the pushback field.</p>
   </div>
   <div class="stamp" id="stamp"></div>
   <div class="col">
-    <p>For those rows, the published taxi-out is simply takeoff minus scheduled departure. When a flight left four hours late, its "taxi-out" is four hours. None of that is an aircraft waiting at a runway.</p>
-    <p>A second, smaller pattern sits alongside it at several airports: an off-block stamped almost exactly a day before takeoff, giving a taxi-out of roughly 86,400 seconds plus a normal taxi.</p>
+    <p>For those flights, the published "taxi-out" is really takeoff minus scheduled departure. If a flight left four hours late, its taxi-out reads four hours. None of that is a plane waiting at a runway. It is a delay, recorded in the wrong place.</p>
+    <p>A second, rarer pattern appears at several airports: a pushback logged almost exactly a day before takeoff, so the taxi-out reads roughly 24 hours plus a normal taxi.</p>
   </div>
   <figure>
     <div class="legend">
-      <span><i class="sw" style="background:var(--orphan)"></i>off-block recorded at the schedule</span>
+      <span><i class="sw" style="background:var(--orphan)"></i>pushback equals the schedule</span>
       <span><i class="sw" style="background:var(--line)"></i>anything else</span>
     </div>
     <div class="holder"><canvas id="c-gap" height="240"></canvas><div class="tip" id="t5" hidden></div></div>
-    <figcaption>LIRF departures with no flight record, all of 2025, grouped by how long after its scheduled time the flight took off. The bar is the share whose off-block equals the schedule; the figure above each bar is how many flights fall in the group. Past eight hours of lateness it is nearly all of them.</figcaption>
+    <figcaption>Rome's no-record departures in 2025, grouped by how late they took off compared with their schedule. Each bar shows the share whose pushback equals the schedule; the number above it is how many flights are in the group. Beyond eight hours late, it is nearly all of them.</figcaption>
   </figure>
   <div class="col">
-    <p>Both patterns are visible in the scored data without the missing column: the scheduled time and the takeoff time both survive, so the gap between them is known. What is not known is whether a given flight is one of the stamped ones. So the model predicts it as a mixture. A classifier estimates the probability <em>p</em> that a flight's off-block was stamped at the schedule, a separate regressor predicts an ordinary taxi, and the prediction is</p>
-    <p style="font-family:var(--mono);font-size:15px;text-align:center;margin:26px 0">p × (takeoff − schedule) + (1 − p) × normal taxi</p>
-    <p>which is exactly the least-squares answer when <em>p</em> is right. On the validation months it moves the score from <span id="mix-before"></span> to <span id="mix-after"></span>, and the unmatched group's own error from <span id="mix-o-before"></span> to <span id="mix-o-after"></span>. A paired bootstrap puts the 95% interval on the improvement at 10.5 to 45.9 seconds.</p>
-    <p>It also explains the extreme rows that had no explanation. Of the <span id="over6-n2"></span> departures in 2025 recorded at over six hours, <span id="over6-at"></span> have their off-block at the schedule and <span id="over6-day"></span> more have it a day early. <span id="over6-left"></span> remain unexplained.</p>
+    <p>The scoring file still has both the scheduled time and the takeoff time, so the gap between them is known for every flight. What cannot be known is whether a particular flight is one of the rewritten ones. So the model hedges. One part estimates the chance that a flight's pushback was rewritten with its schedule. Another part predicts an ordinary taxi. The prediction blends the two:</p>
+    <p class="formula">chance × (takeoff − schedule) + (1 − chance) × ordinary taxi</p>
+    <p>If there is a 30% chance, it takes 30% of the schedule gap and 70% of an ordinary taxi. Under a squared score, that blend is the best guess available. It moves the overall score from <span id="mix-before"></span> to <span id="mix-after"></span>, and the no-record flights' own score from <span id="mix-o-before"></span> to <span id="mix-o-after"></span>. Re-scored on 600 random reshuffles of the held-back flights, the improvement stays between 10 and 46 seconds in 95% of them, so it is not luck.</p>
+    <p>This also explains most of the extreme cases. Of the <span id="over6-n2"></span> departures in 2025 recorded at over six hours, <span id="over6-at"></span> have their pushback equal to the schedule and <span id="over6-day"></span> more have it a day early. <span id="over6-left"></span> unexplained.</p>
   </div>
 </section>
 
 <section>
   <div class="col">
-    <p class="num">09 · strategies tested</p>
+    <p class="num">09 · what was tried</p>
     <h2>Three of these eight made things worse</h2>
-    <p>Every number below is a measured validation run. The ones that made things worse are worth as much as the ones that helped. Each follows from a reasonable premise, and none survives contact with the data.</p>
+    <p>Each line below is one idea, scored on the held-back months. Lower is better. The ideas that failed taught as much as the ones that worked.</p>
   </div>
   <figure>
     <div class="card"><div class="ladder" id="ladder"></div></div>
-    <figcaption>Earlier rows were measured on the model as it stood at the time. Each rejected entry is compared with the configuration it was tried against, noted underneath it.</figcaption>
+    <figcaption>Earlier lines were scored on the model as it stood at the time. Each failed idea is compared with what it was added to, as noted underneath it.</figcaption>
   </figure>
   <div class="col">
-    <p>The first failure is the instructive one. If a group of rows were genuinely unpredictable, the best available answer under a squared metric would be its average, so substituting the group mean should cost nothing. It costs a great deal, which establishes the opposite: the unmatched flights carry real signal, and a model does find it. With hindsight, much of that signal is the stamped schedule.</p>
-    <p>The second is smaller. Adding explicit flags for which fields are missing should, in principle, beat leaving the model to infer it from nulls. In one model over every flight it does not. The same flags do help inside the model for the unmatched group, where they separate rows within the group instead of restating what two million nulls already say.</p>
-    <p>The third is the surprising one. The airline strongly predicts whether a flight's off-block is stamped: some carriers at LIRF are stamped almost every time, others almost never. Fed to the model as a category, it still made the score worse. With seventeen thousand unmatched training flights spread over hundreds of airlines, the model memorises carriers instead of learning from them. A smoothed per-airline rate, given only to the classifier, did no better than leaving it out.</p>
+    <p><strong>Guessing the average failed badly.</strong> If the no-record flights were pure noise, the best guess for all of them would be their average, and using it should cost nothing. It costs a lot, so there is a real pattern in these flights for a model to find. Much of that pattern, it turns out, is the rewritten schedule.</p>
+    <p><strong>Flagging blank fields helped only in the right place.</strong> Telling a single model which fields are blank should, in principle, help. It did not, because the model already copes with blanks on its own. The same flags do help inside the separate model for no-record flights, where they tell those flights apart from each other.</p>
+    <p><strong>The airline did not help, even though it should.</strong> Some airlines at Rome have their pushback rewritten almost every time, others almost never. But with seventeen thousand no-record flights spread over hundreds of airlines, the model memorised individual airlines instead of learning from them. Giving it each airline's historical rewrite rate instead did no better.</p>
   </div>
 </section>
 
 <section>
   <div class="col">
-    <p class="num">10 · a bound with a price</p>
+    <p class="num">10 · a limit with a price</p>
     <h2>Where to cap a prediction</h2>
-    <p>Predictions have to be bounded somewhere. Taxi-out cannot be negative, and an unbounded regressor can emit nonsense. The upper bound looks like a formality. It is a modelling decision with a measurable cost, and two hours is a plausible-sounding place to put it.</p>
+    <p>Predictions need limits. Taxi-out cannot be negative, and a model left unchecked can occasionally produce an absurd number. The upper limit looks like a formality. It is not, and two hours sounds like a sensible place to put it.</p>
   </div>
   <figure>
     <div class="holder"><canvas id="c-clip" height="240"></canvas><div class="tip" id="t3" hidden></div></div>
-    <figcaption>The current model's RMSE against where predictions are capped. Lower is better; the cap that was once in the code is marked.</figcaption>
+    <figcaption>The current model's score depending on where predictions are capped. Lower is better. The two-hour cap the code once used is marked.</figcaption>
   </figure>
   <div class="col">
     <p id="clip-text"></p>
-    <p>The cap belongs beyond anything the training data reaches, a full day, where it constrains nothing except a runaway.</p>
+    <p>The cap belongs beyond anything the data reaches, at a full day, where it only catches a genuine malfunction.</p>
   </div>
 </section>
 
 <section>
   <div class="col">
-    <p class="num">11 · one more piece of luck</p>
-    <h2>The scored months are the hard ones</h2>
-    <p>The challenge ranks entries on January and July. Those happen to be two of the three most variable months of the year: winter operations at one end, peak summer congestion at the other.</p>
+    <p class="num">11 · a harder test than it looks</p>
+    <h2>The scored months are hard ones</h2>
+    <p>The competition scores January and July. Those are two of the three most unpredictable months of the year: winter weather at one end, peak summer traffic at the other.</p>
   </div>
   <figure>
     <div class="holder"><canvas id="c-month" height="200"></canvas><div class="tip" id="t4" hidden></div></div>
-    <figcaption>Spread of taxi-out by month across 2025. The two scored months are picked out.</figcaption>
+    <figcaption>How much taxi-out times vary from month to month in 2025 (the standard deviation, in seconds). The two scored months are highlighted.</figcaption>
   </figure>
   <div class="col">
-    <p>This makes the validation split load-bearing rather than incidental. Holding out January and July matches the distribution the entry is scored against. Holding out a quiet spring month instead would produce a comfortable number with nothing behind it, because the tail that dominates the metric is thinner there.</p>
+    <p>That is why the model is tested on January and July 2025: the same months it will be scored on in 2026. Testing on a quiet spring month would give a flattering number, because the extreme cases that dominate the score are rarer then.</p>
   </div>
 </section>
 
 <section class="col">
   <p class="num">12 · where it stands</p>
   <h2>What is still wrong</h2>
-  <p>The model sits at <span id="final-rmse"></span> on the scored months, down from <span id="single-rmse"></span> for a single model, and nothing has been submitted yet. The open problems:</p>
+  <p>The model scores <span id="final-rmse"></span> on the held-back months, down from <span id="single-rmse"></span> for the first model. Nothing has been submitted to the competition yet. What remains:</p>
   <ul>
-    <li><strong>The two halves now weigh about the same.</strong> The unmatched group is down to <span id="o-rmse"></span> RMSE and <span id="o-share"></span> of the squared error. If it were predicted perfectly the overall score would be <span id="oracle-o"></span>; if every <em>other</em> flight were predicted perfectly it would be <span id="oracle-j"></span>. For the first time, the matched flights are the larger target.</li>
-    <li><strong>What is left in the unmatched group looks like noise.</strong> Its worst validation rows are two Paris departures recorded at 23 and 16 hours of taxi-out, although they took off within 35 minutes of their scheduled time. Between them they carry a fifth of all the validation squared error. Nothing in the scored columns flags them.</li>
-    <li><strong><span id="neg-n"></span> flights have a negative taxi-out</strong>, down to <span id="neg-min"></span> seconds, <span id="neg-lszh"></span> of them at Zurich. The two timestamps disagree there in a way that has no explanation yet.</li>
-    <li><strong>Congestion barely registers.</strong> The counts of recent movements around each departure carry about one percent of the model's gain, which is odd for a problem whose physics is queueing, and the most likely place for the matched flights' remaining error.</li>
-    <li><strong>The simulator has not earned its place.</strong> A separate model of the departure surface (pushback, apron, runway queue with wake separation) reproduces about a sixth of the real queueing delay and correlates weakly with it. Its output is not currently used.</li>
+    <li><strong>The two groups now matter about equally.</strong> The no-record flights score <span id="o-rmse"></span> on their own and make up <span id="o-share"></span> of the total squared error. If they were predicted perfectly, the overall score would be <span id="oracle-o"></span>. If every <em>other</em> flight were predicted perfectly, it would be <span id="oracle-j"></span>. For the first time, the flights with a record are the bigger target.</li>
+    <li><strong>What is left among the no-record flights looks like noise.</strong> The two worst are Paris departures recorded at 23 and 16 hours of taxi-out, although they took off within 35 minutes of their scheduled time. Between them they make up a fifth of all the squared error in the test. Nothing in the scoring file warns of them.</li>
+    <li><strong><span id="neg-n"></span> flights have a negative taxi-out</strong>, as low as <span id="neg-min"></span> seconds, <span id="neg-lszh"></span> of them at Zurich. The plane apparently took off before it left the gate. There is no explanation yet.</li>
+    <li><strong>Congestion barely registers.</strong> The model makes almost no use of how busy the airport was around each departure. That is odd for a problem that is mostly about queueing, and the likeliest place for the remaining error on ordinary flights.</li>
+    <li><strong>The simulator has not earned its place.</strong> A separate program that simulates the queue (planes pushing back, driving out, and taking off one at a time with safety gaps) reproduces only about a sixth of the real queueing delay. It is not used by the model.</li>
   </ul>
-  <p class="pull">The metric chose the problem, and the problem turned out to be bookkeeping.</p>
-  <p>That is the transferable part. Taxi-out is a queueing problem and the aviation literature treats it as one, but under RMSE the ordinary queueing behaviour, which a gradient-boosted tree already handles well, is not where the score was decided. It was decided on flights whose defining characteristic is a missing database record, and the productive work was not modelling why they run long. It was finding that, mostly, they do not.</p>
+  <p class="pull">The scoring rule chose the problem, and the problem turned out to be bookkeeping.</p>
+  <p>That is the part that carries over to other problems. Taxi-out is a queueing problem, and the aviation research treats it as one. But under a squared score, the ordinary queueing, which the model already handles well, is not where the result was decided. It was decided on flights with a missing record. The useful work was not explaining why those flights take so long. It was finding that, mostly, they do not.</p>
 </section>
 
 <footer class="col" id="foot"></footer>
 </div>
 
-<script type="application/json" id="d">{"rmse_final":383.6,"rmse_single":475.5,"rmse_before_mixture":409.4,"mae_final":164.1,"mae_single":166.6,"rmse_predict_mean":686.2,"rmse_if_orphans_perfect":290.0,"rmse_if_joined_perfect":251.2,"target":{"mean":1012.1,"sd":686.2,"p50":923.0,"p90":1505.0},"concentration":[[0.0,0.0],[0.00034,0.5272],[0.00068,0.5662],[0.00102,0.5889],[0.00136,0.6051],[0.00169,0.6176],[0.00203,0.6279],[0.00237,0.6366],[0.00271,0.6445],[0.00305,0.6514],[0.00339,0.6575],[0.00373,0.663],[0.00407,0.6681],[0.00441,0.6729],[0.00475,0.6773],[0.00508,0.6813],[0.00542,0.6852],[0.00576,0.6888],[0.0061,0.6923],[0.00644,0.6956],[0.00678,0.6987],[0.00712,0.7017],[0.00746,0.7046],[0.0078,0.7073],[0.00814,0.7099],[0.00847,0.7124],[0.00881,0.7148],[0.00915,0.7171],[0.00949,0.7194],[0.00983,0.7215],[0.01017,0.7236],[0.01051,0.7256],[0.01085,0.7275],[0.01119,0.7294],[0.01153,0.7313],[0.01186,0.733],[0.0122,0.7348],[0.01254,0.7364],[0.01288,0.7381],[0.01322,0.7397],[0.01356,0.7412],[0.0139,0.7427],[0.01424,0.7442],[0.01458,0.7457],[0.01492,0.7471],[0.01525,0.7485],[0.01559,0.7499],[0.01593,0.7512],[0.01627,0.7525],[0.01661,0.7538],[0.01695,0.7551],[0.01729,0.7563],[0.01763,0.7576],[0.01797,0.7588],[0.01831,0.7599],[0.01864,0.7611],[0.01898,0.7622],[0.01932,0.7634],[0.01966,0.7645],[0.02,0.7656],[0.02462,0.779],[0.02923,0.7905],[0.03385,0.8004],[0.03846,0.8092],[0.04308,0.8171],[0.04769,0.8243],[0.05231,0.8309],[0.05692,0.8369],[0.06154,0.8426],[0.06615,0.848],[0.07077,0.853],[0.07538,0.8577],[0.08,0.8621],[0.08462,0.8664],[0.08923,0.8704],[0.09385,0.8742],[0.09846,0.8779],[0.10308,0.8814],[0.10769,0.8848],[0.11231,0.888],[0.11692,0.8911],[0.12154,0.8941],[0.12615,0.897],[0.13077,0.8997],[0.13538,0.9024],[0.14,0.905],[0.14462,0.9075],[0.14923,0.9099],[0.15385,0.9122],[0.15846,0.9145],[0.16308,0.9167],[0.16769,0.9188],[0.17231,0.9209],[0.17692,0.9229],[0.18154,0.9248],[0.18615,0.9267],[0.19077,0.9285],[0.19538,0.9303],[0.2,0.932],[0.22759,0.9414],[0.25517,0.9495],[0.28276,0.9564],[0.31034,0.9625],[0.33793,0.9677],[0.36552,0.9724],[0.3931,0.9764],[0.42069,0.9799],[0.44828,0.983],[0.47586,0.9857],[0.50345,0.988],[0.53103,0.9901],[0.55862,0.9918],[0.58621,0.9934],[0.61379,0.9947],[0.64138,0.9958],[0.66897,0.9967],[0.69655,0.9975],[0.72414,0.9981],[0.75172,0.9986],[0.77931,0.9991],[0.8069,0.9994],[0.83448,0.9996],[0.86207,0.9998],[0.88966,0.9999],[0.91724,1.0],[0.94483,1.0],[0.97241,1.0],[1.0,1.0]],"groups":{"joined":{"n":339046,"share":0.9844,"rmse":292.3,"err_share":0.5714,"rmse_before":292.3,"err_share_before":0.5018,"mean":1005.1,"sd":476.2,"p50":921.0,"p99":2579.5,"max":87002.0,"mae":157.9},"orphan":{"n":5373,"share":0.0156,"rmse":2010.8,"err_share":0.4286,"rmse_before":2313.7,"err_share_before":0.4982,"mean":1456.8,"sd":3958.2,"p50":976.0,"p99":11049.1,"max":88132.0,"mae":557.9}},"hist":{"bin_sec":120,"n_bins":40,"counts":{"joined":[203,1408,4372,10771,25239,42146,49907,48068,41223,32537,24564,17242,12140,8314,5688,3844,2589,1743,1433,1043,823,690,521,432,362,290,228,167,160,123,90,87,58,61,59,47,45,31,38,22,238],"orphan":[191,135,134,135,284,459,579,640,596,534,418,292,217,151,117,71,54,32,28,20,16,10,10,8,7,7,6,6,5,5,7,5,5,1,2,1,6,8,2,1,168]}},"clip":[[1800,580.5],[2700,562.8],[3600,554.1],[5400,541.7],[7200,532.0],[10800,515.1],[14400,498.8],[21600,470.1],[43200,410.7],[86400,383.1]],"monthly":[[1,604.8],[2,628.3],[3,461.7],[4,436.0],[5,469.4],[6,554.9],[7,745.0],[8,533.8],[9,560.3],[10,437.1],[11,532.0],[12,514.7]],"identity":{"max_abs_error":0.0,"rows":2085047},"strategies":[{"name":"Group mean for orphans","rmse":573.8,"verdict":"rejected","note":"the model beats the mean, so those rows are not noise"},{"name":"Explicit missingness flags, one model","rmse":474.8,"verdict":"rejected","note":"worse than the 471.7s single model it was measured against"},{"name":"One model for everything","rmse":475.5,"verdict":"baseline","note":"where this started, refitted on today's features"},{"name":"Two models, same params","rmse":442.5,"verdict":"kept","note":"splitting alone, before tuning the small one"},{"name":"Airline as a feature","rmse":419.3,"verdict":"rejected","note":"worse than the 409.4s it was added to: predicts the artifact, overfits as a category"},{"name":"Two models, 31 leaves for orphans","rmse":415.8,"verdict":"kept","note":"less capacity fits the small group better"},{"name":"Record-completeness flags, orphan model","rmse":409.4,"verdict":"kept","note":"flags separate rows within the unmatched group"},{"name":"Mixture around the at-schedule artifact","rmse":383.6,"verdict":"shipped","note":"p × (takeoff − schedule) + (1 − p) × a normal taxi"}],"negative":{"n":369,"lszh":298,"min":-12},"artifact":{"orphans":22470,"lirf_orphans":1488,"lirf_at_share":0.485,"other_at_share":0.019,"lirf_dev_share":0.873,"by_airport":[{"adep":"LIRF","n":1488,"at_share":0.485,"dev_share":0.873},{"adep":"LFPG","n":3773,"at_share":0.003,"dev_share":0.046},{"adep":"LSZH","n":2291,"at_share":0.023,"dev_share":0.037},{"adep":"LTFM","n":3645,"at_share":0.05,"dev_share":0.018},{"adep":"EHAM","n":4084,"at_share":0.027,"dev_share":0.014},{"adep":"EGLL","n":1414,"at_share":0.003,"dev_share":0.005},{"adep":"EDDF","n":1956,"at_share":0.002,"dev_share":0.002},{"adep":"EDDM","n":1010,"at_share":0.0,"dev_share":0.002},{"adep":"LEBL","n":1862,"at_share":0.019,"dev_share":0.002},{"adep":"LEMD","n":947,"at_share":0.002,"dev_share":0.001}],"lirf_by_gap":[{"lo_h":null,"hi_h":1,"n":113,"at_share":0.407,"day_shift":0,"y_over_gap":3.04},{"lo_h":1,"hi_h":2,"n":748,"at_share":0.373,"day_shift":0,"y_over_gap":0.5},{"lo_h":2,"hi_h":3,"n":384,"at_share":0.604,"day_shift":0,"y_over_gap":0.67},{"lo_h":3,"hi_h":4,"n":116,"at_share":0.543,"day_shift":1,"y_over_gap":0.66},{"lo_h":4,"hi_h":6,"n":64,"at_share":0.781,"day_shift":0,"y_over_gap":0.8},{"lo_h":6,"hi_h":8,"n":13,"at_share":0.923,"day_shift":0,"y_over_gap":0.93},{"lo_h":8,"hi_h":12,"n":21,"at_share":1.0,"day_shift":0,"y_over_gap":1.0},{"lo_h":12,"hi_h":18,"n":21,"at_share":0.762,"day_shift":5,"y_over_gap":1.13},{"lo_h":18,"hi_h":24,"n":6,"at_share":0.167,"day_shift":5,"y_over_gap":1.15},{"lo_h":24,"hi_h":null,"n":2,"at_share":0.5,"day_shift":2,"y_over_gap":0.97}],"over_6h":{"n":69,"orphan":68,"at_schedule":52,"day_shift":14,"unexplained":4}}}</script>
+<script type="application/json" id="d">{"rmse_final":383.6,"rmse_single":475.5,"rmse_before_mixture":409.4,"mae_final":164.1,"mae_single":166.6,"rmse_predict_mean":686.2,"rmse_if_orphans_perfect":290.0,"rmse_if_joined_perfect":251.2,"target":{"mean":1012.1,"sd":686.2,"p50":923.0,"p90":1505.0},"concentration":[[0.0,0.0],[0.00034,0.5272],[0.00068,0.5662],[0.00102,0.5889],[0.00136,0.6051],[0.00169,0.6176],[0.00203,0.6279],[0.00237,0.6366],[0.00271,0.6445],[0.00305,0.6514],[0.00339,0.6575],[0.00373,0.663],[0.00407,0.6681],[0.00441,0.6729],[0.00475,0.6773],[0.00508,0.6813],[0.00542,0.6852],[0.00576,0.6888],[0.0061,0.6923],[0.00644,0.6956],[0.00678,0.6987],[0.00712,0.7017],[0.00746,0.7046],[0.0078,0.7073],[0.00814,0.7099],[0.00847,0.7124],[0.00881,0.7148],[0.00915,0.7171],[0.00949,0.7194],[0.00983,0.7215],[0.01017,0.7236],[0.01051,0.7256],[0.01085,0.7275],[0.01119,0.7294],[0.01153,0.7313],[0.01186,0.733],[0.0122,0.7348],[0.01254,0.7364],[0.01288,0.7381],[0.01322,0.7397],[0.01356,0.7412],[0.0139,0.7427],[0.01424,0.7442],[0.01458,0.7457],[0.01492,0.7471],[0.01525,0.7485],[0.01559,0.7499],[0.01593,0.7512],[0.01627,0.7525],[0.01661,0.7538],[0.01695,0.7551],[0.01729,0.7563],[0.01763,0.7576],[0.01797,0.7588],[0.01831,0.7599],[0.01864,0.7611],[0.01898,0.7622],[0.01932,0.7634],[0.01966,0.7645],[0.02,0.7656],[0.02462,0.779],[0.02923,0.7905],[0.03385,0.8004],[0.03846,0.8092],[0.04308,0.8171],[0.04769,0.8243],[0.05231,0.8309],[0.05692,0.8369],[0.06154,0.8426],[0.06615,0.848],[0.07077,0.853],[0.07538,0.8577],[0.08,0.8621],[0.08462,0.8664],[0.08923,0.8704],[0.09385,0.8742],[0.09846,0.8779],[0.10308,0.8814],[0.10769,0.8848],[0.11231,0.888],[0.11692,0.8911],[0.12154,0.8941],[0.12615,0.897],[0.13077,0.8997],[0.13538,0.9024],[0.14,0.905],[0.14462,0.9075],[0.14923,0.9099],[0.15385,0.9122],[0.15846,0.9145],[0.16308,0.9167],[0.16769,0.9188],[0.17231,0.9209],[0.17692,0.9229],[0.18154,0.9248],[0.18615,0.9267],[0.19077,0.9285],[0.19538,0.9303],[0.2,0.932],[0.22759,0.9414],[0.25517,0.9495],[0.28276,0.9564],[0.31034,0.9625],[0.33793,0.9677],[0.36552,0.9724],[0.3931,0.9764],[0.42069,0.9799],[0.44828,0.983],[0.47586,0.9857],[0.50345,0.988],[0.53103,0.9901],[0.55862,0.9918],[0.58621,0.9934],[0.61379,0.9947],[0.64138,0.9958],[0.66897,0.9967],[0.69655,0.9975],[0.72414,0.9981],[0.75172,0.9986],[0.77931,0.9991],[0.8069,0.9994],[0.83448,0.9996],[0.86207,0.9998],[0.88966,0.9999],[0.91724,1.0],[0.94483,1.0],[0.97241,1.0],[1.0,1.0]],"groups":{"joined":{"n":339046,"share":0.9844,"rmse":292.3,"err_share":0.5714,"rmse_before":292.3,"err_share_before":0.5018,"mean":1005.1,"sd":476.2,"p50":921.0,"p99":2579.5,"max":87002.0,"mae":157.9},"orphan":{"n":5373,"share":0.0156,"rmse":2010.8,"err_share":0.4286,"rmse_before":2313.7,"err_share_before":0.4982,"mean":1456.8,"sd":3958.2,"p50":976.0,"p99":11049.1,"max":88132.0,"mae":557.9}},"hist":{"bin_sec":120,"n_bins":40,"counts":{"joined":[203,1408,4372,10771,25239,42146,49907,48068,41223,32537,24564,17242,12140,8314,5688,3844,2589,1743,1433,1043,823,690,521,432,362,290,228,167,160,123,90,87,58,61,59,47,45,31,38,22,238],"orphan":[191,135,134,135,284,459,579,640,596,534,418,292,217,151,117,71,54,32,28,20,16,10,10,8,7,7,6,6,5,5,7,5,5,1,2,1,6,8,2,1,168]}},"clip":[[1800,580.5],[2700,562.8],[3600,554.1],[5400,541.7],[7200,532.0],[10800,515.1],[14400,498.8],[21600,470.1],[43200,410.7],[86400,383.1]],"monthly":[[1,604.8],[2,628.3],[3,461.7],[4,436.0],[5,469.4],[6,554.9],[7,745.0],[8,533.8],[9,560.3],[10,437.1],[11,532.0],[12,514.7]],"identity":{"max_abs_error":0.0,"rows":2085047},"strategies":[{"name":"Guess the group average for no-record flights","rmse":573.8,"verdict":"rejected","note":"much worse: the model does find a pattern in these flights"},{"name":"Tell a single model which fields are blank","rmse":474.8,"verdict":"rejected","note":"slightly worse than the 471.7s single model it was tested against"},{"name":"One model for every flight","rmse":475.5,"verdict":"baseline","note":"the starting point"},{"name":"A separate model for no-record flights","rmse":442.5,"verdict":"kept","note":"splitting the problem in two"},{"name":"Give the model the airline","rmse":419.3,"verdict":"rejected","note":"worse than the 409.4s it was added to: the model memorised airlines"},{"name":"Make that separate model simpler","rmse":415.8,"verdict":"kept","note":"a small group needs a small model, or it memorises"},{"name":"Tell the separate model which fields are blank","rmse":409.4,"verdict":"kept","note":"helps tell no-record flights apart from each other"},{"name":"Hedge between the schedule gap and a normal taxi","rmse":383.6,"verdict":"shipped","note":"the blend described in section 08"}],"negative":{"n":369,"lszh":298,"min":-12},"artifact":{"orphans":22470,"lirf_orphans":1488,"lirf_at_share":0.485,"other_at_share":0.019,"lirf_dev_share":0.873,"by_airport":[{"adep":"LIRF","n":1488,"at_share":0.485,"dev_share":0.873},{"adep":"LFPG","n":3773,"at_share":0.003,"dev_share":0.046},{"adep":"LSZH","n":2291,"at_share":0.023,"dev_share":0.037},{"adep":"LTFM","n":3645,"at_share":0.05,"dev_share":0.018},{"adep":"EHAM","n":4084,"at_share":0.027,"dev_share":0.014},{"adep":"EGLL","n":1414,"at_share":0.003,"dev_share":0.005},{"adep":"EDDF","n":1956,"at_share":0.002,"dev_share":0.002},{"adep":"EDDM","n":1010,"at_share":0.0,"dev_share":0.002},{"adep":"LEBL","n":1862,"at_share":0.019,"dev_share":0.002},{"adep":"LEMD","n":947,"at_share":0.002,"dev_share":0.001}],"lirf_by_gap":[{"lo_h":null,"hi_h":1,"n":113,"at_share":0.407,"day_shift":0,"y_over_gap":3.04},{"lo_h":1,"hi_h":2,"n":748,"at_share":0.373,"day_shift":0,"y_over_gap":0.5},{"lo_h":2,"hi_h":3,"n":384,"at_share":0.604,"day_shift":0,"y_over_gap":0.67},{"lo_h":3,"hi_h":4,"n":116,"at_share":0.543,"day_shift":1,"y_over_gap":0.66},{"lo_h":4,"hi_h":6,"n":64,"at_share":0.781,"day_shift":0,"y_over_gap":0.8},{"lo_h":6,"hi_h":8,"n":13,"at_share":0.923,"day_shift":0,"y_over_gap":0.93},{"lo_h":8,"hi_h":12,"n":21,"at_share":1.0,"day_shift":0,"y_over_gap":1.0},{"lo_h":12,"hi_h":18,"n":21,"at_share":0.762,"day_shift":5,"y_over_gap":1.13},{"lo_h":18,"hi_h":24,"n":6,"at_share":0.167,"day_shift":5,"y_over_gap":1.15},{"lo_h":24,"hi_h":null,"n":2,"at_share":0.5,"day_shift":2,"y_over_gap":0.97}],"over_6h":{"n":69,"orphan":68,"at_schedule":52,"day_shift":14,"unexplained":4}}}</script>
 <script>
 (function(){
 "use strict";
@@ -412,13 +413,14 @@ function concAt(f){
   for(var i=1;i<c.length;i++){if(c[i][0]>=f){var a=c[i-1],b=c[i],t=(f-a[0])/((b[0]-a[0])||1);return a[1]+t*(b[1]-a[1]);}}
   return 1;
 }
+var VERDICT={rejected:"worse",baseline:"start",kept:"kept",shipped:"current"};
 
 function facts(){
   var h=document.getElementById("facts");h.textContent="";
-  [["scored on","RMSE","in seconds"],
-   ["ranked over","Jan + Jul","2026 movements"],
-   ["airports","10","major European hubs"],
-   ["training data","2.1M","departures, all of 2025"],
+  [["scored by","RMSE","error in seconds, lower wins"],
+   ["scored on","Jan + Jul","2026 departures"],
+   ["airports","10","large European hubs"],
+   ["practice data","2.1M","departures, all of 2025"],
    ["typical taxi-out",fmt(D.target.p50)+"s","about "+mins(D.target.p50)+" minutes"],
    ["prize","€5,000","top three teams"]].forEach(function(f){
     var d=el("div");d.appendChild(el("p","k",f[0]));
@@ -430,8 +432,8 @@ function facts(){
 
 function text(){
   var h=document.getElementById("scorecard");h.textContent="";
-  [["typical error (mean absolute)",D.mae_final,"bar-mae","Add up how far off each prediction is, ignoring direction, and average. Under three minutes."],
-   ["the competition's score (RMSE)",D.rmse_final,"bar-rmse","Square each miss before averaging, then take the root. The same predictions, reported as more than twice as bad."]
+  [["typical miss",D.mae_final,"bar-mae","The average of how far off each prediction is, ignoring direction. Under three minutes."],
+   ["the competition's score",D.rmse_final,"bar-rmse","Square each miss, average, then take the square root. The same predictions, reported as more than twice as bad."]
   ].forEach(function(x){
     var d=el("div");
     d.appendChild(el("p","lab",x[0]));
@@ -441,12 +443,12 @@ function text(){
   });
   var O=D.groups.orphan,J=D.groups.joined,A=D.artifact,L=A.over_6h;
   set("ident-rows",fmt(D.identity.rows));
-  set("firstmodel","Predicting the same average for every flight scores "+fmt(D.rmse_predict_mean)+"s, which is the number to beat. "+
-    "A single gradient-boosted model over those features scores "+fmt(D.rmse_single)+"s.");
+  set("firstmodel","Guessing the same average taxi-out for every flight scores "+fmt(D.rmse_predict_mean)+"s. That is the number to beat. "+
+    "The model scores "+fmt(D.rmse_single)+"s.");
   var head=concAt(O.share),first=D.concentration[1];
-  set("conc-text","The worst "+pct(O.share,1)+" of flights, about fifteen in a thousand, account for "+pct(head)+
-    " of everything the metric measures. The worst "+pct(first[0],2)+" alone, about "+Math.round(first[0]*1e4)+" flights in ten thousand, account for "+
-    pct(first[1])+". Tune the features all you like; you are polishing what is left.");
+  set("conc-text","The worst "+pct(O.share,1)+" of flights, about fifteen in a thousand, make up "+pct(head)+
+    " of the total squared error. The worst "+pct(first[0],2)+" alone, about "+Math.round(first[0]*1e4)+
+    " flights in ten thousand, make up "+pct(first[1])+". Fine-tuning the model for everyone else only works on what is left.");
   set("med-o",fmt(O.p50)+" seconds");set("med-j",fmt(J.p50));
   set("over6-orphan",L.orphan);set("over6-n",L.n);set("over6-n2",L.n);
   set("over6-at",L.at_schedule);set("over6-day",L.day_shift-(L.at_schedule+L.day_shift+L.unexplained-L.n));
@@ -461,20 +463,20 @@ function text(){
   set("neg-n",fmt(D.negative.n));set("neg-min",String(D.negative.min).replace("-","minus "));
   set("neg-lszh",pct(D.negative.lszh/D.negative.n));
   var c7=D.clip.filter(function(p){return p[0]===7200;})[0],cmax=D.clip[D.clip.length-1];
-  set("clip-text","Hubs do taxi for longer, and some recorded taxi-outs run for many hours for the reasons in section 08. "+
-    "A cap below the truth guarantees a large error on precisely the rows a squared metric weights most heavily. "+
-    "Capping at two hours scores "+c7[1]+"s against "+cmax[1]+"s at a day: "+Math.round(c7[1]-cmax[1])+
-    " seconds of RMSE, more than any feature in the model is worth.");
+  set("clip-text","Some real taxi-outs do run past two hours, and some recorded ones run for many hours for the reasons in section 08. "+
+    "A cap below the true value guarantees a big miss on exactly the flights the squared score punishes hardest. "+
+    "Capping at two hours scores "+c7[1]+"s, against "+cmax[1]+"s with the cap at a full day. That is "+Math.round(c7[1]-cmax[1])+
+    " seconds lost, more than any single input to the model is worth.");
   var s=document.getElementById("stamp");s.textContent="";
-  [["illustrative",""," "],["scheduled","14:25:00",""],["off-block","14:25:00","eq"],["takeoff","18:41:30",""],
+  [["example",""," "],["scheduled","14:25:00",""],["pushback","14:25:00","eq"],["takeoff","18:41:30",""],
    ["taxi-out","15,390 s: four hours and sixteen minutes","eq"]].forEach(function(r){
     s.appendChild(el("span","k",r[0]));s.appendChild(el("span",r[2]||null,r[1]));
   });
   document.getElementById("foot").textContent=
-    "All figures measured on the January and July 2025 validation split of the PRC Data Challenge 2026 training data: "+
-    fmt(J.n+O.n)+" departures held out of a 2.1M-row training set, except where a figure says all of 2025. "+
-    "Model: LightGBM, two boosters for matched flights and a classifier plus regressor for unmatched ones, "+
-    "features restricted to columns present on the scored data. Regenerated by pipeline/report_findings.py.";
+    "All figures come from the January and July 2025 flights held back from training ("+
+    fmt(J.n+O.n)+" departures out of 2.1 million), except where a figure says all of 2025. "+
+    "The model uses only information present in the competition's scoring file. "+
+    "Figures are regenerated by pipeline/report_findings.py in the project repository.";
 }
 
 var concPts=[];
@@ -514,16 +516,16 @@ function conc(){
 function tbl(){
   var t=document.getElementById("tbl");t.textContent="";
   var J=D.groups.joined,O=D.groups.orphan;
-  [["","matched","no record",""],
+  [["","with a record","no record",""],
    ["flights",fmt(J.n),fmt(O.n)],
    ["share of all flights",pct(J.share,2),pct(O.share,2)],
-   ["median taxi-out",fmt(J.p50)+"s",fmt(O.p50)+"s"],
-   ["99th percentile",fmt(J.p99)+"s",fmt(O.p99)+"s"],
+   ["typical taxi-out (median)",fmt(J.p50)+"s",fmt(O.p50)+"s"],
+   ["slowest 1% start at",fmt(J.p99)+"s",fmt(O.p99)+"s"],
    ["longest",fmt(J.max)+"s",fmt(O.max)+"s"],
-   ["RMSE, one orphan regressor",fmt(J.rmse_before)+"s",fmt(O.rmse_before)+"s"],
-   ["share of squared error",pct(J.err_share_before,1),pct(O.err_share_before,1)],
-   ["RMSE, mixture model",fmt(J.rmse)+"s",fmt(O.rmse)+"s","hl"],
-   ["share of squared error",pct(J.err_share,1),pct(O.err_share,1),"hl"]
+   ["score, before the fix",fmt(J.rmse_before)+"s",fmt(O.rmse_before)+"s"],
+   ["share of total error, before",pct(J.err_share_before,1),pct(O.err_share_before,1)],
+   ["score, now",fmt(J.rmse)+"s",fmt(O.rmse)+"s","hl"],
+   ["share of total error, now",pct(J.err_share,1),pct(O.err_share,1),"hl"]
   ].forEach(function(r,i){
     var tr=el("tr");if(r[3])tr.className=r[3];
     r.slice(0,3).forEach(function(c,k){
@@ -591,7 +593,7 @@ function gapc(){
   g.fillStyle=css("--ink-3");g.font=mono(11);g.textAlign="right";g.textBaseline="middle";
   [0,.5,1].forEach(function(p){g.fillText(pct(p),L-9,y1-p*(y1-y0));});
   g.textAlign="center";g.textBaseline="top";
-  g.fillText("takeoff minus scheduled departure",(x0+x1)/2,y1+24);
+  g.fillText("how late the flight took off, against its schedule",(x0+x1)/2,y1+24);
 }
 
 function ladder(){
@@ -603,7 +605,7 @@ function ladder(){
     var row=el("div","row"),top=el("div","top");
     top.appendChild(el("span",null,s.name));
     var right=el("span");right.style.display="inline-flex";right.style.alignItems="baseline";right.style.gap="10px";
-    right.appendChild(el("span","tag "+s.verdict,s.verdict));
+    right.appendChild(el("span","tag "+s.verdict,VERDICT[s.verdict]||s.verdict));
     right.appendChild(el("span","sc",s.rmse.toFixed(1)+"s"));
     top.appendChild(right);
     var tr=el("div","track"),fl=el("div","fill");
@@ -637,7 +639,7 @@ function clipc(){
     g.beginPath();g.arc(X,Y,was?5.5:3.5,0,6.2832);g.fill();g.stroke();
     if(was){
       g.fillStyle=css("--ink");g.font='500 '+mono(12);g.textAlign="left";g.textBaseline="middle";
-      var s="the cap once in the code";
+      var s="the two-hour cap once in the code";
       g.fillText(s,Math.min(X+12,x1-g.measureText(s).width-4),Y-9);
       g.fillStyle=css("--ink-3");
       g.fillText(p[1]+"s",Math.min(X+12,x1-40),Y+9);
@@ -696,30 +698,31 @@ bindTip("c-conc","t1",function(x){
   var best=null,bd=1e9;
   concPts.forEach(function(p){var d=Math.abs(p[0]-x);if(d<bd){bd=d;best=p;}});
   if(!best||bd>26)return null;
-  return ["worst "+pct(best[2][0],2)+" of flights","carry "+pct(best[2][1],1)+" of the squared error"];
+  return ["worst "+pct(best[2][0],2)+" of flights","make up "+pct(best[2][1],1)+" of the squared error"];
 });
 bindTip("c-dist","t2",function(x){
   for(var i=0;i<distBars.length;i++){var b=distBars[i];
     if(x>=b.x0&&x<=b.x1)return [b.last?"60 minutes and over":
       (Math.round(b.i*D.hist.bin_sec/60)+"–"+Math.round((b.i+1)*D.hist.bin_sec/60)+" minutes"),
-      "matched    "+pct(b.j,2)+" of group","no record  "+pct(b.o,2)+" of group"];}
+      "with a record  "+pct(b.j,2)+" of group","no record      "+pct(b.o,2)+" of group"];}
   return null;
 });
 bindTip("c-gap","t5",function(x){
   for(var i=0;i<gapBars.length;i++){var b=gapBars[i];
     if(x>=b.x0&&x<=b.x1)return ["took off "+b.lab+" after schedule",fmt(b.b.n)+" flights",
-      pct(b.b.at_share)+" stamped at the schedule",b.b.day_shift+" with a day-early off-block"];}
+      pct(b.b.at_share)+" with pushback = schedule",b.b.day_shift+" with pushback a day early"];}
   return null;
 });
 bindTip("c-clip","t3",function(x){
   var best=null,bd=1e9;
   clipPts.forEach(function(p){var d=Math.abs(p[0]-x);if(d<bd){bd=d;best=p;}});
   if(!best||bd>24)return null;
-  return ["cap at "+(best[2][0]>=3600?(best[2][0]/3600)+" hours":(best[2][0]/60)+" minutes"),"RMSE "+best[2][1]+"s"];
+  return ["capped at "+(best[2][0]>=3600?(best[2][0]/3600)+" hours":(best[2][0]/60)+" minutes"),"score "+best[2][1]+"s"];
 });
 bindTip("c-month","t4",function(x){
   for(var i=0;i<monthBars.length;i++){var b=monthBars[i];
-    if(x>=b.x0&&x<=b.x1)return ["month "+b.m+(b.scored?"  (scored)":""),"spread "+Math.round(b.sd)+"s"];}
+    if(x>=b.x0&&x<=b.x1)return [["January","February","March","April","May","June","July","August","September","October","November","December"][b.m-1]+(b.scored?" (scored)":""),
+      "varies by "+Math.round(b.sd)+"s"];}
   return null;
 });
 var rt;window.addEventListener("resize",function(){clearTimeout(rt);rt=setTimeout(render,120);});
