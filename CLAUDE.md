@@ -32,6 +32,11 @@ once in this repo's history:
   error**: RMSE ~2,970s against ~293s for the rest. `train.py` fits them as
   a separate small model, worth 55s of RMSE. Any modelling effort that is not
   aimed at this group is aimed at the 38%.
+- **Half of LIRF's unmatched departures have `BLOCK_TIME == SCHED_TIME`** to
+  the second, so their target is exactly `MVT_TIME - SCHED_TIME`, often hours.
+  The orphan model is a mixture built on that (`p * gap + (1 - p) * normal`),
+  worth a further 26s. Predictions above the schedule gap are not a bug: past
+  12h of gap, about a third of those rows also carry a day-early off-block.
 - **Do not clip predictions tightly.** Real taxi-out exceeds two hours often
   enough that clipping there cost 92s of RMSE in a measured run. `submit.py`
   caps at 86,400s purely as a runaway guard.

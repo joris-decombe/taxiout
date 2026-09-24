@@ -3,7 +3,7 @@
 Submissions close **11 October 2026, 23:59:59 CET**. Nothing has been submitted;
 the team bucket is empty.
 
-Current model: **409s validation RMSE** on January + July 2025, against a 686s
+Current model: **384s validation RMSE** on January + July 2025, against a 686s
 standard deviation for those months.
 
 ## Blocked
@@ -28,15 +28,21 @@ both models on the same resample cancels most of that and can resolve
 differences under 10s. `pipeline/experiments_paired_bootstrap.py` is the
 harness.
 
-- [ ] **The unmatched group, continued.** 1.5% of departures, still the
-      majority of the error. What is known: their long flights concentrate
-      hard at LIRF (50% of its unmatched departures exceed an hour, against
-      a 4.84% base rate) and on runways 25 and 34L; 69% of all long ones
-      have a null aircraft type; two days in February 2025 hold 15% of them.
-      Untested: whether LIRF deserves its own treatment, whether the
-      February days are an outage worth excluding from training, and whether
-      a quantile or two-stage model beats least squares on a distribution
-      this skewed.
+- [x] **LIRF's at-schedule artifact.** Half of LIRF's unmatched departures
+      record off-block at the scheduled time to the second, so the target
+      is `MVT - SCHED`. A mixture model for the orphan group (classifier for
+      the artifact, regressor for a normal taxi) took validation from 409.4s
+      to 383.6s, 95% CI -45.9s to -10.5s. `experiments_unmatched.py`.
+- [ ] **The unmatched group, what is left.** Still 45% of squared error.
+      Two LFPG easyJet rows with a day-early off-block (84,240s and 58,206s
+      against a 30-minute schedule gap) carry 20% of *all* validation squared
+      error on their own; nothing observable flags them. LIRF day-shift rows
+      (target ~86,400s + a normal taxi) are the rest of the tail. Untested:
+      whether the February 2025 days (15% of long orphans) are an outage
+      worth excluding, and an airline signal fed in a way that does not
+      overfit (as a raw categorical it made things 10s worse, although it
+      separates the artifact well: ISR/LAV/ETH nearly always, EJU/EZY rarely;
+      target encoding or a coarse grouping might keep the signal).
 - [ ] **Congestion features carry almost nothing** (1.2% of gain combined),
       which is odd for a problem whose physics is queueing. Either the
       windows are wrong, the counts too coarse, or `unimpeded_taxi_sec`

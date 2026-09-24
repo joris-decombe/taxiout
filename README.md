@@ -111,6 +111,14 @@ Two plausible alternatives were measured and rejected: substituting the
 group's mean instead of modelling it (574s), and explicit missingness flags
 in a single model (475s).
 
+Within the group there is a recording artifact. About half of LIRF's
+unmatched departures have an off-block time equal to the scheduled time to
+the second, so their taxi-out is exactly takeoff minus schedule, routinely
+several hours. The orphan model is a mixture: a classifier for that
+artifact, a regressor for a normal taxi, combined as
+`p × (takeoff − schedule) + (1 − p) × normal`. That takes validation RMSE
+from 409s to 384s (paired-bootstrap 95% CI −46s to −11s).
+
 **Taxi-Out, Measured** (<https://claude.ai/artifact/Ez8LT8SdgrUbdp8oAeMq1i>)
 is the long-form account: what taxi-out is and why it is worth predicting,
 why a squared metric changes the question, the blanked-column trap and how

@@ -12,6 +12,12 @@ and nothing else. MVT_TIME, SCHED_TIME, RUNWAY, STAND and the flight-table
 columns all survive. Since TAXITIME == MVT_TIME - BLOCK_TIME exactly, those
 two had to go together: the task is to reconstruct the off-block time given
 the takeoff time, not the other way round.
+
+A RECORDING ARTIFACT in the departures with no flight record (null AOBT):
+about half of LIRF's have BLOCK_TIME == SCHED_TIME to the second, so their
+target is exactly MVT_TIME - SCHED_TIME, often several hours. A smaller set,
+spread across airports, has an off-block a day early (target ~86,400s plus a
+normal taxi). train.py models the first; nothing observable flags the second.
 """
 
 from __future__ import annotations
