@@ -103,7 +103,8 @@ p_joined = model.joined.predict(matrix(va_f.filter(train.has_flight_record()), B
 y_o = tr_o.select(schema.TARGET).to_numpy().ravel()
 s2t_o = va_o["sched_to_takeoff_sec"].to_numpy().astype(float)
 
-p_base = assemble(model.orphan.predict(matrix(va_o, BASE_CATS)))
+# The pre-mixture baseline: one least-squares regressor over the whole group.
+p_base = assemble(fit(tr_o, y_o, train.SPARSE_PARAMS, BASE_CATS).predict(matrix(va_o, BASE_CATS)))
 
 cats_a = BASE_CATS + ["airline"]
 p_a = assemble(fit(tr_o, y_o, train.SPARSE_PARAMS, cats_a).predict(matrix(va_o, cats_a)))

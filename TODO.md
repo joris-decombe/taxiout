@@ -37,12 +37,13 @@ harness.
       Two LFPG easyJet rows with a day-early off-block (84,240s and 58,206s
       against a 30-minute schedule gap) carry 20% of *all* validation squared
       error on their own; nothing observable flags them. LIRF day-shift rows
-      (target ~86,400s + a normal taxi) are the rest of the tail. Untested:
-      whether the February 2025 days (15% of long orphans) are an outage
-      worth excluding, and an airline signal fed in a way that does not
-      overfit (as a raw categorical it made things 10s worse, although it
-      separates the artifact well: ISR/LAV/ETH nearly always, EJU/EZY rarely;
-      target encoding or a coarse grouping might keep the signal).
+      (target ~86,400s + a normal taxi) are the rest of the tail.
+      Measured and rejected against the mixture: the airline as a raw
+      categorical (+10s worse), a smoothed per-airline at-schedule rate in
+      the classifier (-1.0s, CI -4.3s to +2.4s: nothing), and dropping the
+      February 2025 days from training (+1.9s, CI +0.3s to +3.9s: worse).
+      What remains looks like irreducible recording noise; the next gains
+      are more likely in the matched 55% of the error.
 - [ ] **Congestion features carry almost nothing** (1.2% of gain combined),
       which is odd for a problem whose physics is queueing. Either the
       windows are wrong, the counts too coarse, or `unimpeded_taxi_sec`
