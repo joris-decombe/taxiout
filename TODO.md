@@ -103,9 +103,9 @@ Measured over March 2025, 163,367 departures:
       it. The history has been audited: 28 paths ever added, no parquet, no
       credential, so the flip is safe.
 - [ ] **Reproducible documentation.** An eligibility requirement in its own
-      right, not just good practice. Concretely: the scripts that generate
-      `report/findings.json` and the published figures live outside the repo,
-      so neither page can currently be regenerated from a clean checkout.
+      right, not just good practice. *Taxi-Out, Measured* is now covered:
+      `pipeline/report_findings.py` rebuilds its data and page source in
+      `report/`. The surface replay page and `synthetic_run.json` are not.
 - [ ] **Delete `pipeline/taxiout/fixtures.py`.** Scaffolding from before the
       real data arrived.
 - [ ] **Confirm the "Run the simulator on synthetic movements" README section.**
