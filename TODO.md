@@ -43,17 +43,21 @@ harness.
       already absorbs the signal.
 ## Submitting
 
-- [ ] **Write the pre-upload verification.** The dangerous failure is silent:
-      `submitting.parquet` and `ranking.parquet` hold the same 344,841 IDs in a
-      different order, so a positional assignment instead of a keyed join
-      produces a perfectly valid file that scores like noise, indistinguishable
-      from a bad model. Check: every template ID matched through a keyed join,
-      no NaN or infinity, prediction distribution comparable to the training
-      target distribution, dtypes surviving the parquet round-trip.
-- [ ] **Run the pipeline end to end on `ranking.parquet` once.** Never done.
-      Candidates for breaking: predicting on a frame where `BLOCK_TIME` is 100%
-      null, the `MVT_ID_mvt` Float64 dtype in the template join, and the
-      partial-file guard in `submit.py` firing on a dropped row.
+- [x] **Pre-upload verification.** `submit.verify_submission` re-reads the
+      written file and checks schema and dtypes against the template, a 1:1
+      keyed join on every template ID, no null, non-finite or negative value,
+      each written value equal to the prediction for that ID, and the median
+      against the training target. A positionally scrambled copy of a good
+      file fails it; the good file passes.
+- [x] **End-to-end run on `ranking.parquet`.** `submit.build_submission`
+      fits on all twelve months (`train.train_final`), predicts the 344,841
+      departures and writes `data/submission_local.parquet`, which passes
+      verification. About a minute to fit. None of the feared breakages
+      happened. The target column is written as Int32 to match the template.
+      Predictions: median 960s, 94 over 2h (97 expected at the training
+      rate), max 72,502s. The largest are LIRF departures with no Network
+      Manager record that took off 15-17h after schedule; the model reads that
+      gap as taxi-out. Whether it is right to is the unmatched-group question.
 - [ ] **Submit v1** and record what the result file contains.
 
 ## Data quality, unexplained

@@ -66,6 +66,9 @@ class TrainedModel:
 
     joined: lgb.Booster
     orphan: lgb.Booster | None
+    # The stand/runway reference the boosters were trained against. Prediction
+    # must join the same one, so it travels with the model.
+    unimpeded: pl.DataFrame
     validation_rmse: float
 
     def predict(self, frame: pl.DataFrame) -> np.ndarray:
@@ -104,20 +107,13 @@ def _fit(train_frame: pl.DataFrame, params: dict, num_rounds: int) -> lgb.Booste
     return lgb.train(params, _to_dataset(train_frame), num_boost_round=num_rounds)
 
 
-def train(training: pl.LazyFrame, num_rounds: int = 400) -> TrainedModel:
-    departures = data.departures(training)
-    train_frame, validation_frame = data.train_validation_split(departures)
+def fit(departures: pl.LazyFrame, num_rounds: int = 400) -> TrainedModel:
+    """Fits both boosters, and the unimpeded reference, on `departures` alone."""
+    unimpeded = features.unimpeded_taxi_reference(departures).collect()
+    frame = features.build(departures, unimpeded.lazy()).collect()
 
-    # Fit the unimpeded reference on the training half ONLY. It is a low
-    # quantile of the target, so deriving it from all of `training` would feed
-    # validation targets back in and flatter the score.
-    unimpeded = features.unimpeded_taxi_reference(train_frame)
-
-    train_frame = features.build(train_frame, unimpeded).collect()
-    validation_frame = features.build(validation_frame, unimpeded).collect()
-
-    joined_rows = train_frame.filter(has_flight_record())
-    orphan_rows = train_frame.filter(~has_flight_record())
+    joined_rows = frame.filter(has_flight_record())
+    orphan_rows = frame.filter(~has_flight_record())
 
     joined = _fit(joined_rows, PARAMS, num_rounds)
     orphan = (
@@ -125,9 +121,33 @@ def train(training: pl.LazyFrame, num_rounds: int = 400) -> TrainedModel:
         if len(orphan_rows) >= MIN_SPARSE_ROWS
         else None
     )
+    return TrainedModel(
+        joined=joined, orphan=orphan, unimpeded=unimpeded, validation_rmse=float("nan")
+    )
 
-    model = TrainedModel(joined=joined, orphan=orphan, validation_rmse=float("nan"))
+
+def train(training: pl.LazyFrame, num_rounds: int = 400) -> TrainedModel:
+    """Fits on ten months and scores on the held-out January and July."""
+    departures = data.departures(training)
+    train_frame, validation_frame = data.train_validation_split(departures)
+
+    # Fit the unimpeded reference on the training half ONLY. It is a low
+    # quantile of the target, so deriving it from all of `training` would feed
+    # validation targets back in and flatter the score. `fit` does this by
+    # only ever seeing `train_frame`.
+    model = fit(train_frame, num_rounds)
+
+    validation_frame = features.build(validation_frame, model.unimpeded.lazy()).collect()
     predictions = model.predict(validation_frame)
     truth = validation_frame.select(schema.TARGET).to_numpy().ravel()
     model.validation_rmse = float(np.sqrt(np.mean((predictions - truth) ** 2)))
     return model
+
+
+def train_final(training: pl.LazyFrame, num_rounds: int = 400) -> TrainedModel:
+    """Fits on all twelve months, for the submission. Nothing is held out.
+
+    There is no validation score to report: the months that would score it
+    are in the fit. Trust `train()` for the number and this for the file.
+    """
+    return fit(data.departures(training), num_rounds)

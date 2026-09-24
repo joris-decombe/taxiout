@@ -63,6 +63,13 @@ Both environment variables matter in practice: the parquets contain an
 output is not cp1252-encodable, so printing a DataFrame on Windows raises
 `UnicodeEncodeError` without the first.
 
+Build a verified submission file locally (fits on all twelve months, never
+uploads):
+
+```
+PYTHONIOENCODING=utf-8 POLARS_UNKNOWN_EXTENSION_TYPE_BEHAVIOR=load_as_storage   .venv/Scripts/python.exe -c "import sys; sys.path.insert(0,'pipeline');   from pathlib import Path; from taxiout import submit;   print(submit.build_submission(Path('data/submission_local.parquet')))"
+```
+
 Pull data or push a submission (credentials are read from
 `~/.opensky/object_store_creds.json`, never from the repo):
 
@@ -105,7 +112,8 @@ validation, matching the test set's months because taxi-out is strongly
 seasonal. `features.py` builds a per-stand/runway unimpeded reference (a low
 quantile, to approximate geometry without queueing) plus calendar, schedule and
 rolling congestion features. `train.py` is the yardstick. `submit.py` refuses to
-write a partial file rather than shipping zeros for missing rows.
+write a partial file rather than shipping zeros for missing rows, and
+`verify_submission` re-reads the written file and checks it by keyed join.
 
 `bucket.py` talks to the object store: the challenge data is in the shared
 `prc-2026-datasets` bucket, submissions go to `prc-2026-gentle-octopus` under a
