@@ -53,9 +53,11 @@ UPLOADS = [
     {"v": "v1", "validation": 383.6, "test": 370.9},
     {"v": "v2", "validation": 346.1, "test": 363.1},
     {"v": "v3", "validation": 346.6, "test": 361.5},
+    {"v": "v4", "validation": 344.3, "test": 360.6},
+    {"v": "v5", "validation": 343.6, "test": 359.0},
 ]
 LEADERBOARD = {"date": "29 September 2026", "teams": 201, "leader": 220.7, "tenth": 237.0,
-               "quartile": 277.9, "median": 299.3, "ours": 361.5, "rank": 137}
+               "quartile": 277.9, "median": 299.3, "ours": 359.0, "rank": 137}
 # Iowa Environmental Mesonet METAR archive.
 METAR = {"station": "EHAM", "time": "2026-01-05 08:25 UTC",
          "raw": "EHAM 050825Z 20009KT 0700 R18C/1200N R27/1200U R18R/0700N R06/1400U SHSN VV005 00/M00 Q1008 TEMPO 2000"}

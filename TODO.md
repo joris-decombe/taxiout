@@ -7,9 +7,8 @@ anything but a slot.
 Current model: **343.6s validation RMSE** on January + July 2025, against a
 686s standard deviation for those months. It adds the live excess features
 and the stand-group/runway reference fallback to v3.
-`data/submission_v4.parquet` (with fallback) and
-`data/submission_v4_nofallback.parquet` are built and verified, not uploaded.
-Without the fallback, v4's no-record predictions equal v3's; with it, they
+Uploaded as v5 (`data/submission_v4.parquet`, with fallback) and v4
+(`data/submission_v4_nofallback.parquet`). Without the fallback, v4's no-record predictions equal v3's; with it, they
 move by hundreds of seconds at some airports, mostly LIRF, because no-record
 rows with a missing or unseen stand now get a runway-level reference.
 
@@ -18,6 +17,12 @@ rows with a missing or unseen stand now get a runway-level reference.
 | v1 | 384s | **370.9s** | first submission |
 | v2 | 346.1s | **363.1s** | surroundings, weather, flight fields, matched mixture |
 | v3 | 346.6s | **361.5s** | v2's matched predictions, v1's orphan predictions exactly |
+| v4 | 344.3s | **360.6s** | v3 + live excess features (orphan predictions = v3's) |
+| v5 | 343.6s | **359.0s** | v4 + stand-group/runway reference fallback |
+
+v5 is the best (rank 137 of 201 on 29 September 2026). The fallback was
+worth 1.6s on the test set while validation, which has almost no unseen
+stands, measured it at +0.4s.
 
 v3 splits the two cleanly. The Nice predictions in v2's orphan model (see
 `train.ORPHAN_CATEGORICALS`) cost 1.6s on the test set. **The matched-group
