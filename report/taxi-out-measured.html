@@ -473,8 +473,10 @@ function plane(p,x,y,rot,sc,cls){
   return gp;
 }
 function departure(){
-  var o=svgIn("c-departure",300,"A departure from stand to take-off, with the timestamps recorded along it"),s=o.s,W=o.w;
-  var x0=24,x1=W-24,span=x1-x0,Y=170;
+  // On narrow screens the take-off label needs a tier of its own.
+  var narrow=(document.getElementById("c-departure").clientWidth||640)<640,T=narrow?162:128;
+  var o=svgIn("c-departure",T+242,"A departure from stand to take-off, with the timestamps recorded along it"),s=o.s,W=o.w;
+  var x0=24,x1=W-24,span=x1-x0,Y=T+112;
   var X=function(f){return x0+f*span;};
   var stand=X(.06),push=X(.13),pad0=X(.42),pad1=X(.54),hold=X(.66),rw0=X(.69),rw1=X(.97);
   // apron and stand
@@ -500,20 +502,22 @@ function departure(){
   for(var c=rw0+30;c<rw1-18;c+=26)add(s,S("rect",{x:c,y:Y-1.2,width:14,height:2.4,fill:"var(--paint)"}));
   add(s,S("path",{d:"M"+hold+","+Y+" L"+(rw0+22)+","+Y,fill:"none",stroke:"var(--taxi-bright)","stroke-width":3}));
   plane(s,rw1-6,Y-40,-18,1,"--ink");
-  // timeline above
-  var T=46;
+  // Timeline above. The first three marks sit close together, so each label
+  // gets its own tier, joined to its mark by a leader line.
   add(s,S("line",{x1:x0,y1:T,x2:x1,y2:T,class:"base"}));
-  var marks=[[stand-10,"schedule","SCHED_TIME","--ink-3"],[stand+22,"plan · TOBT · TSAT","EOBT_1, LOBT","--ink-3"],
-             [push,"off-block","BLOCK_TIME","--stop"],[rw1-40,"take-off","MVT_TIME","--edge"]];
-  marks.forEach(function(m,i){
-    var mx=m[0];
-    add(s,S("line",{x1:mx,y1:T-5,x2:mx,y2:T+5,stroke:"var("+m[3]+")","stroke-width":2}));
+  var marks=[[stand-10,"schedule","SCHED_TIME",null,"--ink-3",2,"start"],
+             [stand+22,"plan · TOBT · TSAT","EOBT_1 · LOBT",null,"--ink-3",1,"start"],
+             [push,"off-block","BLOCK_TIME","blank in 2026","--stop",0,"start"],
+             [rw1-40,"take-off","MVT_TIME","kept in 2026","--edge",narrow?3:0,"end"]];
+  marks.forEach(function(m){
+    var mx=m[0],tier=m[5],ly=T-16-tier*34,dx=m[6]==="start"?6:-6;
+    add(s,S("line",{x1:mx,y1:T-5,x2:mx,y2:T+5,stroke:"var("+m[4]+")","stroke-width":2.5}));
+    add(s,S("line",{x1:mx,y1:T-5,x2:mx,y2:ly-12,stroke:"var("+m[4]+")","stroke-width":1}));
     add(s,S("line",{x1:mx,y1:T+5,x2:mx,y2:Y-40,stroke:"var(--line)","stroke-width":1,"stroke-dasharray":"2 3"}));
-    var anchor=i===0?"start":(i===3?"end":"middle");
-    add(s,S("text",{x:mx+(i===0?-2:0),y:T-12-(i===1?14:0),"text-anchor":anchor,class:"lbb"},m[1]));
-    add(s,S("text",{x:mx,y:T+18+(i===1?14:0),"text-anchor":anchor,class:"ax"},m[2]));
+    add(s,S("text",{x:mx+dx,y:ly-2,"text-anchor":m[6],class:"lbb"},m[1]));
+    var sub=add(s,S("text",{x:mx+dx,y:ly+12,"text-anchor":m[6],class:"ax"},m[2]));
+    if(m[3]){sub.textContent=m[2]+" · ";add(sub,S("tspan",{fill:"var("+m[4]+")"},m[3]));}
   });
-  add(s,S("text",{x:push+6,y:T+32,class:"ax",fill:"var(--stop)"},"blank in 2026"));
   // bracket
   var B=Y+86;
   add(s,S("path",{d:"M"+push+","+(B-8)+" L"+push+","+B+" L"+(rw1-40)+","+B+" L"+(rw1-40)+","+(B-8),fill:"none",stroke:"var(--ink-2)","stroke-width":1.2}));
