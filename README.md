@@ -89,8 +89,8 @@ Full 2025 dataset local: 12 monthly training files, `ranking.parquet`,
 
 | | |
 |---|---|
-| Python model | **384s validation RMSE** (Jan + Jul 2025) |
-| Test set, v1 | **370.9s**, rank 139 of 200 (29 September 2026; leader 220.7s) |
+| Python model | **346.1s validation RMSE** (Jan + Jul 2025) |
+| Test set, v1 | **370.9s** from the 384s-validation model, rank 139 of 200 (29 September 2026; leader 220.7s) |
 | Target sd, those months | 686s, the two hardest months of the year |
 | Target sd, full year | 546s |
 | C++ simulator | builds, 11/11 tests pass, premise needs the rethink above |

@@ -55,20 +55,23 @@ training = data.load_training()
 departures = data.departures(training)
 tr, va = data.train_validation_split(departures)
 
-model = train.fit(tr)
-va_f = features.build(va, model.unimpeded.lazy()).collect()
+around = features.surroundings(training)
+model = train.fit(tr, around)
+va_f = features.build(va, model.unimpeded.lazy(), around).collect()
 truth = va_f[schema.TARGET].to_numpy().astype(float)
 pred = model.predict(va_f)
 matched = va_f.select(train.has_flight_record()).to_numpy().ravel()
 
 # Reference points, refitted here so the ladder is reproducible end to end.
-tr_f = features.build(tr, model.unimpeded.lazy()).collect()
-single = lgb.train(train.PARAMS, train._to_dataset(tr_f), num_boost_round=400)
-p_single = single.predict(train._to_frame(va_f))
+tr_f = features.build(tr, model.unimpeded.lazy(), around).collect()
+all_cols = list(features.FEATURE_COLUMNS)
+orph_cols = train.orphan_columns()
+single = lgb.train(train.PARAMS, train._to_dataset(tr_f, all_cols), num_boost_round=400)
+p_single = single.predict(train._to_frame(va_f, all_cols))
 orph_tr = tr_f.filter(~train.has_flight_record())
-plain_orphan = lgb.train(train.SPARSE_PARAMS, train._to_dataset(orph_tr), num_boost_round=400)
+plain_orphan = lgb.train(train.SPARSE_PARAMS, train._to_dataset(orph_tr, orph_cols), num_boost_round=400)
 p_plain = pred.copy()
-p_plain[~matched] = plain_orphan.predict(train._to_frame(va_f.filter(~train.has_flight_record())))
+p_plain[~matched] = plain_orphan.predict(train._to_frame(va_f.filter(~train.has_flight_record()), orph_cols))
 
 sq = (pred - truth) ** 2
 sq_plain = (p_plain - truth) ** 2

@@ -1,20 +1,22 @@
 """Feature construction for the taxi-out model.
 
-Two families:
+Three families:
 
-  * Static -- stand/runway geometry, aircraft type, calendar. Available for
-    every movement in both the training and ranking sets.
-  * Congestion -- how busy the surface was at pushback. These carry most of
-    the signal AND most of the difficulty: the honest versions need takeoff
-    times, which are blanked on the ranking set. Only the features computable
-    from off-block times alone live here; the rest come from the simulator.
+  * Per row -- stand/runway geometry, aircraft type, calendar, and the
+    Network Manager's timings against takeoff.
+  * Surroundings -- stand occupancy, queue counts and runway configuration
+    from the other movements in the same dataset (`context.py`), and the
+    airport's weather at takeoff (`weather.py`). These need the full
+    movement table, arrivals included, so they are built once per dataset by
+    `surroundings()` and joined in by MVT_ID.
+  * The unimpeded stand/runway reference, fitted on training targets only.
 """
 
 from __future__ import annotations
 
 import polars as pl
 
-from . import schema
+from . import context, schema, weather
 
 CONGESTION_WINDOWS_MIN = (15, 30, 60)
 
@@ -68,6 +70,13 @@ def add_schedule_features(frame: pl.LazyFrame) -> pl.LazyFrame:
         (takeoff - pl.col(schema.AOBT)).dt.total_seconds().alias("aobt_to_takeoff_sec"),
         (takeoff - pl.col(schema.SCHED_TIME)).dt.total_seconds().alias("sched_to_takeoff_sec"),
         (pl.col(schema.AOBT) - pl.col(schema.EOBT)).dt.total_seconds().alias("off_block_delay_sec"),
+        (takeoff - pl.col(schema.EOBT)).dt.total_seconds().alias("eobt_to_takeoff_sec"),
+        (takeoff - pl.col(schema.IOBT)).dt.total_seconds().alias("iobt_to_takeoff_sec"),
+        # How late the NM saw the aircraft leave against the timetable. At
+        # LIRF a large value is the strongest sign that BLOCK_TIME was
+        # recorded at the schedule instead (see train.py).
+        (pl.col(schema.AOBT) - pl.col(schema.SCHED_TIME)).dt.total_seconds().alias("aobt_vs_sched_sec"),
+        pl.col(schema.AOBT).dt.second().alias("aobt_second"),
     )
 
 
@@ -110,13 +119,31 @@ def add_pushback_congestion(frame: pl.LazyFrame) -> pl.LazyFrame:
     return frame.with_columns(expressions)
 
 
-def build(frame: pl.LazyFrame, unimpeded: pl.LazyFrame) -> pl.LazyFrame:
+def surroundings(movements: pl.LazyFrame) -> pl.DataFrame:
+    """Per-departure features that need the whole dataset, keyed by MVT_ID.
+
+    `movements` is one dataset's full table, arrivals included: the stand,
+    queue and runway-configuration features in `context` read other rows,
+    and the weather join reads the METAR archive.
+    """
+    around = context.build(movements)
+    deps = (
+        movements.filter(pl.col(schema.PHASE) == schema.DEPARTURE)
+        .select(schema.MVT_ID, schema.ADEP, schema.MVT_TIME)
+        .collect()
+    )
+    wx = weather.join(deps, weather.load()).drop(schema.ADEP, schema.MVT_TIME)
+    return around.join(wx, on=schema.MVT_ID, how="left")
+
+
+def build(frame: pl.LazyFrame, unimpeded: pl.LazyFrame, around: pl.DataFrame) -> pl.LazyFrame:
+    """`around` is `surroundings()` of the dataset `frame` was drawn from."""
     frame = frame.join(unimpeded, on=[schema.ADEP, schema.STAND, schema.RUNWAY], how="left")
     frame = add_calendar_features(frame)
     frame = add_schedule_features(frame)
     frame = add_record_completeness(frame)
     frame = add_pushback_congestion(frame)
-    return frame
+    return frame.join(around.lazy(), on=schema.MVT_ID, how="left")
 
 
 FEATURE_COLUMNS = [
@@ -133,6 +160,15 @@ FEATURE_COLUMNS = [
     "no_stand",
     "no_destination",
     *[f"movements_prev_{m}m" for m in CONGESTION_WINDOWS_MIN],
+    "eobt_to_takeoff_sec",
+    "iobt_to_takeoff_sec",
+    "aobt_vs_sched_sec",
+    "aobt_second",
+    *context.FEATURE_COLUMNS,
+    *weather.FEATURE_COLUMNS,
 ]
 
-CATEGORICAL_COLUMNS = [schema.ADEP, schema.RUNWAY, schema.STAND, schema.AIRCRAFT_TYPE]
+CATEGORICAL_COLUMNS = [
+    schema.ADEP, schema.RUNWAY, schema.STAND, schema.AIRCRAFT_TYPE,
+    schema.OPERATOR, schema.MARKET_SEGMENT, schema.FLIGHT_TYPE, schema.WAKE_CATEGORY, schema.ADES,
+]

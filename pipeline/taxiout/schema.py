@@ -13,11 +13,18 @@ columns all survive. Since TAXITIME == MVT_TIME - BLOCK_TIME exactly, those
 two had to go together: the task is to reconstruct the off-block time given
 the takeoff time, not the other way round.
 
-A RECORDING ARTIFACT in the departures with no flight record (null AOBT):
-about half of LIRF's have BLOCK_TIME == SCHED_TIME to the second, so their
-target is exactly MVT_TIME - SCHED_TIME, often several hours. A smaller set,
-spread across airports, has an off-block a day early (target ~86,400s plus a
-normal taxi). train.py models the first; nothing observable flags the second.
+THE RANKING SET ALSO HOLDS ARRIVALS: 344,693 of them in its 689,534 rows,
+with BLOCK_TIME (in-block) intact. Row order follows MVT_TIME and MVT_ID
+follows the schedule, so neither encodes a departure's off-block. The
+arrivals are what `context.py` reads for stand occupancy and runway use.
+
+A RECORDING ARTIFACT: some departures have BLOCK_TIME == SCHED_TIME to the
+second, so their target is exactly MVT_TIME - SCHED_TIME, often several
+hours. About half of LIRF's departures with no flight record (null AOBT) and
+18% of its matched ones do; elsewhere it is 1-6% and mostly harmless, since
+those flights leave near schedule. A smaller set, spread across airports, has
+an off-block a day early (target ~86,400s plus a normal taxi). train.py
+models the first in both groups; nothing observable flags the second.
 """
 
 from __future__ import annotations
@@ -47,6 +54,11 @@ TAXITIME = "TAXITIME_SEC_mvt"
 CALLSIGN = "CALLSIGN_flt"
 WAKE_CATEGORY = "WK_TBL_CAT_flt"
 EOBT = "EOBT_1_flt"
+IOBT = "IOBT_flt"
+# An opaque hash, but a stable one: the same operator gets the same value.
+OPERATOR = "AIRCRAFT_OPERATOR_flt"
+MARKET_SEGMENT = "MARKET_SEGMENT_flt"
+FLIGHT_TYPE = "FLIGHT_TYPE_flt"
 # The Network Manager's actual off-block time. Present on the ranking set
 # (98.5% of departures), and NOT the same quantity as BLOCK_TIME: the two
 # agree within a minute only 21% of the time, sd of the difference 374s.

@@ -1,4 +1,4 @@
-"""Gradient-boosted baseline, fitted as two models rather than one.
+"""Gradient-boosted model, fitted as two mixtures rather than one regressor.
 
 Why two. A departure row is joined to a Network Manager flight record, and for
 about 1.5% of departures that join fails: no AOBT, no callsign, no market
@@ -31,6 +31,17 @@ the comparison. Adding the airline as a categorical made both the plain
 regressor and the mixture worse, despite the airline predicting the artifact
 well: ISR, LAV and ETH are nearly always at schedule, EJU and EZY rarely.
 
+The matched group is a mixture too. The artifact is not confined to missing
+records: 18% of LIRF's matched departures (4.9% of all matched ones) also
+record off-block at the schedule, typically delayed flights whose NM AOBT is
+two or three hours later, and 943 of LIRF's 1,222 matched departures over an
+hour are these. A plain regressor predicts a normal taxi for them. The
+mixture took the matched group from 273.4s to 249.2s and LIRF's matched RMSE
+from 642s to 499s (overall 369.6s to 352.4s, 95% CI -49.6s to -0.5s), with
+the classifier at 0.87 AUC.
+
+Current validation: 346.1s overall, 240.7s matched, 2,006s orphan.
+
 The simulator only earns its place if adding its queue-delay estimate as a
 feature beats this number.
 """
@@ -44,7 +55,7 @@ import numpy as np
 import pandas as pd
 import polars as pl
 
-from . import data, features, schema
+from . import context, data, features, schema, weather
 
 PARAMS = {
     "objective": "regression",
@@ -67,6 +78,13 @@ MIN_SPARSE_ROWS = 2_000
 
 CLASSIFIER_PARAMS = {**SPARSE_PARAMS, "objective": "binary", "metric": "binary_logloss"}
 CLASSIFIER_ROUNDS = 200
+ORPHAN_ROUNDS = 400
+
+# The matched group's regressor stops improving on validation near 1,200
+# rounds (273.3s there, against 274.3s at 400).
+JOINED_ROUNDS = 1200
+JOINED_CLASSIFIER_PARAMS = {**PARAMS, "objective": "binary", "metric": "binary_logloss"}
+JOINED_CLASSIFIER_ROUNDS = 600
 
 # How close BLOCK_TIME must sit to SCHED_TIME to count as recorded at
 # schedule. The artifact rows agree to within a few seconds.
@@ -94,13 +112,16 @@ def off_block_at_schedule() -> pl.Expr:
 
 
 @dataclass
-class OrphanMixture:
-    """The model for departures with no flight record: see the module docstring."""
+class Mixture:
+    """At-schedule classifier plus normal-taxi regressor: see the module docstring."""
 
     at_schedule: lgb.Booster
     normal: lgb.Booster
+    # The numeric feature columns this mixture was fitted on.
+    columns: list[str]
 
-    def predict(self, frame: pl.DataFrame, matrix: pd.DataFrame) -> np.ndarray:
+    def predict(self, frame: pl.DataFrame) -> np.ndarray:
+        matrix = _to_frame(frame, self.columns)
         p = self.at_schedule.predict(matrix)
         r = self.normal.predict(matrix)
         gap = frame["sched_to_takeoff_sec"].to_numpy().astype(float)
@@ -111,75 +132,100 @@ class OrphanMixture:
 
 @dataclass
 class TrainedModel:
-    """Two boosters and the rule for choosing between them."""
+    """Two mixtures and the rule for choosing between them."""
 
-    joined: lgb.Booster
-    orphan: OrphanMixture | None
+    joined: Mixture
+    orphan: Mixture | None
     # The stand/runway reference the boosters were trained against. Prediction
     # must join the same one, so it travels with the model.
     unimpeded: pl.DataFrame
     validation_rmse: float
 
     def predict(self, frame: pl.DataFrame) -> np.ndarray:
-        matrix = _to_frame(frame)
         mask = frame.select(has_flight_record()).to_numpy().ravel()
         out = np.empty(len(frame), dtype=float)
         if mask.any():
-            out[mask] = self.joined.predict(matrix[mask])
+            out[mask] = self.joined.predict(frame.filter(has_flight_record()))
         if (~mask).any():
-            if self.orphan is None:
-                out[~mask] = self.joined.predict(matrix[~mask])
-            else:
-                out[~mask] = self.orphan.predict(frame.filter(~has_flight_record()), matrix[~mask])
+            model = self.joined if self.orphan is None else self.orphan
+            out[~mask] = model.predict(frame.filter(~has_flight_record()))
         return out
 
 
-def _to_frame(frame: pl.DataFrame) -> pd.DataFrame:
+def orphan_columns() -> list[str]:
+    """The orphan group's features: everything but the surroundings.
+
+    On the ~27,000 training rows with no flight record, adding the context
+    and weather columns moved that group's validation RMSE from ~2,005s to
+    ~2,080s while the matched group gained 5s from them. The paired interval
+    cannot separate the orphan shift from noise, so the smaller set stays.
+    """
+    dropped = set(context.FEATURE_COLUMNS) | set(weather.FEATURE_COLUMNS)
+    return [c for c in features.FEATURE_COLUMNS if c not in dropped]
+
+
+def _to_frame(frame: pl.DataFrame, columns: list[str]) -> pd.DataFrame:
     """Feature matrix with the categorical columns typed as categories.
 
     Both training and prediction go through here. They must: LightGBM compares
     the categorical dtypes of the two and refuses to predict when they differ,
     so casting in only one place fails at the last line of a long training run.
     """
-    columns = features.FEATURE_COLUMNS + features.CATEGORICAL_COLUMNS
-    x = frame.select(columns).to_pandas()
+    x = frame.select(columns + features.CATEGORICAL_COLUMNS).to_pandas()
     for column in features.CATEGORICAL_COLUMNS:
         x[column] = x[column].astype("category")
     return x
 
 
-def _to_dataset(frame: pl.DataFrame) -> lgb.Dataset:
-    x = _to_frame(frame)
+def _to_dataset(frame: pl.DataFrame, columns: list[str]) -> lgb.Dataset:
+    x = _to_frame(frame, columns)
     y = frame.select(schema.TARGET).to_numpy().ravel()
     return lgb.Dataset(x, label=y, categorical_feature=features.CATEGORICAL_COLUMNS)
 
 
-def _fit(train_frame: pl.DataFrame, params: dict, num_rounds: int) -> lgb.Booster:
-    return lgb.train(params, _to_dataset(train_frame), num_boost_round=num_rounds)
+def _fit(train_frame: pl.DataFrame, columns: list[str], params: dict, num_rounds: int) -> lgb.Booster:
+    return lgb.train(params, _to_dataset(train_frame, columns), num_boost_round=num_rounds)
 
 
-def _fit_orphan(orphan_rows: pl.DataFrame, num_rounds: int) -> OrphanMixture:
-    label = orphan_rows.select(off_block_at_schedule().fill_null(False).cast(pl.Int8)).to_numpy().ravel()
+def _fit_mixture(
+    rows: pl.DataFrame,
+    columns: list[str],
+    params: dict,
+    num_rounds: int,
+    classifier_params: dict,
+    classifier_rounds: int,
+) -> Mixture:
+    label = rows.select(off_block_at_schedule().fill_null(False).cast(pl.Int8)).to_numpy().ravel()
     at_schedule = lgb.train(
-        CLASSIFIER_PARAMS,
-        lgb.Dataset(_to_frame(orphan_rows), label=label, categorical_feature=features.CATEGORICAL_COLUMNS),
-        num_boost_round=CLASSIFIER_ROUNDS,
+        classifier_params,
+        lgb.Dataset(_to_frame(rows, columns), label=label, categorical_feature=features.CATEGORICAL_COLUMNS),
+        num_boost_round=classifier_rounds,
     )
-    normal = _fit(orphan_rows.filter(label == 0), SPARSE_PARAMS, num_rounds)
-    return OrphanMixture(at_schedule=at_schedule, normal=normal)
+    normal = _fit(rows.filter(label == 0), columns, params, num_rounds)
+    return Mixture(at_schedule=at_schedule, normal=normal, columns=list(columns))
 
 
-def fit(departures: pl.LazyFrame, num_rounds: int = 400) -> TrainedModel:
-    """Fits both boosters, and the unimpeded reference, on `departures` alone."""
+def fit(departures: pl.LazyFrame, around: pl.DataFrame) -> TrainedModel:
+    """Fits both mixtures, and the unimpeded reference, on `departures` alone.
+
+    `around` is `features.surroundings()` of the dataset `departures` came
+    from. It carries no target: it may span rows that are not fitted on.
+    """
     unimpeded = features.unimpeded_taxi_reference(departures).collect()
-    frame = features.build(departures, unimpeded.lazy()).collect()
+    frame = features.build(departures, unimpeded.lazy(), around).collect()
 
     joined_rows = frame.filter(has_flight_record())
     orphan_rows = frame.filter(~has_flight_record())
 
-    joined = _fit(joined_rows, PARAMS, num_rounds)
+    joined = _fit_mixture(
+        joined_rows, list(features.FEATURE_COLUMNS),
+        PARAMS, JOINED_ROUNDS, JOINED_CLASSIFIER_PARAMS, JOINED_CLASSIFIER_ROUNDS,
+    )
     orphan = (
-        _fit_orphan(orphan_rows, num_rounds)
+        _fit_mixture(
+            orphan_rows, orphan_columns(),
+            SPARSE_PARAMS, ORPHAN_ROUNDS, CLASSIFIER_PARAMS, CLASSIFIER_ROUNDS,
+        )
         if len(orphan_rows) >= MIN_SPARSE_ROWS
         else None
     )
@@ -188,8 +234,9 @@ def fit(departures: pl.LazyFrame, num_rounds: int = 400) -> TrainedModel:
     )
 
 
-def train(training: pl.LazyFrame, num_rounds: int = 400) -> TrainedModel:
-    """Fits on ten months and scores on the held-out January and July."""
+def validate(training: pl.LazyFrame) -> tuple[TrainedModel, pl.DataFrame, np.ndarray]:
+    """Fits on ten months; returns the model, the held-out frame and its predictions."""
+    around = features.surroundings(training)
     departures = data.departures(training)
     train_frame, validation_frame = data.train_validation_split(departures)
 
@@ -197,19 +244,24 @@ def train(training: pl.LazyFrame, num_rounds: int = 400) -> TrainedModel:
     # quantile of the target, so deriving it from all of `training` would feed
     # validation targets back in and flatter the score. `fit` does this by
     # only ever seeing `train_frame`.
-    model = fit(train_frame, num_rounds)
+    model = fit(train_frame, around)
 
-    validation_frame = features.build(validation_frame, model.unimpeded.lazy()).collect()
+    validation_frame = features.build(validation_frame, model.unimpeded.lazy(), around).collect()
     predictions = model.predict(validation_frame)
     truth = validation_frame.select(schema.TARGET).to_numpy().ravel()
     model.validation_rmse = float(np.sqrt(np.mean((predictions - truth) ** 2)))
-    return model
+    return model, validation_frame, predictions
 
 
-def train_final(training: pl.LazyFrame, num_rounds: int = 400) -> TrainedModel:
+def train(training: pl.LazyFrame) -> TrainedModel:
+    """Fits on ten months and scores on the held-out January and July."""
+    return validate(training)[0]
+
+
+def train_final(training: pl.LazyFrame) -> TrainedModel:
     """Fits on all twelve months, for the submission. Nothing is held out.
 
     There is no validation score to report: the months that would score it
     are in the fit. Trust `train()` for the number and this for the file.
     """
-    return fit(data.departures(training), num_rounds)
+    return fit(data.departures(training), features.surroundings(training))

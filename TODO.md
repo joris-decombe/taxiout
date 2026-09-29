@@ -4,12 +4,14 @@ Submissions close **11 October 2026, 23:59:59 CET**. Ranking takes each
 team's **best** score, at up to 5 uploads a day, so an upload never costs
 anything but a slot.
 
-Current model: **384s validation RMSE** on January + July 2025, against a 686s
-standard deviation for those months. On the test set (v1): **370.9s**, rank
-139 of 200 on 29 September 2026. The leader was at 220.7s, the 10th team at
-237.0s, the median team at 299.2s. Even the rows with a Network Manager
-record (~293s on validation) are behind the leaders' overall score, so the
-gap is in the main model, not only the unmatched tail.
+Current model: **346.1s validation RMSE** on January + July 2025 (240.7s on
+the rows with a Network Manager record, 2,006s on the rest), against a 686s
+standard deviation for those months. `data/submission_v2.parquet` is built
+from it and verified, not yet uploaded.
+
+On the test set, v1 (the 384s-validation model) scored **370.9s**, rank 139
+of 200 on 29 September 2026. The leader was at 220.7s, the 10th team at
+237.0s, the median team at 299.2s.
 
 ## Model, in priority order
 
@@ -38,10 +40,29 @@ harness.
       February 2025 days from training (+1.9s, CI +0.3s to +3.9s: worse).
       What remains looks like irreducible recording noise; the next gains
       are more likely in the matched 55% of the error.
-- [ ] **Congestion features carry almost nothing** (1.2% of gain combined),
-      which is odd for a problem whose physics is queueing. Either the
-      windows are wrong, the counts too coarse, or `unimpeded_taxi_sec`
-      already absorbs the signal.
+- [x] **The surroundings, arrivals included.** The ranking set carries every
+      arrival with its in-block time, which the pipeline used to drop.
+      `context.py` builds stand, queue and runway-configuration features
+      from all movements; `weather.py` adds METARs. With the flight-table
+      fields the model had never used (operator, market segment, flight
+      type, wake category, destination, EOBT and IOBT against takeoff), the
+      matched group went from 292.3s to 273.4s before the mixture below.
+      After it, context is worth 4.1s and weather 1.0s on the matched group.
+      Both made the orphan group worse (2,005s to ~2,080s), so it keeps the
+      smaller feature set. `experiments_context.py`.
+- [x] **The at-schedule artifact in the matched group.** LIRF was 7.6% of
+      matched departures and 42.5% of their squared error: 18% of them
+      record off-block at the schedule. The mixture now covers both groups:
+      matched 273.4s to 249.2s, LIRF matched 642s to 499s.
+- [ ] **LIRF is still the worst airport** by a factor of two, and the
+      classifier is at 0.87 AUC. The artifact rows are delayed flights; a
+      LIRF-specific classifier, or features on how late the NM saw the
+      aircraft leave, may separate them better.
+- [ ] **Two LFPG rows** (the day-early easyJet off-blocks) keep LFPG's
+      validation RMSE near 580s. Nothing observable flags them yet.
+- [ ] **Tuning.** Parameters are unchanged since the first baseline apart from
+      the round counts. `num_leaves`, `min_data_in_leaf` and the learning
+      rate have not been searched, nor an ensemble of seeds.
 ## Submitting
 
 - [x] **Pre-upload verification.** `submit.verify_submission` re-reads the
@@ -104,6 +125,10 @@ Measured over March 2025, 163,367 departures:
       right, not just good practice. *Taxi-Out, Measured* is now covered:
       `pipeline/report_findings.py` rebuilds its data and page source in
       `report/`. The surface replay page and `synthetic_run.json` are not.
+- [ ] **`experiments_paired_bootstrap.py` and `experiments_unmatched.py`
+      call `features.build` and `train.fit` with their pre-surroundings
+      signatures**, so they no longer run. They record measurements of an
+      older model; port them or mark them historical.
 - [ ] **Delete `pipeline/taxiout/fixtures.py`.** Scaffolding from before the
       real data arrived.
 - [ ] **Confirm the "Run the simulator on synthetic movements" README section.**

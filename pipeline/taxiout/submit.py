@@ -32,13 +32,16 @@ MEDIAN_TOLERANCE = 0.5
 def predict_ranking(model: train.TrainedModel, data_dir: Path = data.DATA_DIR) -> dict[int, float]:
     """Predicted taxi-out per departure MVT_ID on the ranking set.
 
-    Only departures are built into features. That matters for more than
-    speed: the congestion windows count departures in training, because
-    `train` filters to them first, so counting arrivals here too would shift
-    every window feature away from what the boosters learnt.
+    The surroundings are built from the whole ranking set, arrivals
+    included, exactly as training builds them from the whole training set.
+    The row features are built from departures only: the rolling congestion
+    windows count departures in training, because `train` filters to them
+    first, so counting arrivals here would shift them away from what the
+    boosters learnt.
     """
-    departures = data.departures(data.load_ranking(data_dir))
-    frame = features.build(departures, model.unimpeded.lazy()).collect()
+    ranking = data.load_ranking(data_dir)
+    around = features.surroundings(ranking)
+    frame = features.build(data.departures(ranking), model.unimpeded.lazy(), around).collect()
     predictions = model.predict(frame)
     ids = frame.select(schema.MVT_ID).to_numpy().ravel()
     return {int(i): float(p) for i, p in zip(ids, predictions)}

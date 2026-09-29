@@ -14,6 +14,7 @@ right-hand columns and nothing else:
 | `BLOCK_TIME_UTC_mvt` (off-block) | present | **100% null** |
 | `TAXITIME_SEC_mvt` (target) | present | 100% null |
 | `SCHED_TIME`, `RUNWAY`, `STAND`, flight-table columns | present | present |
+| Arrival rows, with their `BLOCK_TIME` (in-block) | present | **present** |
 
 Consequences worth holding onto, because each one has already been got wrong
 once in this repo's history:
@@ -28,15 +29,19 @@ once in this repo's history:
   `MVT_TIME - AOBT` alone scores 385s RMSE against a 417s sd on the rows that
   have it: a real edge, not a dramatic one.
 - **~1.5% of departures have no Network Manager record at all** (no AOBT, no
-  callsign, no market segment) and those rows carry **62% of the squared
-  error**: RMSE ~2,970s against ~293s for the rest. `train.py` fits them as
-  a separate small model, worth 55s of RMSE. Any modelling effort that is not
-  aimed at this group is aimed at the 38%.
-- **Half of LIRF's unmatched departures have `BLOCK_TIME == SCHED_TIME`** to
-  the second, so their target is exactly `MVT_TIME - SCHED_TIME`, often hours.
-  The orphan model is a mixture built on that (`p * gap + (1 - p) * normal`),
-  worth a further 26s. Predictions above the schedule gap are not a bug: past
+  callsign, no market segment) and those rows carry **about half of the
+  squared error**: RMSE ~2,006s against ~241s for the rest (validation,
+  29 September 2026). `train.py` fits them as a separate small model.
+- **Half of LIRF's unmatched departures, and 18% of its matched ones, have
+  `BLOCK_TIME == SCHED_TIME`** to the second, so their target is exactly
+  `MVT_TIME - SCHED_TIME`, often hours. Both models are mixtures built on
+  that (`p * gap + (1 - p) * normal`), worth 26s on the orphans and 17s on
+  the matched group. Predictions above the schedule gap are not a bug: past
   12h of gap, about a third of those rows also carry a day-early off-block.
+- **The ranking set is not departures only.** It carries every arrival too,
+  in-block time intact, so stand occupancy, runway use and queue lengths are
+  all computable around each departure (`context.py`). Row order and MVT_ID
+  were checked and do not encode off-block times.
 - **Do not clip predictions tightly.** Real taxi-out exceeds two hours often
   enough that clipping there cost 92s of RMSE in a measured run. `submit.py`
   caps at 86,400s purely as a runaway guard.
@@ -116,9 +121,19 @@ Two tracks that are meant to meet, but currently do not.
 validation, matching the test set's months because taxi-out is strongly
 seasonal. `features.py` builds a per-stand/runway unimpeded reference (a low
 quantile, to approximate geometry without queueing) plus calendar, schedule and
-rolling congestion features. `train.py` is the yardstick. `submit.py` refuses to
-write a partial file rather than shipping zeros for missing rows, and
+rolling congestion features, and `surroundings()` adds the dataset-wide ones:
+`context.py` (stand occupancy, queue counts, runway configuration, from all
+movements including arrivals) and `weather.py` (METARs at takeoff).
+`surroundings()` must see one dataset's full movement table, so training and
+ranking each build their own. `train.py` fits two mixtures (matched and
+orphan groups, the orphan one on a smaller feature set) and `validate()`
+returns held-out predictions for experiments. `submit.py` refuses to write a
+partial file rather than shipping zeros for missing rows, and
 `verify_submission` re-reads the written file and checks it by keyed join.
+
+Weather comes from the Iowa Environmental Mesonet METAR archive into
+`data/weather/`, once: `weather.fetch()`. The archive rate-limits with HTTP
+429, which `fetch` retries.
 
 `bucket.py` talks to the object store: the challenge data is in the shared
 `prc-2026-datasets` bucket, submissions go to `prc-2026-gentle-octopus` under a
@@ -169,8 +184,9 @@ outward-facing action: upload only when the user asks. The scorer writes
 `<name>_result.json` (with `"score"`) beside the upload within a minute or so.
 The public leaderboard is JSON at
 `https://datacomp.opensky-network.org/api/competitions/bb3693e1-26bc-4a9e-8619-4fe78b4eab0c/leaderboard`,
-paginated by `cursor=<nextCursor>`. v1 scored 370.9s, against a leader at
-220.7s on 29 September 2026.
+paginated by `cursor=<nextCursor>`. v1 scored 370.9s on the test set against
+384s on validation, so validation runs slightly pessimistic. The leader was
+at 220.7s on 29 September 2026.
 
 These come from the provisioning email and are reproduced in `README.md`:
 team `gentle-octopus`, submissions named `gentle-octopus_v<N>.parquet` into
