@@ -1,21 +1,15 @@
 # TODO
 
-Submissions close **11 October 2026, 23:59:59 CET**. Nothing has been submitted;
-the team bucket is empty.
+Submissions close **11 October 2026, 23:59:59 CET**. Ranking takes each
+team's **best** score, at up to 5 uploads a day, so an upload never costs
+anything but a slot.
 
 Current model: **384s validation RMSE** on January + July 2025, against a 686s
-standard deviation for those months.
-
-## Blocked
-
-- [ ] **Confirm the submission rules with the organisers.** Neither the
-      challenge site nor the eligibility page states how many submissions a team
-      may make, whether there is a daily cap, or whether the final ranking takes
-      the best upload or the most recent one. "Best" and "latest" imply
-      completely different endgames: under "latest", a careless final upload
-      undoes everything. Ask on the Discord or at
-      challenge@opensky-network.org. **Everything under "Submitting" waits on
-      this.**
+standard deviation for those months. On the test set (v1): **370.9s**, rank
+139 of 200 on 29 September 2026. The leader was at 220.7s, the 10th team at
+237.0s, the median team at 299.2s. Even the rows with a Network Manager
+record (~293s on validation) are behind the leaders' overall score, so the
+gap is in the main model, not only the unmatched tail.
 
 ## Model, in priority order
 
@@ -65,7 +59,11 @@ harness.
       rate), max 72,502s. The largest are LIRF departures with no Network
       Manager record that took off 15-17h after schedule; the model reads that
       gap as taxi-out. Whether it is right to is the unmatched-group question.
-- [ ] **Submit v1** and record what the result file contains.
+- [x] **Submit v1.** `gentle-octopus_v1.parquet`, uploaded 29 September
+      2026 from the 384s-validation model. The result file,
+      `<name>_result.json` in the team bucket, reads `"status": "Succeeded"`,
+      `"used_pairs": 344841`, `"score": 370.8992`. A `_persist.json` appears
+      beside it. The scorer took the file in the template's row order.
 
 ## Data quality, unexplained
 

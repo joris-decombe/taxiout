@@ -44,12 +44,10 @@ This repo is currently **private**, which suits work in progress and does not
 suit the deadline. The history has been checked and has never contained a
 parquet or a credential, so the flip is safe whenever it happens.
 
-**Submissions are on hold.** Neither the challenge site nor the eligibility
-page documents how many submissions a team may make, whether there is a daily
-cap, or whether the final ranking takes the best submission or the most recent
-one. Nothing is uploaded until that is confirmed with the organisers, because
-the cost of a bad submission cannot be judged without it. Ask via the Discord
-or challenge@opensky-network.org.
+**Ranking takes each team's best submission**, and the limit is 5 uploads a
+day (1 GB per bucket). Both are on the site's
+[ranking page](https://prc-data-challenge-2026.netlify.app/ranking.html),
+along with a public leaderboard.
 
 Teams from sanctioned countries are excluded; the full terms are on the
 eligibility page linked from the challenge site.
@@ -57,8 +55,9 @@ eligibility page linked from the challenge site.
 Source: <https://ansperformance.eu/study/data-challenge/dc2026/> (redirects
 to the 2026 site). Note the announcement email says 11 airports and the
 site says both 10 and 11 in different places; the data itself has 10, which
-is what this repo goes by. The site does not document the submission file
-format; that comes from `submitting.parquet` and the provisioning email.
+is what this repo goes by. The submission format is `submitting.parquet`
+with `TAXITIME_SEC_mvt` filled in for every `MVT_ID_mvt`, as the ranking page
+describes.
 
 ## Why simulate at all
 
@@ -86,11 +85,12 @@ The structure that matters more is in Status.
 ## Status
 
 Full 2025 dataset local: 12 monthly training files, `ranking.parquet`,
-`submitting.parquet`. Nothing submitted yet; the bucket is empty.
+`submitting.parquet`.
 
 | | |
 |---|---|
-| Python baseline | **416s validation RMSE** (Jan + Jul 2025) |
+| Python model | **384s validation RMSE** (Jan + Jul 2025) |
+| Test set, v1 | **370.9s**, rank 139 of 200 (29 September 2026; leader 220.7s) |
 | Target sd, those months | 686s, the two hardest months of the year |
 | Target sd, full year | 546s |
 | C++ simulator | builds, 11/11 tests pass, premise needs the rethink above |
@@ -127,10 +127,10 @@ eight strategies tried.
 Written to be read with no prior knowledge of the dataset or of aviation,
 and intended as the basis for the open-access write-up the rules encourage.
 
-Open work is tracked in [TODO.md](TODO.md). The short version: the unmatched
-group is 62% of the score and everything else is noise next to it, submissions
-are blocked on a rules question, and the simulator's `queue_delay_sec` is not
-yet wired into `features.py`, so the two tracks do not actually meet.
+Open work is tracked in [TODO.md](TODO.md). The short version: the leaders
+score better overall than this model does on its easy rows, so the next gains
+are in the main model, and the simulator's `queue_delay_sec` is not yet wired
+into `features.py`, so the two tracks do not actually meet.
 ## Getting the data
 
 The console login is interactive SSO, so the first credential is a manual step:

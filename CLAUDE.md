@@ -68,8 +68,8 @@ Both environment variables matter in practice: the parquets contain an
 output is not cp1252-encodable, so printing a DataFrame on Windows raises
 `UnicodeEncodeError` without the first.
 
-Build a verified submission file locally (fits on all twelve months, never
-uploads):
+Build a verified submission file locally (fits on all twelve months; it does
+not upload, `bucket.upload_submission(path, bucket.next_version())` does):
 
 ```
 PYTHONIOENCODING=utf-8 POLARS_UNKNOWN_EXTENSION_TYPE_BEHAVIOR=load_as_storage   .venv/Scripts/python.exe -c "import sys; sys.path.insert(0,'pipeline');   from pathlib import Path; from taxiout import submit;   print(submit.build_submission(Path('data/submission_local.parquet')))"
@@ -159,11 +159,18 @@ external data openly licensed. This repo is private today; the history has been
 checked and has never contained a parquet or a credential, so flipping it is
 safe when the time comes.
 
-**Do not upload a submission.** Neither the challenge site nor the eligibility
-page documents the submission limit, or whether the final ranking uses the best
-or the most recent upload. Until that is confirmed with the organisers the cost
-of a bad submission is unknown, so the bucket stays empty.
-`bucket.upload_submission` works and is deliberately unused.
+**Submission rules** are on the challenge site's ranking page
+(<https://prc-data-challenge-2026.netlify.app/ranking.html>), not the overview
+or eligibility pages: teams are ranked on their **best** RMSE across all
+uploads, the limit is **5 uploads per day** and 1 GB per bucket, and the
+scorer rejects a file with a mismatched, missing or extra `MVT_ID_mvt`. An
+upload therefore costs a daily slot and nothing else, but it is still an
+outward-facing action: upload only when the user asks. The scorer writes
+`<name>_result.json` (with `"score"`) beside the upload within a minute or so.
+The public leaderboard is JSON at
+`https://datacomp.opensky-network.org/api/competitions/bb3693e1-26bc-4a9e-8619-4fe78b4eab0c/leaderboard`,
+paginated by `cursor=<nextCursor>`. v1 scored 370.9s, against a leader at
+220.7s on 29 September 2026.
 
 These come from the provisioning email and are reproduced in `README.md`:
 team `gentle-octopus`, submissions named `gentle-octopus_v<N>.parquet` into

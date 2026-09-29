@@ -374,7 +374,7 @@ code{font-family:var(--mono);font-size:.88em;background:var(--line-soft);padding
 <section class="col">
   <p class="num">12 · where it stands</p>
   <h2>What is still wrong</h2>
-  <p>The model scores <span id="final-rmse"></span> on the held-back months, down from <span id="single-rmse"></span> for the first model. Nothing has been submitted to the competition yet. What remains:</p>
+  <p>The model scores <span id="final-rmse"></span> on the held-back months, down from <span id="single-rmse"></span> for the first model. Submitted to the competition, it scored 370.9 seconds on the real January and July 2026 flights, 139th of 200 teams; the leading team was at 221. What remains:</p>
   <ul>
     <li><strong>The two groups now matter about equally.</strong> The no-record flights score <span id="o-rmse"></span> on their own and make up <span id="o-share"></span> of the total squared error. If they were predicted perfectly, the overall score would be <span id="oracle-o"></span>. If every <em>other</em> flight were predicted perfectly, it would be <span id="oracle-j"></span>. For the first time, the flights with a record are the bigger target.</li>
     <li><strong>What is left among the no-record flights looks like noise.</strong> The two worst are Paris departures recorded at 23 and 16 hours of taxi-out, although they took off within 35 minutes of their scheduled time. Between them they make up a fifth of all the squared error in the test. Nothing in the scoring file warns of them.</li>
