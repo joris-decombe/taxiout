@@ -106,6 +106,14 @@ build and `-C Debug` on `ctest`. All 11 tests pass.
 
 There is no Python test suite.
 
+## Domain knowledge
+
+`.claude/skills/air-traffic-controller/` holds the operational background:
+what each timestamp means (APDF and A-CDM definitions), EUROCONTROL's
+reference taxi-time method, separation, de-icing, and a section per airport
+with measured runway use and the 2025-to-2026 differences. Its
+`scripts/airport_profile.py` regenerates the measured profiles.
+
 ## Open work
 
 [TODO.md](TODO.md) is the working list: what is blocked, what is worth

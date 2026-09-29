@@ -22,6 +22,14 @@ validation.** Validation over-promised them by a factor of four, so the next
 question is which of them fail to transfer to 2026: the matched mixture (if
 LIRF's at-schedule rate changed), the surroundings, or the weather.
 
+A lead on the transfer gap: **runway use shifted between the 2025 validation
+months and the 2026 test months.** EGLL 09R departures went from 11% to 38%
+in July, LFPG 27R from 16% to 0.1% (it was used for departures in July 2025,
+which looks like works on the north doublet), EHAM's long-taxi 36L from 30%
+to 41%. Features and stand-runway references learnt from 2025's mix may not
+carry over. `.claude/skills/air-traffic-controller/scripts/airport_profile.py`
+prints the full comparison.
+
 **Before each upload, diff the new predictions against the last scored file**
 by group and airport, and read the largest changes: validation alone missed
 the Nice predictions.
@@ -70,10 +78,25 @@ harness.
       matched departures and 42.5% of their squared error: 18% of them
       record off-block at the schedule. The mixture now covers both groups:
       matched 273.4s to 249.2s, LIRF matched 642s to 499s.
-- [ ] **LIRF is still the worst airport** by a factor of two, and the
-      classifier is at 0.87 AUC. The artifact rows are delayed flights; a
-      LIRF-specific classifier, or features on how late the NM saw the
-      aircraft leave, may separate them better.
+- [ ] **LIRF is still the worst airport** by a factor of two. Most flagged
+      at-schedule rows left on time and cost nothing; the classifier's 0.87
+      AUC is mostly spent on them. Weight it by `(gap − r̂)²` (out-of-fold r̂)
+      or fit it on large-gap rows only, and give it the mechanism's features:
+      `EOBT_1 == SCHED` as an explicit flag, stand area, hour × airline at
+      LIRF.
+- [ ] **A live de-icing and congestion signal**: the median over the
+      airport's other departures within ±30–60 min of `(MVT − AOBT_3)` minus
+      their stand-runway reference, leaving the row out. It correlates
+      0.36–0.56 with taxi-out excess on icing rows, against 0.07–0.46 for the
+      METAR features. January 2026 had far more snow than the January 2025
+      holdout (LSZH 4.6% → 13.4% of departures, EDDF 0.7% → 7.5%, LTFM 0% →
+      8.5%), so also score it on a Feb + Dec 2025 winter holdout.
+- [ ] **Unseen 2026 stands**: 7.9% of EDDM's July 2026 departures (stands
+      103–108) and 1.45% of EDDF's use stands absent from 2025. Map them to
+      the nearest known stand or apron group rather than a null reference.
+- [ ] **Measure which slice of the v1 → v3 gain failed to transfer** with
+      hybrid uploads (v3 with v1's predictions on one slice, e.g. LIRF or
+      EHAM January): each score difference is that slice's real 2026 gain.
 - [ ] **Two LFPG rows** (the day-early easyJet off-blocks) keep LFPG's
       validation RMSE near 580s. Nothing observable flags them yet.
 - [ ] **Tuning.** Parameters are unchanged since the first baseline apart from

@@ -33,9 +33,12 @@ well: ISR, LAV and ETH are nearly always at schedule, EJU and EZY rarely.
 
 The matched group is a mixture too. The artifact is not confined to missing
 records: 18% of LIRF's matched departures (4.9% of all matched ones) also
-record off-block at the schedule, typically delayed flights whose NM AOBT is
-two or three hours later, and 943 of LIRF's 1,222 matched departures over an
-hour are these. A plain regressor predicts a normal taxi for them. The
+record off-block at the schedule. Most of them left within minutes of
+schedule, where the artifact costs nothing (the flag rate is 36% at 0-5 min
+of NM delay and 5% at 1-2 h). But 943 of LIRF's 1,222 matched departures over
+an hour are flagged rows, and a plain regressor predicts a normal taxi for
+those. The expected cost of a row is about p(1-p)(gap - r)^2, so the
+classifier's accuracy only matters where the gap is large. The
 mixture took the matched group from 273.4s to 249.2s and LIRF's matched RMSE
 from 642s to 499s (overall 369.6s to 352.4s, 95% CI -49.6s to -0.5s), with
 the classifier at 0.87 AUC.
