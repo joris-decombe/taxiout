@@ -5,10 +5,12 @@ Run from the repo root:
     PYTHONIOENCODING=utf-8 POLARS_UNKNOWN_EXTENSION_TYPE_BEHAVIOR=load_as_storage \
       .venv/Scripts/python.exe pipeline/report_findings.py
 
-Every figure is measured on the January + July 2025 validation split with
-the current `train.py`, except the rows of the strategy ladder in
-HISTORICAL: those score model configurations the code no longer contains,
-so they are recorded as measured at the time.
+Every model figure is measured on the January + July 2025 validation split
+with the current `train.py`, except LADDER and REJECTED: those score model
+configurations the code no longer contains, so they are recorded as
+measured at the time. Airport, runway and weather figures come from the
+2025 training files and the 2026 ranking file; nothing in the output is a
+per-flight row.
 """
 
 import json
@@ -20,7 +22,7 @@ import numpy as np
 import polars as pl
 
 sys.path.insert(0, "pipeline")
-from taxiout import data, features, schema, train  # noqa: E402
+from taxiout import data, features, schema, train, weather  # noqa: E402
 
 OUT = Path("report/findings.json")
 PAGE = Path("report/taxi-out-measured.html")
@@ -28,19 +30,35 @@ CLIP_CAPS = [1800, 2700, 3600, 5400, 7200, 10800, 14400, 21600, 43200, 86400]
 HIST_BIN_SEC, HIST_BINS = 120, 40
 S2T_BINS_H = [1, 2, 3, 4, 6, 8, 12, 18, 24]
 
-# Measured on configurations since replaced; see the commit history.
-HISTORICAL = {
-    "mean": {"name": "Guess the group average for no-record flights", "rmse": 573.8, "verdict": "rejected",
-             "note": "much worse: the model does find a pattern in these flights"},
-    "flags": {"name": "Tell a single model which fields are blank", "rmse": 474.8, "verdict": "rejected",
-              "note": "slightly worse than the 471.7s single model it was tested against"},
-    "split": {"name": "A separate model for no-record flights", "rmse": 442.5, "verdict": "kept",
-              "note": "splitting the problem in two"},
-    "leaves": {"name": "Make that separate model simpler", "rmse": 415.8, "verdict": "kept",
-               "note": "a small group needs a small model, or it memorises"},
-    "airline": {"name": "Give the model the airline", "rmse": 419.3, "verdict": "rejected",
-                "note": "worse than the 409.4s it was added to: the model memorised airlines"},
-}
+LADDER = [
+    {"name": "One model for every flight", "rmse": 475.5},
+    {"name": "A separate model for flights with no flight-plan record", "rmse": 442.5},
+    {"name": "Make that model small, so it cannot memorise", "rmse": 415.8},
+    {"name": "Tell it which fields are blank", "rmse": 409.4},
+    {"name": "Hedge between the schedule gap and a normal taxi", "rmse": 383.6},
+    {"name": "Read the airport around each flight: arrivals, stands, queues", "rmse": 378.0},
+    {"name": "Use the flight plan: airline, destination, planned off-block", "rmse": 370.3},
+    {"name": "Train longer (1,200 rounds)", "rmse": 369.6},
+    {"name": "Hedge for flights with a record too", "rmse": 352.4},
+    {"name": "Weather, and keep the small model's inputs small", "rmse": 346.1},
+    {"name": "Read how far the airport's other departures run over their reference, live", "rmse": 344.3},
+]
+REJECTED = [
+    {"name": "Weight the schedule-copy classifier by what a mistake costs", "rmse": 344.4, "against": 344.3},
+    {"name": "Guess the group average for no-record flights", "rmse": 573.8, "against": 442.5},
+    {"name": "Tell one model which fields are blank", "rmse": 474.8, "against": 471.7},
+    {"name": "Give the no-record model the airline", "rmse": 419.3, "against": 409.4},
+]
+UPLOADS = [
+    {"v": "v1", "validation": 383.6, "test": 370.9},
+    {"v": "v2", "validation": 346.1, "test": 363.1},
+    {"v": "v3", "validation": 346.6, "test": 361.5},
+]
+LEADERBOARD = {"date": "29 September 2026", "teams": 201, "leader": 220.7, "tenth": 237.0,
+               "quartile": 277.9, "median": 299.3, "ours": 361.5, "rank": 137}
+# Iowa Environmental Mesonet METAR archive.
+METAR = {"station": "EHAM", "time": "2026-01-05 08:25 UTC",
+         "raw": "EHAM 050825Z 20009KT 0700 R18C/1200N R27/1200U R18R/0700N R06/1400U SHSN VV005 00/M00 Q1008 TEMPO 2000"}
 
 
 def rmse(p, t):
@@ -62,12 +80,8 @@ truth = va_f[schema.TARGET].to_numpy().astype(float)
 pred = model.predict(va_f)
 matched = va_f.select(train.has_flight_record()).to_numpy().ravel()
 
-# Reference points, refitted here so the ladder is reproducible end to end.
 tr_f = features.build(tr, model.unimpeded.lazy(), around).collect()
-all_cols, all_cats = list(features.FEATURE_COLUMNS), list(features.CATEGORICAL_COLUMNS)
 orph_cols, orph_cats = train.orphan_columns(), train.ORPHAN_CATEGORICALS
-single = lgb.train(train.PARAMS, train._to_dataset(tr_f, all_cols, all_cats), num_boost_round=400)
-p_single = single.predict(train._to_frame(va_f, all_cols, all_cats))
 orph_tr = tr_f.filter(~train.has_flight_record())
 plain_orphan = lgb.train(
     train.SPARSE_PARAMS, train._to_dataset(orph_tr, orph_cols, orph_cats), num_boost_round=400
@@ -81,10 +95,8 @@ sq = (pred - truth) ** 2
 sq_plain = (p_plain - truth) ** 2
 out = {
     "rmse_final": r1(rmse(pred, truth)),
-    "rmse_single": r1(rmse(p_single, truth)),
     "rmse_before_mixture": r1(rmse(p_plain, truth)),
     "mae_final": r1(np.mean(np.abs(pred - truth))),
-    "mae_single": r1(np.mean(np.abs(p_single - truth))),
     "rmse_predict_mean": r1(truth.std()),
     "rmse_if_orphans_perfect": r1(np.sqrt(sq[matched].sum() / len(truth))),
     "rmse_if_joined_perfect": r1(np.sqrt(sq[~matched].sum() / len(truth))),
@@ -125,20 +137,6 @@ ident = departures.select(
     ((pl.col(schema.MVT_TIME) - pl.col(schema.BLOCK_TIME)).dt.total_seconds() - pl.col(schema.TARGET)).abs().max().alias("e"),
     pl.len().alias("n")).collect()
 out["identity"] = {"max_abs_error": float(ident["e"][0]), "rows": int(ident["n"][0])}
-
-out["strategies"] = [
-    HISTORICAL["mean"],
-    HISTORICAL["flags"],
-    {"name": "One model for every flight", "rmse": out["rmse_single"], "verdict": "baseline",
-     "note": "the starting point"},
-    HISTORICAL["split"],
-    HISTORICAL["airline"],
-    HISTORICAL["leaves"],
-    {"name": "Tell the separate model which fields are blank", "rmse": out["rmse_before_mixture"], "verdict": "kept",
-     "note": "helps tell no-record flights apart from each other"},
-    {"name": "Hedge between the schedule gap and a normal taxi", "rmse": out["rmse_final"], "verdict": "shipped",
-     "note": "the blend described in section 08"},
-]
 
 # The recording artifact, over all of 2025's unmatched departures.
 orph = departures.filter(~train.has_flight_record()).with_columns(
@@ -182,6 +180,128 @@ out["artifact"] = {
                 "unexplained": int((~long6["at"] & ~long6["day"]).sum())},
 }
 
+# --- The airports, and what changed between 2025 and 2026 -------------------
+
+AIRPORTS = {
+    "EDDF": "Frankfurt", "EDDM": "Munich", "EGLL": "London Heathrow", "EHAM": "Amsterdam Schiphol",
+    "LEBL": "Barcelona", "LEMD": "Madrid", "LFPG": "Paris Charles de Gaulle", "LIRF": "Rome Fiumicino",
+    "LSZH": "Zurich", "LTFM": "Istanbul",
+}
+full = training.collect()
+ranking = data.load_ranking().collect()
+dep_all = full.filter(pl.col(schema.PHASE) == schema.DEPARTURE)
+arr_all = full.filter(pl.col(schema.PHASE) == schema.ARRIVAL)
+rk_dep = ranking.filter(pl.col(schema.PHASE) == schema.DEPARTURE)
+month = pl.col(schema.MVT_TIME).dt.month()
+taxi = pl.col(schema.TARGET)
+
+
+def shares(frame, months):
+    f = frame.filter(month.is_in(months))
+    return {r: round(n / f.height, 4) for r, n in f.group_by(schema.RUNWAY).len().iter_rows()} if f.height else {}
+
+
+airport_rows = []
+for icao, name in AIRPORTS.items():
+    dep = dep_all.filter(pl.col(schema.ADEP) == icao)
+    arr = arr_all.filter(pl.col(schema.ADES) == icao)
+    rk = rk_dep.filter(pl.col(schema.ADEP) == icao)
+    s = dep.select(
+        taxi.quantile(0.1).alias("p10"), taxi.median().alias("p50"), taxi.quantile(0.9).alias("p90"),
+        train.off_block_at_schedule().fill_null(False).mean().alias("at"),
+        pl.col(schema.AOBT).is_null().mean().alias("no_nm"),
+    ).row(0, named=True)
+    j25, l25, j26, l26 = shares(dep, [1]), shares(dep, [7]), shares(rk, [1]), shares(rk, [7])
+    runways = [
+        {"rwy": r, "share": round(n / dep.height, 4), "p50": r1(p50),
+         "jan25": j25.get(r, 0), "jan26": j26.get(r, 0), "jul25": l25.get(r, 0), "jul26": l26.get(r, 0)}
+        for r, n, p50 in dep.group_by(schema.RUNWAY).agg(pl.len(), taxi.median()).sort("len", descending=True).iter_rows()
+        if n / dep.height >= 0.005
+    ]
+    arrivals = [
+        {"rwy": r, "share": round(n / arr.height, 4)}
+        for r, n in arr.group_by(schema.RUNWAY).len().sort("len", descending=True).iter_rows()
+        if n / arr.height >= 0.01
+    ]
+    airport_rows.append({
+        "icao": icao, "name": name, "deps": dep.height, "deps_2026": rk.height,
+        "p10": r1(s["p10"]), "p50": r1(s["p50"]), "p90": r1(s["p90"]),
+        "at_share": round(s["at"], 4), "no_nm": round(s["no_nm"], 4),
+        "runways": runways, "arrivals": arrivals,
+    })
+out["airports"] = airport_rows
+
+# Weather at take-off: snow or freezing precipitation, January 2025 vs 2026.
+wx = weather.load()
+
+
+def weathered(frame):
+    return weather.join(frame.select(schema.MVT_ID, schema.ADEP, schema.MVT_TIME), wx).join(
+        frame.select(schema.MVT_ID, schema.TARGET, schema.BLOCK_TIME, schema.SCHED_TIME), on=schema.MVT_ID)
+
+
+snowy = (pl.col("wx_snow") == 1) | (pl.col("wx_freezing") == 1)
+jan25 = weathered(dep_all.filter(month == 1))
+jan26 = weathered(rk_dep.filter(month == 1))
+snow_rows = []
+for icao in AIRPORTS:
+    a = jan25.filter(pl.col(schema.ADEP) == icao).select(snowy.mean()).item()
+    b = jan26.filter(pl.col(schema.ADEP) == icao).select(snowy.mean()).item()
+    snow_rows.append({"icao": icao, "jan25": round(a or 0.0, 4), "jan26": round(b or 0.0, 4)})
+out["snow"] = snow_rows
+
+# Where de-icing lands: winter 2025 departures in snow or freezing precipitation
+# against mild dry ones. Remote de-icing lengthens taxi-out; on-stand de-icing
+# lengthens the wait before off-block instead.
+winter = weathered(dep_all.filter(month.is_in([1, 2, 11, 12]))).with_columns(
+    ((pl.col(schema.BLOCK_TIME) - pl.col(schema.SCHED_TIME)).dt.total_seconds()).alias("delay"),
+    snowy.alias("snowy"),
+    ((pl.col("wx_temp_c") > 3) & (pl.col("wx_precip") == 0)).alias("mild"),
+)
+deice_rows = []
+for icao in AIRPORTS:
+    w = winter.filter(pl.col(schema.ADEP) == icao)
+    sn, mi = w.filter(pl.col("snowy")), w.filter(pl.col("mild"))
+    if sn.height < 50:
+        deice_rows.append({"icao": icao, "n_snow": sn.height})
+        continue
+    deice_rows.append({
+        "icao": icao, "n_snow": sn.height,
+        "taxi_extra": r1(sn[schema.TARGET].median() - mi[schema.TARGET].median()),
+        "delay_extra": r1(sn["delay"].median() - mi["delay"].median()),
+    })
+out["deicing"] = deice_rows
+
+# LIRF's at-schedule records among flights WITH an NM record, by how late the
+# NM saw the aircraft leave.
+lirf_m = dep_all.filter((pl.col(schema.ADEP) == "LIRF") & train.has_flight_record()).with_columns(
+    at=train.off_block_at_schedule().fill_null(False),
+    late=(pl.col(schema.AOBT) - pl.col(schema.SCHED_TIME)).dt.total_seconds() / 60,
+)
+late_bins = [(-1e9, 0, "early"), (0, 5, "0–5 min"), (5, 15, "5–15 min"), (15, 60, "15–60 min"),
+             (60, 120, "1–2 h"), (120, 1e9, "over 2 h")]
+out["lirf_matched"] = {
+    "n": lirf_m.height,
+    "at_share": round(float(lirf_m["at"].mean()), 4),
+    "long_at_share": round(float(lirf_m.filter(taxi > 3600)["at"].mean()), 4),
+    "long_n": lirf_m.filter(taxi > 3600).height,
+    "by_late": [
+        {"label": lab, "n": b.height, "at_share": round(float(b["at"].mean()), 4)}
+        for lo, hi, lab in late_bins
+        for b in [lirf_m.filter((pl.col("late") >= lo) & (pl.col("late") < hi))]
+        if b.height
+    ],
+}
+
+# Measured at the time on the January + July 2025 validation split; each step
+# adds to the one above. Test scores from the competition's result files.
+out["ladder"] = LADDER
+out["rejected"] = REJECTED
+out["uploads"] = UPLOADS
+out["leaderboard"] = LEADERBOARD
+out["metar"] = METAR
+out["arrivals_2026"] = ranking.filter(pl.col(schema.PHASE) == schema.ARRIVAL).height
+
 OUT.write_text(json.dumps(out, separators=(",", ":"), ensure_ascii=False), encoding="utf-8")
 
 # The page carries its data inline; refresh it so the page publishes as is.
@@ -190,4 +310,4 @@ opening = '<script type="application/json" id="d">'
 start = page.index(opening) + len(opening)
 end = page.index("</script>", start)
 PAGE.write_text(page[:start] + OUT.read_text(encoding="utf-8") + page[end:], encoding="utf-8")
-print(json.dumps({k: v for k, v in out.items() if k not in ("concentration", "hist", "clip", "monthly", "artifact")}, indent=1))
+print(json.dumps({k: v for k, v in out.items() if not isinstance(v, (list, dict))}, indent=1))

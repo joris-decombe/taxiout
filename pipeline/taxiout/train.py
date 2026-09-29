@@ -41,9 +41,12 @@ those. The expected cost of a row is about p(1-p)(gap - r)^2, so the
 classifier's accuracy only matters where the gap is large. The
 mixture took the matched group from 273.4s to 249.2s and LIRF's matched RMSE
 from 642s to 499s (overall 369.6s to 352.4s, 95% CI -49.6s to -0.5s), with
-the classifier at 0.87 AUC.
+the classifier at 0.87 AUC. Weighting the classifier by that cost, with an
+explicit EOBT == SCHED flag and a stand-area categorical, measured +0.1s
+(95% CI -0.9s to +0.9s): no effect, so it is not in.
 
-Current validation: 346.1s overall, 240.7s matched, 2,006s orphan.
+Current validation (with the live excess features and the reference
+fallback in features.py): 343.6s overall.
 
 The simulator only earns its place if adding its queue-delay estimate as a
 feature beats this number.
@@ -164,7 +167,10 @@ def orphan_columns() -> list[str]:
     ~2,080s while the matched group gained 5s from them. The paired interval
     cannot separate the orphan shift from noise, so the smaller set stays.
     """
-    dropped = set(context.FEATURE_COLUMNS) | set(weather.FEATURE_COLUMNS)
+    dropped = (
+        set(context.FEATURE_COLUMNS) | set(weather.FEATURE_COLUMNS)
+        | set(features.LIVE_EXCESS_COLUMNS) | {"unimpeded_level"}
+    )
     return [c for c in features.FEATURE_COLUMNS if c not in dropped]
 
 

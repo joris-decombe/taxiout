@@ -4,10 +4,14 @@ Submissions close **11 October 2026, 23:59:59 CET**. Ranking takes each
 team's **best** score, at up to 5 uploads a day, so an upload never costs
 anything but a slot.
 
-Current model: **346.6s validation RMSE** on January + July 2025 (240.7s on
-the rows with a Network Manager record, 2,011s on the rest), against a 686s
-standard deviation for those months. `data/submission_v3.parquet` is built
-from it and verified.
+Current model: **343.6s validation RMSE** on January + July 2025, against a
+686s standard deviation for those months. It adds the live excess features
+and the stand-group/runway reference fallback to v3.
+`data/submission_v4.parquet` (with fallback) and
+`data/submission_v4_nofallback.parquet` are built and verified, not uploaded.
+Without the fallback, v4's no-record predictions equal v3's; with it, they
+move by hundreds of seconds at some airports, mostly LIRF, because no-record
+rows with a missing or unseen stand now get a runway-level reference.
 
 | Upload | Validation | Test | What changed |
 |---|---|---|---|
@@ -78,22 +82,20 @@ harness.
       matched departures and 42.5% of their squared error: 18% of them
       record off-block at the schedule. The mixture now covers both groups:
       matched 273.4s to 249.2s, LIRF matched 642s to 499s.
-- [ ] **LIRF is still the worst airport** by a factor of two. Most flagged
-      at-schedule rows left on time and cost nothing; the classifier's 0.87
-      AUC is mostly spent on them. Weight it by `(gap − r̂)²` (out-of-fold r̂)
-      or fit it on large-gap rows only, and give it the mechanism's features:
-      `EOBT_1 == SCHED` as an explicit flag, stand area, hour × airline at
-      LIRF.
-- [ ] **A live de-icing and congestion signal**: the median over the
-      airport's other departures within ±30–60 min of `(MVT − AOBT_3)` minus
-      their stand-runway reference, leaving the row out. It correlates
-      0.36–0.56 with taxi-out excess on icing rows, against 0.07–0.46 for the
-      METAR features. January 2026 had far more snow than the January 2025
-      holdout (LSZH 4.6% → 13.4% of departures, EDDF 0.7% → 7.5%, LTFM 0% →
-      8.5%), so also score it on a Feb + Dec 2025 winter holdout.
-- [ ] **Unseen 2026 stands**: 7.9% of EDDM's July 2026 departures (stands
-      103–108) and 1.45% of EDDF's use stands absent from 2025. Map them to
-      the nearest known stand or apron group rather than a null reference.
+- [ ] **LIRF is still the worst airport** by a factor of two. Weighting the
+      at-schedule classifier by what a mistake costs, with an
+      `EOBT_1 == SCHED` flag and a stand-area categorical, measured +0.1s
+      (CI −0.9s to +0.9s): no effect. `experiments_round2.py`.
+- [x] **A live de-icing and congestion signal** (`features.add_live_excess`):
+      the mean over the airport's (and runway's) other departures within
+      ±30/60 min of `(MVT − AOBT_3)` minus their reference. −2.3s on
+      validation (CI −6.5s to −0.3s), mostly at LIRF. January 2025 was mild,
+      so its de-icing side is untested: score it on a Feb + Dec 2025 winter
+      holdout (January 2026 had far more snow: LSZH 4.6% → 13.4% of
+      departures, EDDF 0.7% → 7.5%, LTFM 0% → 8.5%).
+- [x] **Unseen 2026 stands** now fall back to a stand-group, then runway
+      reference (`features.join_unimpeded`). Validation cannot judge it
+      (+0.4s, CI −0.7s to +1.7s). v4 vs v4_nofallback on the leaderboard can.
 - [ ] **Measure which slice of the v1 → v3 gain failed to transfer** with
       hybrid uploads (v3 with v1's predictions on one slice, e.g. LIRF or
       EHAM January): each score difference is that slice's real 2026 gain.

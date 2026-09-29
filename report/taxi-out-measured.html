@@ -1,732 +1,817 @@
 <title>Taxi-Out, Measured</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
 <style>
+/* Layout: one reading column that follows a departure from stand to runway.
+   A taxiway centreline runs down the left edge; each section is marked by an
+   airfield guidance sign for the stage it covers. Light = paper aerodrome
+   chart, dark = the apron at night. */
 :root{
   color-scheme:light;
-  --surface:#fbfaf7; --panel:#ffffff; --line:#e4e2db; --line-soft:#efeee8;
-  --ink:#14130f; --ink-2:#514f48; --ink-3:#86837a;
-  --joined:#2a78d6; --orphan:#eb6834; --accent:#eb6834; --dead:#aba89f;
-  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
-  --sans:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,sans-serif;
-  --serif:"Newsreader",Georgia,"Times New Roman",serif;
+  --bg:#eef0ea;          /* chart paper */
+  --panel:#fbfbf8;
+  --ink:#191d22; --ink-2:#48505a; --ink-3:#77808b;
+  --line:#cfd4cb; --line-soft:#e1e4dc;
+  --taxi:#b98600;        /* taxiway centreline yellow, darkened for paper */
+  --taxi-bright:#f2c200;
+  --edge:#1f5fd1;        /* taxiway edge light blue: flights with a record */
+  --lead:#1d8f4e;        /* lead-on light green */
+  --stop:#c4122f;        /* mandatory sign red: records that are not measurements */
+  --asphalt:#2b2f35; --paint:#f4f4f0;
+  --sign-bg:#15171a; --sign-fg:#f2c200;
+  --board-bg:#121417; --board-cell:#1d2025; --board-fg:#f1ead2; --board-dim:#8c8f94; --board-amber:#f2b01e;
+  --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --body:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   color-scheme:dark;
-  --surface:#171716; --panel:#212120; --line:#393836; --line-soft:#2c2c2a;
-  --ink:#f5f4ef; --ink-2:#c2c0b6; --ink-3:#8b8981;
-  --joined:#3987e5; --orphan:#d95926; --accent:#d95926; --dead:#6a6860;
+  --bg:#0f1216; --panel:#171b21;
+  --ink:#e9ecef; --ink-2:#b4bcc5; --ink-3:#7f8893;
+  --line:#2b323b; --line-soft:#212730;
+  --taxi:#f2c230; --taxi-bright:#f2c230;
+  --edge:#5b95ff; --lead:#3cc47f; --stop:#ec3b56;
+  --asphalt:#262b31; --paint:#e8e8e2;
+  --sign-bg:#050607; --sign-fg:#f2c230;
+  --board-bg:#08090b; --board-cell:#15181c; --board-fg:#f1ead2; --board-dim:#80848a; --board-amber:#f2b01e;
 }}
 :root[data-theme="dark"]{
   color-scheme:dark;
-  --surface:#171716; --panel:#212120; --line:#393836; --line-soft:#2c2c2a;
-  --ink:#f5f4ef; --ink-2:#c2c0b6; --ink-3:#8b8981;
-  --joined:#3987e5; --orphan:#d95926; --accent:#d95926; --dead:#6a6860;
+  --bg:#0f1216; --panel:#171b21;
+  --ink:#e9ecef; --ink-2:#b4bcc5; --ink-3:#7f8893;
+  --line:#2b323b; --line-soft:#212730;
+  --taxi:#f2c230; --taxi-bright:#f2c230;
+  --edge:#5b95ff; --lead:#3cc47f; --stop:#ec3b56;
+  --asphalt:#262b31; --paint:#e8e8e2;
+  --sign-bg:#050607; --sign-fg:#f2c230;
+  --board-bg:#08090b; --board-cell:#15181c; --board-fg:#f1ead2; --board-dim:#80848a; --board-amber:#f2b01e;
 }
 *{box-sizing:border-box}
-body{background:var(--surface);color:var(--ink);font-family:var(--sans);margin:0;
-  font-size:16.5px;line-height:1.68;-webkit-font-smoothing:antialiased}
-.wrap{max-width:880px;margin:0 auto;padding-inline:16px;padding-block:44px 72px}
-.col{max-width:640px}
-p{margin:0 0 20px}
-h1{font-family:var(--serif);font-size:clamp(34px,7vw,50px);font-weight:500;line-height:1.08;
-  letter-spacing:-.02em;margin:0 0 20px;text-wrap:balance}
-h2{font-family:var(--serif);font-size:clamp(23px,4.4vw,30px);font-weight:500;line-height:1.2;
-  letter-spacing:-.015em;margin:0 0 14px;text-wrap:balance}
-h3{font-size:15px;font-weight:600;margin:0 0 8px;letter-spacing:-.005em}
-.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
-  color:var(--ink-3);margin:0 0 18px}
-.lede{font-family:var(--serif);font-size:clamp(19px,3vw,22px);line-height:1.5;color:var(--ink-2);
-  margin:0 0 10px;max-width:40ch}
-.byline{font-family:var(--mono);font-size:12px;color:var(--ink-3);margin:26px 0 0;
-  padding-top:18px;border-top:1px solid var(--line)}
-section{margin:0;padding:46px 0 0}
-section+section{border-top:1px solid var(--line);margin-top:46px}
-.num{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--accent);
-  text-transform:uppercase;margin:0 0 12px}
-.pull{font-family:var(--serif);font-size:clamp(20px,3.4vw,25px);line-height:1.34;color:var(--ink);
-  border-left:2px solid var(--accent);padding:2px 0 2px 22px;margin:30px 0;max-width:34ch;border-radius:0}
-figure{margin:30px 0;padding:0}
-figcaption{font-size:13.5px;color:var(--ink-3);margin-top:12px;max-width:64ch;line-height:1.55}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px}
-.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:1px;
-  background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:30px 0}
-.facts div{background:var(--panel);padding:16px 18px}
-.facts .k{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
-  color:var(--ink-3);margin:0 0 7px}
-.facts .v{font-family:var(--mono);font-size:19px;font-weight:500;margin:0;letter-spacing:-.02em;
-  font-variant-numeric:tabular-nums;line-height:1.25}
-.facts .v small{font-size:13px;color:var(--ink-3);font-weight:400}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);
-  border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:26px 0}
-.two>div{background:var(--panel);padding:20px}
-.two .big{font-family:var(--mono);font-size:33px;font-weight:500;letter-spacing:-.03em;margin:8px 0 0;line-height:1}
-.two .lab{font-family:var(--mono);font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);margin:0}
-.two .say{font-size:14px;color:var(--ink-2);margin:12px 0 0;line-height:1.5}
-.bar-mae{color:var(--joined)}.bar-rmse{color:var(--orphan)}
-.legend{display:flex;flex-wrap:wrap;gap:16px;margin:0 0 14px;font-size:13.5px;color:var(--ink-2)}
-.legend span{display:inline-flex;align-items:center;gap:7px}
-.sw{width:11px;height:11px;border-radius:2px;display:inline-block;flex:none}
-.holder{position:relative}
-canvas{display:block;max-width:100%}
-.tip{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--line);
-  border-radius:7px;padding:8px 10px;font-family:var(--mono);font-size:11.5px;line-height:1.55;
-  color:var(--ink);box-shadow:0 4px 16px rgba(0,0,0,.15);white-space:nowrap;z-index:4}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);margin:0;font-size:17px;line-height:1.65;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:960px;margin:0 auto;padding-inline:16px;padding-block:40px 80px;position:relative}
+main{position:relative;padding-left:0}
+@media (min-width:860px){
+  main{padding-left:56px}
+  main::before{content:"";position:absolute;left:18px;top:0;bottom:0;width:4px;border-radius:2px;
+    background:var(--taxi-bright);opacity:.85}
+  main::after{content:"";position:absolute;left:16px;top:10px;bottom:10px;width:8px;
+    background:radial-gradient(circle,var(--lead) 0 2.2px,transparent 2.6px) 0 0/8px 46px repeat-y;opacity:.8}
+}
+.col{max-width:660px}
+p{margin:0 0 18px}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(46px,9vw,86px);line-height:.92;letter-spacing:.005em;
+  text-transform:uppercase;margin:0 0 18px;text-wrap:balance}
+h2{font-family:var(--display);font-weight:600;font-size:clamp(28px,4.6vw,40px);line-height:1.05;letter-spacing:.01em;
+  margin:0 0 14px;text-wrap:balance}
+h3{font-family:var(--display);font-weight:600;font-size:22px;letter-spacing:.02em;margin:26px 0 8px}
+.lede{font-size:clamp(19px,2.6vw,22px);line-height:1.5;color:var(--ink-2);max-width:40ch;margin:0 0 8px}
+.kicker{font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin:0 0 14px}
+strong{font-weight:600}
+a{color:var(--edge);text-underline-offset:2px}
+code,.mono{font-family:var(--mono);font-size:.84em}
+code{background:var(--line-soft);padding:1px 5px;border-radius:3px}
+section{padding-top:64px;position:relative}
+figure{margin:26px 0 30px}
+figcaption{font-family:var(--body);font-size:14px;line-height:1.5;color:var(--ink-3);margin-top:10px;max-width:68ch}
+.chart{width:100%;overflow-x:auto}
+.chart svg{display:block}
+ul{padding-left:20px;margin:0 0 18px} li{margin-bottom:8px}
+
+/* Airfield guidance signs */
+.signs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px;position:relative}
+@media (min-width:860px){.signs::before{content:"";position:absolute;left:-40px;top:50%;width:34px;height:4px;
+  background:var(--taxi-bright);opacity:.85;border-radius:2px}}
+.sign{font-family:var(--display);font-weight:700;font-size:17px;letter-spacing:.06em;line-height:1;
+  padding:6px 10px 5px;border-radius:2px;display:inline-flex;align-items:center;gap:8px;text-transform:uppercase}
+.sign.loc{background:var(--sign-bg);color:var(--sign-fg);box-shadow:inset 0 0 0 2px var(--sign-fg),0 0 0 2px var(--sign-bg)}
+.sign.dir{background:var(--sign-fg);color:var(--sign-bg);box-shadow:0 0 0 2px var(--sign-bg)}
+.sign.stop{background:var(--stop);color:#fff;box-shadow:0 0 0 2px var(--sign-bg)}
+.sign svg{width:15px;height:15px;flex:none}
+
+/* Departure board */
+.board{background:var(--board-bg);border-radius:6px;padding:16px 14px 14px;margin:30px 0 8px;
+  box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 18px 40px -24px rgba(0,0,0,.6)}
+.board-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin:0 2px 12px}
+.board-title{font-family:var(--display);font-weight:700;font-size:26px;letter-spacing:.14em;color:var(--board-amber);margin:0}
+.board-sub{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--board-dim);text-transform:uppercase}
+.board-scroll{overflow-x:auto;overflow-y:hidden;padding-bottom:2px}
+.board-grid{display:grid;grid-template-columns:repeat(6,max-content);gap:5px 12px;width:max-content}
+.bh{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--board-dim);text-transform:uppercase;padding-bottom:2px}
+.flaps{display:flex;gap:2px}
+.flap{font-family:var(--mono);font-weight:500;font-size:14px;color:var(--board-fg);background:var(--board-cell);
+  width:1.02em;height:1.55em;display:inline-grid;place-items:center;border-radius:2px;position:relative;
+  text-transform:uppercase}
+.flap::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:var(--board-bg);opacity:.9}
+.flap.amber{color:var(--board-amber)}
+.flap.red{color:#ff6b78}
+@media (prefers-reduced-motion:no-preference){
+  .flap{animation:flip .5s ease-out both;animation-delay:calc(var(--i,0) * 18ms)}
+  @keyframes flip{0%{transform:rotateX(0)}35%{transform:rotateX(-75deg)}100%{transform:rotateX(0)}}
+}
+.board-note{font-family:var(--mono);font-size:11px;color:var(--board-dim);margin:12px 2px 0;letter-spacing:.02em}
+
+/* Numbers and cards */
+.duo{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:24px 0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:16px 18px;min-width:0}
+.card .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin:0 0 6px}
+.card .v{font-family:var(--display);font-weight:700;font-size:44px;line-height:1;margin:0 0 8px;font-variant-numeric:tabular-nums}
+.card .s{font-size:14.5px;color:var(--ink-2);margin:0;line-height:1.5}
+.v.edge{color:var(--edge)} .v.taxi{color:var(--taxi)} .v.stop{color:var(--stop)}
+
+.quote{border-left:4px solid var(--taxi-bright);padding:4px 0 4px 18px;margin:22px 0;max-width:62ch}
+.quote p{font-size:18px;line-height:1.5;margin:0 0 6px}
+.quote cite{font-family:var(--mono);font-size:11.5px;color:var(--ink-3);font-style:normal;letter-spacing:.02em}
+
+.formula{font-family:var(--mono);font-size:14.5px;background:var(--panel);border:1px solid var(--line);border-radius:4px;
+  padding:14px 16px;margin:22px 0;overflow-x:auto;white-space:nowrap}
+.formula b{color:var(--stop);font-weight:500}
+
 table{border-collapse:collapse;width:100%;font-family:var(--mono);font-size:12.5px}
-th,td{text-align:right;padding:8px 10px;border-bottom:1px solid var(--line-soft);font-variant-numeric:tabular-nums}
+th,td{text-align:right;padding:8px 10px;border-bottom:1px solid var(--line-soft);font-variant-numeric:tabular-nums;white-space:nowrap}
 th:first-child,td:first-child{text-align:left}
-th{color:var(--ink-3);font-weight:500;font-size:10px;letter-spacing:.1em;text-transform:uppercase}
-td.j{color:var(--joined)}td.o{color:var(--orphan)}
-tr.hl td{color:var(--orphan);font-weight:500}
+th{font-weight:500;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+td.e{color:var(--edge)} td.t{color:var(--taxi)} tr.now td{font-weight:700}
 .scroll{overflow-x:auto}
-.ladder{display:flex;flex-direction:column;gap:14px}
-.row .top{display:flex;justify-content:space-between;gap:12px;align-items:baseline;font-size:14.5px;margin-bottom:6px}
-.row .sc{font-family:var(--mono);font-size:13.5px;font-variant-numeric:tabular-nums;flex:none}
-.track{height:9px;background:var(--line-soft);border-radius:3px;overflow:hidden}
-.fill{height:100%;border-radius:3px}
-.row .why{font-size:13px;color:var(--ink-3);margin-top:6px;line-height:1.5}
-.tag{font-family:var(--mono);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;
-  padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--ink-3);flex:none}
-.tag.shipped{background:var(--joined);border-color:var(--joined);color:#fff}
-.stamp{font-family:var(--mono);font-size:13px;background:var(--panel);border:1px solid var(--line);
-  border-radius:12px;padding:16px 18px;margin:26px 0;display:grid;grid-template-columns:auto 1fr;gap:4px 18px;
-  font-variant-numeric:tabular-nums;overflow-x:auto}
-.stamp .k{color:var(--ink-3);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;align-self:center}
-.stamp .eq{color:var(--orphan);font-weight:500}
-.formula{font-family:var(--mono);font-size:14px;text-align:center;margin:26px 0;padding:14px 12px;
-  background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow-x:auto}
-ul{margin:0 0 20px;padding-left:22px}
-li{margin-bottom:10px}
-footer{margin-top:46px;padding-top:22px;border-top:1px solid var(--line);color:var(--ink-3);font-size:13.5px}
-a{color:var(--accent)}
-code{font-family:var(--mono);font-size:.88em;background:var(--line-soft);padding:1.5px 5px;border-radius:4px}
-.t{font-family:var(--sans);font-size:14px;fill:var(--ink)}
-.ts{font-family:var(--sans);font-size:12px;fill:var(--ink-3)}
-.tm{font-family:var(--mono);font-size:12px;fill:var(--ink-2)}
-.tmb{font-family:var(--mono);font-size:12px;fill:var(--ink);font-weight:500}
-@media (max-width:560px){.two{grid-template-columns:1fr}}
+
+/* Flight progress strips */
+.strips{display:flex;flex-direction:column;gap:6px;margin:22px 0}
+.strip{display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:stretch;background:var(--panel);
+  border:1px solid var(--line);border-radius:2px;min-height:48px;font-family:var(--mono)}
+.strip .no{background:var(--edge);color:#fff;display:grid;place-items:center;font-size:13px;font-weight:700}
+.strip.x .no{background:var(--ink-3)}
+.strip .nm{padding:7px 12px;font-family:var(--body);font-size:15px;line-height:1.3;border-right:1px dashed var(--line);min-width:0}
+.strip .nm small{display:block;font-family:var(--mono);font-size:11px;color:var(--ink-3);margin-top:2px}
+.strip .sc{padding:6px 12px;text-align:right;min-width:98px}
+.strip .sc b{display:block;font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
+.strip .sc span{font-size:11px;color:var(--lead)}
+.strip.x .sc span{color:var(--stop)}
+.strip .bar{height:3px;background:var(--edge);margin-top:5px;opacity:.55}
+
+/* METAR */
+.metar{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:16px;margin:22px 0}
+.metar-raw{font-family:var(--mono);font-size:14px;line-height:2;word-spacing:4px;overflow-wrap:anywhere}
+.metar-raw .tok{padding:2px 3px;border-radius:2px}
+.metar-raw .hi{background:color-mix(in srgb,var(--taxi-bright) 30%,transparent);color:var(--ink);font-weight:500}
+.metar-raw .hs{background:color-mix(in srgb,var(--stop) 22%,transparent);color:var(--ink);font-weight:500}
+.metar dl{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:14px 0 0;font-size:14.5px}
+.metar dt{font-family:var(--mono);font-size:12.5px;color:var(--ink-2);font-weight:500}
+.metar dd{margin:0;color:var(--ink-2)}
+
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(172px,1fr));gap:10px;margin:22px 0}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:10px 10px 12px;min-width:0}
+.tile svg{display:block;width:100%;height:auto}
+.tile h4{font-family:var(--display);font-weight:700;font-size:19px;letter-spacing:.05em;margin:6px 0 0;line-height:1}
+.tile .city{font-size:13px;color:var(--ink-3);margin:2px 0 6px}
+.tile .tx{font-family:var(--mono);font-size:11.5px;color:var(--ink-2);line-height:1.5}
+.tile .tx b{color:var(--ink);font-weight:700}
+
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-family:var(--mono);font-size:11.5px;color:var(--ink-2);margin:0 0 8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+
+.refs{font-size:14.5px;line-height:1.5;padding-left:22px}
+.refs li{margin-bottom:10px}
+.refs .src{font-family:var(--mono);font-size:11px;color:var(--ink-3);letter-spacing:.03em}
+footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);font-size:13.5px;color:var(--ink-3)}
+
+/* SVG text styles; colours through tokens so both themes read */
+.ax{font-family:var(--mono);font-size:11px;fill:var(--ink-3)}
+.lb{font-family:var(--mono);font-size:11.5px;fill:var(--ink-2)}
+.lbb{font-family:var(--mono);font-size:12px;fill:var(--ink);font-weight:700}
+.dl{font-family:var(--display);font-weight:700;font-size:13px;letter-spacing:.04em}
+.grid{stroke:var(--line-soft);stroke-width:1}
+.base{stroke:var(--line);stroke-width:1}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+:focus-visible{outline:2px solid var(--edge);outline-offset:2px}
 </style>
 
 <div class="wrap">
+<main>
 
-<header class="col">
-  <p class="eyebrow">prc data challenge 2026 · working notes</p>
+<header>
+  <div class="signs" aria-hidden="true">
+    <span class="sign loc">G12</span>
+    <span class="sign dir">Departures <svg viewBox="0 0 16 16"><path d="M2 8h10M8 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.4"/></svg></span>
+  </div>
+  <p class="kicker">PRC Data Challenge 2026 · ten European hubs</p>
   <h1>Taxi-Out, Measured</h1>
-  <p class="lede">Most of the error in predicting how long planes taxi comes from a handful of flights. Many of those were not slow planes at all. Their departure time was simply never recorded.</p>
-  <p class="byline">How long a plane spends between leaving its gate and taking off, how a competition scores predictions of it, and what turned up when we looked at where the predictions go wrong.</p>
+  <p class="lede">How long an airliner spends between leaving its stand and lifting off, why most of the error in predicting it sits in a few flights, and what the airport around each departure gives away.</p>
+
+  <div class="board" role="img" aria-labelledby="board-cap">
+    <div class="board-head">
+      <p class="board-title">DEPARTURES</p>
+      <span class="board-sub">Taxi-out · 2025 · median and 90th percentile</span>
+    </div>
+    <div class="board-scroll"><div class="board-grid" id="board"></div></div>
+    <p class="board-note" id="board-cap">Each row is an airport, not a flight: its busiest departure runway, its median taxi-out and the time nine departures in ten stay under, from 2.1 million 2025 departures. Remarks name what sets the airport apart in the data.</p>
+  </div>
 </header>
 
-<section class="col">
-  <p class="num">01 · the thing being predicted</p>
-  <h2>A plane leaves its gate. Nothing happens for a while.</h2>
-  <p>When a plane is ready to depart, a tug pushes it back from the gate. This moment is called <strong>pushback</strong>. The plane then drives to the runway and takes off. The time between pushback and takeoff is called <strong>taxi-out time</strong>, and at a busy European airport it averages about seventeen minutes.</p>
-  <p>Very little of that is driving. The trip from gate to runway is usually a couple of kilometres at cycling pace, five or six minutes of actual movement. The rest is waiting: for a clear path across the apron (the area around the gates), and above all in a queue at the end of the runway, where planes take off one at a time with a safety gap between each.</p>
-</section>
-
-<figure>
-  <svg width="100%" viewBox="0 0 880 210" role="img" aria-label="The stages of a departure from gate to takeoff">
-    <title>A departure, gate to takeoff</title>
-    <desc>Stages: at the gate, pushback, driving across the apron, waiting in the runway queue, and takeoff. Taxi-out runs from pushback to takeoff, and the queue is usually the largest part.</desc>
-    <line x1="40" y1="96" x2="840" y2="96" stroke="var(--line)" stroke-width="1"/>
-    <g>
-      <circle cx="60" cy="96" r="5" fill="var(--dead)"/>
-      <text class="tm" x="60" y="76" text-anchor="middle">at the gate</text>
-    </g>
-    <rect x="86" y="82" width="132" height="28" rx="4" fill="var(--joined)" opacity="0.16"/>
-    <rect x="86" y="82" width="132" height="28" rx="4" fill="none" stroke="var(--joined)" stroke-width="1"/>
-    <text class="tm" x="152" y="100" text-anchor="middle" fill="var(--ink)">pushback</text>
-    <rect x="224" y="82" width="186" height="28" rx="4" fill="var(--joined)" opacity="0.16"/>
-    <rect x="224" y="82" width="186" height="28" rx="4" fill="none" stroke="var(--joined)" stroke-width="1"/>
-    <text class="tm" x="317" y="100" text-anchor="middle" fill="var(--ink)">drive to runway</text>
-    <rect x="416" y="82" width="330" height="28" rx="4" fill="var(--orphan)" opacity="0.18"/>
-    <rect x="416" y="82" width="330" height="28" rx="4" fill="none" stroke="var(--orphan)" stroke-width="1"/>
-    <text class="tm" x="581" y="100" text-anchor="middle" fill="var(--ink)">waiting in the runway queue</text>
-    <g>
-      <circle cx="790" cy="96" r="5" fill="var(--dead)"/>
-      <text class="tm" x="790" y="76" text-anchor="middle">takeoff</text>
-    </g>
-    <path d="M86 132 L86 144 L790 144 L790 132" fill="none" stroke="var(--ink-3)" stroke-width="1"/>
-    <text class="t" x="438" y="170" text-anchor="middle">taxi-out time: what we predict</text>
-    <text class="ts" x="438" y="190" text-anchor="middle">the queue is the part that varies, so it is the part worth predicting</text>
-  </svg>
-  <figcaption>Widths are illustrative. The drive depends mostly on the airport's layout and is fairly predictable. The queue is not, and it is where nearly all the variation comes from.</figcaption>
-</figure>
-
-<section class="col">
-  <p class="num">02 · why it matters</p>
-  <h2>Engines burning fuel while going nowhere</h2>
-  <p>A typical short-haul jet burns around ten kilograms of fuel a minute while taxiing. Multiply by the minutes spent standing in a queue, then by the couple of thousand departures a day at a large airport, and ground delay becomes a real share of an airport's emissions, burned without taking anyone anywhere.</p>
-  <p>Good predictions help in two ways. They show an airport when it is running beyond comfortable capacity. And they let controllers keep a plane at the gate with its engines off, instead of in a queue with them running. That second one is what saves the fuel.</p>
-  <p>This is the subject of the 2026 PRC Data Challenge, a competition run by EUROCONTROL (the organisation that coordinates European air traffic) and the OpenSky Network.</p>
-</section>
-
-<div class="facts" id="facts"></div>
-
-<section class="col">
-  <p class="num">03 · how predictions are scored</p>
-  <h2>What "most accurate" turns out to mean</h2>
-  <p>Entries are ranked by a measure called <strong>root mean square error</strong>, or RMSE. For each flight you take how far off the prediction was, square it, average those squares over all flights, and take the square root to get back to seconds. From here on this page calls it simply <strong>the score</strong>. Lower is better.</p>
-  <p>The squaring is what matters. It means a prediction that misses by ten minutes does not count ten times as much as a one-minute miss. It counts a hundred times as much. A score built this way barely notices lots of small misses, and is dominated by a few big ones.</p>
-  <p>Here is one set of predictions, measured two ways:</p>
-</section>
-
-<div class="two" id="scorecard"></div>
-
-<section class="col">
-  <p>The predictions are identical. Only the arithmetic differs. On a typical flight the model is off by under three minutes. The score reports more than twice that, and the whole difference comes from a few very large misses.</p>
-  <p class="pull">A score that squares its errors is not asking you to be right on average. It is asking you never to be badly wrong.</p>
-  <p>So the useful question is not how well the model does in general. It is which flights it gets badly wrong, and why.</p>
-</section>
-
-<section class="col">
-  <p class="num">04 · what the competition gives you</p>
-  <h2>Taxi-out is a subtraction, not a measurement</h2>
-  <p>Each departure in the data carries several timestamps. Two matter here: pushback and takeoff. Taxi-out is not measured on its own. It <em>is</em> takeoff minus pushback. Across all <span id="ident-rows"></span> departures in the 2025 data, that subtraction matches the published taxi-out to the second, every time.</p>
-  <p>So the competition cannot hand out both timestamps, or anyone could subtract one from the other and win. One has to be removed, and which one decides what the task is.</p>
-</section>
-
-<figure>
-  <svg width="100%" viewBox="0 0 880 300" role="img" aria-label="Which timestamps the competition data keeps">
-    <title>Which timestamps the competition data keeps</title>
-    <desc>In the practice data every timestamp is present and taxi-out is takeoff minus the airport's pushback time. In the data used for scoring, the airport's pushback time and taxi-out are removed, while the scheduled time, the flight-plan system's own pushback estimate and the takeoff time remain.</desc>
-    <text class="t" x="40" y="26">Practice data (2025): everything is there</text>
-    <line x1="176" y1="66" x2="214" y2="66" stroke="var(--line)" stroke-width="1"/>
-    <line x1="352" y1="66" x2="390" y2="66" stroke="var(--line)" stroke-width="1"/>
-    <line x1="528" y1="66" x2="606" y2="66" stroke="var(--line)" stroke-width="1"/>
-    <g><rect x="40" y="46" width="136" height="40" rx="4" fill="var(--panel)" stroke="var(--line)" stroke-width="1"/>
-      <text class="tmb" x="108" y="62" text-anchor="middle">scheduled</text>
-      <text class="ts" x="108" y="78" text-anchor="middle">when it should go</text></g>
-    <g><rect x="214" y="46" width="138" height="40" rx="4" fill="var(--panel)" stroke="var(--line)" stroke-width="1"/>
-      <text class="tmb" x="283" y="62" text-anchor="middle">flight-plan log</text>
-      <text class="ts" x="283" y="78" text-anchor="middle">a rougher pushback</text></g>
-    <g><rect x="390" y="46" width="138" height="40" rx="4" fill="var(--panel)" stroke="var(--line)" stroke-width="1"/>
-      <text class="tmb" x="459" y="62" text-anchor="middle">pushback</text>
-      <text class="ts" x="459" y="78" text-anchor="middle">left the gate</text></g>
-    <g><rect x="606" y="46" width="138" height="40" rx="4" fill="var(--panel)" stroke="var(--line)" stroke-width="1"/>
-      <text class="tmb" x="675" y="62" text-anchor="middle">takeoff</text>
-      <text class="ts" x="675" y="78" text-anchor="middle">wheels up</text></g>
-    <line x1="459" y1="86" x2="459" y2="102" stroke="var(--line)" stroke-width="1"/>
-    <line x1="675" y1="86" x2="675" y2="102" stroke="var(--line)" stroke-width="1"/>
-    <rect x="390" y="102" width="354" height="32" rx="4" fill="var(--joined)" opacity="0.15"/>
-    <rect x="390" y="102" width="354" height="32" rx="4" fill="none" stroke="var(--joined)" stroke-width="1"/>
-    <text class="tm" x="567" y="122" text-anchor="middle" fill="var(--ink)">taxi-out = takeoff − pushback</text>
-
-    <text class="t" x="40" y="186">Scored data (2026): what you actually get</text>
-    <line x1="176" y1="226" x2="214" y2="226" stroke="var(--line)" stroke-width="1"/>
-    <line x1="352" y1="226" x2="390" y2="226" stroke="var(--line)" stroke-width="1"/>
-    <line x1="528" y1="226" x2="606" y2="226" stroke="var(--line)" stroke-width="1"/>
-    <g><rect x="40" y="206" width="136" height="40" rx="4" fill="var(--panel)" stroke="var(--line)" stroke-width="1"/>
-      <text class="tmb" x="108" y="222" text-anchor="middle">scheduled</text>
-      <text class="ts" x="108" y="238" text-anchor="middle">present</text></g>
-    <g><rect x="214" y="206" width="138" height="40" rx="4" fill="var(--panel)" stroke="var(--line)" stroke-width="1"/>
-      <text class="tmb" x="283" y="222" text-anchor="middle">flight-plan log</text>
-      <text class="ts" x="283" y="238" text-anchor="middle">present</text></g>
-    <g><rect x="390" y="206" width="138" height="40" rx="4" fill="var(--orphan)" opacity="0.14"/>
-      <rect x="390" y="206" width="138" height="40" rx="4" fill="none" stroke="var(--orphan)" stroke-width="1" stroke-dasharray="4 3"/>
-      <text class="tmb" x="459" y="222" text-anchor="middle">pushback</text>
-      <text class="ts" x="459" y="238" text-anchor="middle" fill="var(--orphan)">removed</text></g>
-    <g><rect x="606" y="206" width="138" height="40" rx="4" fill="var(--panel)" stroke="var(--line)" stroke-width="1"/>
-      <text class="tmb" x="675" y="222" text-anchor="middle">takeoff</text>
-      <text class="ts" x="675" y="238" text-anchor="middle">present</text></g>
-    <line x1="459" y1="246" x2="459" y2="262" stroke="var(--line)" stroke-width="1"/>
-    <line x1="675" y1="246" x2="675" y2="262" stroke="var(--line)" stroke-width="1"/>
-    <rect x="390" y="262" width="354" height="30" rx="4" fill="none" stroke="var(--orphan)" stroke-width="1" stroke-dasharray="4 3"/>
-    <text class="tm" x="567" y="281" text-anchor="middle" fill="var(--orphan)">unknown: this is what you predict</text>
-  </svg>
-  <figcaption>Pushback and taxi-out are removed together, because either one gives away the other. Everything else is kept, including the takeoff time. The "flight-plan log" is a second, independent record of pushback kept by EUROCONTROL; it is often minutes away from the airport's own.</figcaption>
-</figure>
-
-<section class="col">
-  <h3>Which way round the task runs</h3>
-  <p>The takeoff time is there and the pushback time is not. So the prediction works backwards from the intuitive direction: <strong>you know when the plane took off, and you work out when it left the gate.</strong> You cannot see this in the practice data, where both times are present. It shows only in the scoring file, where the pushback column is empty.</p>
-</section>
-
-<section class="col">
-  <p class="num">05 · the first model</p>
-  <h2>A respectable number that explains nothing</h2>
-  <p>The model is a standard machine-learning method (gradient-boosted decision trees) that learns patterns such as "from this gate to that runway at 7am, taxi-out usually takes fourteen minutes". It only uses information that is present in the scoring file: the airport, the gate, the runway, the aircraft type, the time of day, how busy the airport was, and how long the drive from that gate takes when nothing is in the way.</p>
-  <p id="firstmodel"></p>
-  <p>That is a real improvement over guessing, and it is the point where people usually start tuning. None of that is worth doing before finding out where the error actually comes from.</p>
-</section>
-
-<section>
+<section id="departure">
+  <div class="signs"><span class="sign loc">A1</span><span class="sign dir">Pushback <svg viewBox="0 0 16 16"><path d="M2 8h10M8 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.4"/></svg></span></div>
   <div class="col">
-    <p class="num">06 · where the error comes from</p>
-    <h2>Almost all of it is in almost none of the flights</h2>
-    <p>To test the model fairly, January and July 2025 were held back and never shown to it during training. Take every flight in those two months, sort them from worst prediction to best, and add up their squared misses as you go. If the error were spread evenly, the line would follow the diagonal. It does not.</p>
+    <h2>From stand to wheels-up</h2>
+    <p>A departure's taxi-out starts when the aircraft leaves its parking position, pushed back by a tug or under its own power, and ends when its wheels leave the runway. In between it follows a taxiway to the runway, in winter perhaps stops at a de-icing pad, and waits at the holding point until the tower clears it to line up and take off.</p>
+    <p>At these ten airports the median is <span id="t-median"></span>. The drive itself is a few minutes at 10 to 20 knots. The rest is waiting: for other aircraft on the taxiway, for a gap in arrivals when crossing a runway, and in the queue at the holding point, where departures leave one at a time with a wake-turbulence gap between them.</p>
   </div>
   <figure>
-    <div class="holder"><canvas id="c-conc" height="290"></canvas><div class="tip" id="t1" hidden></div></div>
-    <figcaption>Held-back flights sorted from worst prediction to best (across), against the share of the total squared error they add up to (up). The dashed diagonal is what evenly spread errors would look like.</figcaption>
+    <div class="chart" id="c-departure"></div>
+    <figcaption>One departure, schematic. Above the line are the timestamps each party keeps: the schedule, the flight plan's estimate, the airport's actual off-block and take-off. Taxi-out is the airport's take-off minus the airport's off-block. At airports running Airport Collaborative Decision Making (all but Istanbul here), the target start-up time holds an aircraft at the stand, engines off, instead of in the queue.</figcaption>
+  </figure>
+  <div class="col">
+    <p>That queue is also why the number matters. An airliner taxiing on its engines burns fuel for every minute it stands still, so minutes of queueing multiply into tonnes of fuel and CO<sub>2</sub> across a day at a hub. EUROCONTROL's Performance Review Commission publishes an "additional taxi-out time" indicator for this reason, and the 2026 edition of its data challenge asks for the best prediction of taxi-out itself.</p>
+  </div>
+</section>
+
+<section id="records">
+  <div class="signs"><span class="sign loc">B</span><span class="sign dir">Records <svg viewBox="0 0 16 16"><path d="M2 8h10M8 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.4"/></svg></span></div>
+  <div class="col">
+    <h2>What the data keeps, and the one thing it removes</h2>
+    <p>The movements come from EUROCONTROL's Airport Operator Data Flow: every airport reports every arrival and departure, with its stand, runway and times. Each departure is also linked to the Network Manager's record of its flight plan. The airport's definitions are exact:</p>
+  </div>
+  <div class="quote"><p>Actual off-block time: the date and time the aircraft has vacated the parking position (pushed back or on its own power).</p><cite>EUROCONTROL-SPEC-175, Airport Operator Data Flow, ODI 11</cite></div>
+  <div class="quote"><p>Actual take-off time: the date and time that an aircraft has taken off from the runway (wheels-up).</p><cite>EUROCONTROL-SPEC-175, ODI 12</cite></div>
+  <div class="col">
+    <p>Taxi-out is not measured separately. It <em>is</em> take-off minus off-block: across all <span id="ident-rows"></span> 2025 departures the subtraction matches the published figure to the second. So the scored file for January and July 2026 blanks the off-block time together with taxi-out. Everything else stays, and that includes <span id="arr-2026"></span> arrivals with their in-block times, every take-off time, every stand and runway.</p>
+  </div>
+  <figure>
+    <div class="chart" id="c-kept"></div>
+    <figcaption>Which timestamps survive in the scored 2026 file. The Network Manager's off-block is a second, independent record of the same event, fed at A-CDM airports by a message the airport sends at off-block. It agrees with the airport's within a minute for only 9% (Istanbul) to 26% (Barcelona) of departures.</figcaption>
+  </figure>
+  <div class="col">
+    <p>The prediction therefore runs backwards: the take-off time is known, and the task is to reconstruct when the aircraft left its stand.</p>
+  </div>
+</section>
+
+<section id="airports">
+  <div class="signs"><span class="sign loc">C</span><span class="sign dir">Runways <svg viewBox="0 0 16 16"><path d="M3 13L13 3M6 3h7v7" fill="none" stroke="currentColor" stroke-width="2.4"/></svg></span></div>
+  <div class="col">
+    <h2>Ten airports, ten layouts</h2>
+    <p>Taxi-out is first of all geography. Heathrow's two runways run either side of a crowded central terminal area, and its median taxi-out is the longest here. Schiphol's Polderbaan (36L) is several kilometres from the terminal, and departures on it take about seven minutes longer than on runway 24. Zurich chooses its runways by the clock, under noise rules and a German airspace ordinance, so the time of day largely decides the taxi route.</p>
+  </div>
+  <div class="legend"><span><i style="background:var(--asphalt)"></i>runway</span><span><i style="background:var(--edge)"></i>departure direction, width by 2025 share</span></div>
+  <div class="tiles" id="tiles"></div>
+  <figcaption>Schematic. Orientation comes from the runway numbers, which are magnetic headings divided by ten; parallel runways are drawn side by side, but positions and lengths are not to scale. Figures are 2025 departures.</figcaption>
+  <div class="col">
+    <p>EUROCONTROL's own reference for an unimpeded taxi works at this level: the 10th percentile of taxi-out for each stand and runway pair over twelve months, valid only where at least ten flights fall at or below it. The model starts from the same reference and learns what adds to it.</p>
+  </div>
+</section>
+
+<section id="score">
+  <div class="signs"><span class="sign loc">D</span><span class="sign dir">Holding point <svg viewBox="0 0 16 16"><path d="M2 8h10M8 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.4"/></svg></span></div>
+  <div class="col">
+    <h2>A score that punishes the worst miss</h2>
+    <p>Entries are ranked by root mean square error: square each miss in seconds, average, take the square root. A ten-minute miss costs a hundred times a one-minute miss. The same predictions, measured two ways on the January and July 2025 flights held back from training:</p>
+  </div>
+  <div class="duo" id="scorecards"></div>
+  <div class="col">
+    <p>Sort those held-back flights from worst prediction to best and add up their squared misses. If errors were spread evenly the curve would follow the diagonal.</p>
+  </div>
+  <figure>
+    <div class="chart" id="c-conc"></div>
+    <figcaption>Held-back flights from worst prediction to best (across, stretched at the left), against their share of the total squared error (up).</figcaption>
   </figure>
   <div class="col">
     <p id="conc-text"></p>
-    <p>So the question is what those flights are.</p>
-  </div>
-</section>
-
-<section>
-  <div class="col">
-    <p class="num">07 · the first answer</p>
-    <h2>The flights with no paperwork</h2>
-    <p>The airport's record of each departure is linked to EUROCONTROL's flight-plan record for the same flight, which holds the callsign, the airline, the aircraft type and that second pushback time. For about fifteen departures in a thousand, the link fails. When it fails, everything from the flight plan is missing at once.</p>
-    <p>These <strong>no-record flights</strong> are the expensive ones.</p>
+    <p>The worst predictions cluster in one group: about fifteen departures in a thousand whose airport record never linked to a flight plan. They have no Network Manager off-block, no callsign, no airline. Most of them taxi like anyone else. A few are recorded at hours.</p>
   </div>
   <figure>
     <div class="card scroll"><table id="tbl"></table></div>
-    <figcaption>Held-back flights, January and July 2025. The bottom four rows show the model before and after the fix described in the next section.</figcaption>
+    <figcaption>Held-back flights, January and July 2025, with the current model.</figcaption>
   </figure>
-  <div class="col">
-    <p>Look at the typical flight first. A typical no-record flight taxis for <span id="med-o"></span>; a typical flight with a record, for <span id="med-j"></span>. About sixteen minutes each. <strong>Most of the time, the two groups behave the same.</strong></p>
-    <p>The difference is at the extremes. Their slowest 1% start more than four times later, and <span id="over6-orphan"></span> of the <span id="over6-n"></span> departures in 2025 that took more than six hours are no-record flights.</p>
-  </div>
   <figure>
-    <div class="legend">
-      <span><i class="sw" style="background:var(--joined)"></i>with a flight-plan record</span>
-      <span><i class="sw" style="background:var(--orphan)"></i>no record</span>
-    </div>
-    <div class="holder"><canvas id="c-dist" height="250"></canvas><div class="tip" id="t2" hidden></div></div>
-    <figcaption>How taxi-out times are spread in each group, each drawn as a share of its own group because one is sixty times bigger than the other. The shapes match closely up to about half an hour, then split apart.</figcaption>
-  </figure>
-  <div class="col">
-    <p class="pull">The hardest part of this aviation problem is a database link that sometimes fails.</p>
-    <p>A missing record says nothing about the plane. It says something about the paperwork. Which raises the obvious suspicion: maybe the extreme taxi times are a paperwork problem too.</p>
-  </div>
-</section>
-
-<section>
-  <div class="col">
-    <p class="num">08 · the second answer</p>
-    <h2>One airport writes the schedule where the pushback should be</h2>
-    <p>Split the no-record flights by airport and one stands out. Rome Fiumicino has <span id="a-lirf-n"></span> of them in 2025, under a fifteenth of the group, yet those flights account for <span id="a-lirf-dev"></span> of the group's variation.</p>
-    <p>The timestamps show why. For <span id="a-lirf-at"></span> of Rome's no-record departures, the pushback time is identical to the scheduled departure time, to the second. At the other nine airports, that happens to <span id="a-other-at"></span> of no-record flights. Those planes did not push back at exactly their scheduled second. Someone, or some system, wrote the scheduled time into the pushback field.</p>
-  </div>
-  <div class="stamp" id="stamp"></div>
-  <div class="col">
-    <p>For those flights, the published "taxi-out" is really takeoff minus scheduled departure. If a flight left four hours late, its taxi-out reads four hours. None of that is a plane waiting at a runway. It is a delay, recorded in the wrong place.</p>
-    <p>A second, rarer pattern appears at several airports: a pushback logged almost exactly a day before takeoff, so the taxi-out reads roughly 24 hours plus a normal taxi.</p>
-  </div>
-  <figure>
-    <div class="legend">
-      <span><i class="sw" style="background:var(--orphan)"></i>pushback equals the schedule</span>
-      <span><i class="sw" style="background:var(--line)"></i>anything else</span>
-    </div>
-    <div class="holder"><canvas id="c-gap" height="240"></canvas><div class="tip" id="t5" hidden></div></div>
-    <figcaption>Rome's no-record departures in 2025, grouped by how late they took off compared with their schedule. Each bar shows the share whose pushback equals the schedule; the number above it is how many flights are in the group. Beyond eight hours late, it is nearly all of them.</figcaption>
-  </figure>
-  <div class="col">
-    <p>The scoring file still has both the scheduled time and the takeoff time, so the gap between them is known for every flight. What cannot be known is whether a particular flight is one of the rewritten ones. So the model hedges. One part estimates the chance that a flight's pushback was rewritten with its schedule. Another part predicts an ordinary taxi. The prediction blends the two:</p>
-    <p class="formula">chance × (takeoff − schedule) + (1 − chance) × ordinary taxi</p>
-    <p>If there is a 30% chance, it takes 30% of the schedule gap and 70% of an ordinary taxi. Under a squared score, that blend is the best guess available. It moves the overall score from <span id="mix-before"></span> to <span id="mix-after"></span>, and the no-record flights' own score from <span id="mix-o-before"></span> to <span id="mix-o-after"></span>. Re-scored on 600 random reshuffles of the held-back flights, the improvement stays between 10 and 46 seconds in 95% of them, so it is not luck.</p>
-    <p>This also explains most of the extreme cases. Of the <span id="over6-n2"></span> departures in 2025 recorded at over six hours, <span id="over6-at"></span> have their pushback equal to the schedule and <span id="over6-day"></span> more have it a day early. <span id="over6-left"></span> unexplained.</p>
-  </div>
-</section>
-
-<section>
-  <div class="col">
-    <p class="num">09 · what was tried</p>
-    <h2>Three of these eight made things worse</h2>
-    <p>Each line below is one idea, scored on the held-back months. Lower is better. The ideas that failed taught as much as the ones that worked.</p>
-  </div>
-  <figure>
-    <div class="card"><div class="ladder" id="ladder"></div></div>
-    <figcaption>Earlier lines were scored on the model as it stood at the time. Each failed idea is compared with what it was added to, as noted underneath it.</figcaption>
-  </figure>
-  <div class="col">
-    <p><strong>Guessing the average failed badly.</strong> If the no-record flights were pure noise, the best guess for all of them would be their average, and using it should cost nothing. It costs a lot, so there is a real pattern in these flights for a model to find. Much of that pattern, it turns out, is the rewritten schedule.</p>
-    <p><strong>Flagging blank fields helped only in the right place.</strong> Telling a single model which fields are blank should, in principle, help. It did not, because the model already copes with blanks on its own. The same flags do help inside the separate model for no-record flights, where they tell those flights apart from each other.</p>
-    <p><strong>The airline did not help, even though it should.</strong> Some airlines at Rome have their pushback rewritten almost every time, others almost never. But with seventeen thousand no-record flights spread over hundreds of airlines, the model memorised individual airlines instead of learning from them. Giving it each airline's historical rewrite rate instead did no better.</p>
-  </div>
-</section>
-
-<section>
-  <div class="col">
-    <p class="num">10 · a limit with a price</p>
-    <h2>Where to cap a prediction</h2>
-    <p>Predictions need limits. Taxi-out cannot be negative, and a model left unchecked can occasionally produce an absurd number. The upper limit looks like a formality. It is not, and two hours sounds like a sensible place to put it.</p>
-  </div>
-  <figure>
-    <div class="holder"><canvas id="c-clip" height="240"></canvas><div class="tip" id="t3" hidden></div></div>
-    <figcaption>The current model's score depending on where predictions are capped. Lower is better. The two-hour cap the code once used is marked.</figcaption>
+    <div class="legend"><span><i style="background:var(--edge)"></i>with a flight-plan record</span><span><i style="background:var(--taxi)"></i>no record</span></div>
+    <div class="chart" id="c-dist"></div>
+    <figcaption>Taxi-out distribution in each group, as a share of its own group. The shapes match until about half an hour, then split.</figcaption>
   </figure>
   <div class="col">
     <p id="clip-text"></p>
-    <p>The cap belongs beyond anything the data reaches, at a full day, where it only catches a genuine malfunction.</p>
-  </div>
-</section>
-
-<section>
-  <div class="col">
-    <p class="num">11 · a harder test than it looks</p>
-    <h2>The scored months are hard ones</h2>
-    <p>The competition scores January and July. Those are two of the three most unpredictable months of the year: winter weather at one end, peak summer traffic at the other.</p>
   </div>
   <figure>
-    <div class="holder"><canvas id="c-month" height="200"></canvas><div class="tip" id="t4" hidden></div></div>
-    <figcaption>How much taxi-out times vary from month to month in 2025 (the standard deviation, in seconds). The two scored months are highlighted.</figcaption>
+    <div class="chart" id="c-clip"></div>
+    <figcaption>Validation score with predictions capped at each value. The cap sits at a full day, where it only catches a runaway prediction.</figcaption>
+  </figure>
+</section>
+
+<section id="artifacts">
+  <div class="signs"><span class="sign stop">SCHED = AOBT</span><span class="sign loc">E</span></div>
+  <div class="col">
+    <h2>Records that are not measurements</h2>
+    <p>At Rome Fiumicino, the recorded off-block time of <span id="lirf-at"></span> of departures equals the scheduled departure time to the minute, against 1 to 6% at the other airports. For those flights the published "taxi-out" is take-off minus schedule. A flight that left four hours late shows four hours of taxi-out.</p>
+  </div>
+  <div class="formula" aria-label="Worked example">scheduled 14:25:00 · off-block recorded <b>14:25:00</b> · take-off 18:41:30 · taxi-out <b>15,390 s</b> (illustrative)</div>
+  <div class="col">
+    <p>Most of these records are harmless. The flag is commonest on flights the Network Manager saw leave within a few minutes of schedule, where take-off minus schedule is close to a normal taxi anyway. But on the rare delayed ones it creates the largest errors in the dataset: <span id="lirf-long"></span> of Rome's departures with a flight-plan record and a recorded taxi-out over an hour are flagged rows.</p>
+  </div>
+  <figure>
+    <div class="chart" id="c-lirf"></div>
+    <figcaption>Rome Fiumicino, 2025 departures with a flight-plan record, by how late the Network Manager saw the aircraft leave its stand. Bars: share whose airport off-block equals the schedule. Numbers: departures in each group.</figcaption>
   </figure>
   <div class="col">
-    <p>That is why the model is tested on January and July 2025: the same months it will be scored on in 2026. Testing on a quiet spring month would give a flattering number, because the extreme cases that dominate the score are rarer then.</p>
+    <p>The flag follows the data source more than the aircraft: some airlines have it on half their flights and others almost never, it peaks on late-evening schedules, and it is three times as common when the filed flight plan was never updated. The records look filled in from the timetable when no actual time was captured.</p>
+    <p>The scored file keeps the schedule and the take-off time, so the schedule gap is known for every 2026 departure. Whether a given record was filled in is not. The model hedges between the two readings:</p>
+  </div>
+  <div class="formula">prediction = p × (take-off − schedule) + (1 − p) × <b>normal taxi</b></div>
+  <div class="col">
+    <p>where p is a classifier's estimate that the off-block was copied from the schedule. Under a squared score this blend is the best single guess. Among flights with no flight-plan record the same pattern reaches <span id="lirf-orph"></span> at Rome, and a rarer one appears at several airports: an off-block logged a day before take-off, so the taxi-out reads about 24 hours plus a normal taxi. <span id="neg-text"></span></p>
   </div>
 </section>
 
-<section class="col">
-  <p class="num">12 · where it stands</p>
-  <h2>What is still wrong</h2>
-  <p>The model scores <span id="final-rmse"></span> on the held-back months, down from <span id="single-rmse"></span> for the first model. Submitted to the competition, it scored 370.9 seconds on the real January and July 2026 flights, 139th of 200 teams; the leading team was at 221. What remains:</p>
-  <ul>
-    <li><strong>The two groups now matter about equally.</strong> The no-record flights score <span id="o-rmse"></span> on their own and make up <span id="o-share"></span> of the total squared error. If they were predicted perfectly, the overall score would be <span id="oracle-o"></span>. If every <em>other</em> flight were predicted perfectly, it would be <span id="oracle-j"></span>. For the first time, the flights with a record are the bigger target.</li>
-    <li><strong>What is left among the no-record flights looks like noise.</strong> The two worst are Paris departures recorded at 23 and 16 hours of taxi-out, although they took off within 35 minutes of their scheduled time. Between them they make up a fifth of all the squared error in the test. Nothing in the scoring file warns of them.</li>
-    <li><strong><span id="neg-n"></span> flights have a negative taxi-out</strong>, as low as <span id="neg-min"></span> seconds, <span id="neg-lszh"></span> of them at Zurich. The plane apparently took off before it left the gate. There is no explanation yet.</li>
-    <li><strong>Congestion barely registers.</strong> The model makes almost no use of how busy the airport was around each departure. That is odd for a problem that is mostly about queueing, and the likeliest place for the remaining error on ordinary flights.</li>
-    <li><strong>The simulator has not earned its place.</strong> A separate program that simulates the queue (planes pushing back, driving out, and taking off one at a time with safety gaps) reproduces only about a sixth of the real queueing delay. It is not used by the model.</li>
-  </ul>
-  <p class="pull">The scoring rule chose the problem, and the problem turned out to be bookkeeping.</p>
-  <p>That is the part that carries over to other problems. Taxi-out is a queueing problem, and the aviation research treats it as one. But under a squared score, the ordinary queueing, which the model already handles well, is not where the result was decided. It was decided on flights with a missing record. The useful work was not explaining why those flights take so long. It was finding that, mostly, they do not.</p>
+<section id="surroundings">
+  <div class="signs"><span class="sign loc">F</span><span class="sign dir">Queue <svg viewBox="0 0 16 16"><path d="M2 8h10M8 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.4"/></svg></span></div>
+  <div class="col">
+    <h2>The airport around each departure</h2>
+    <p>Blanking one column leaves the rest of the airport in view. For every 2026 departure the scored file shows which aircraft blocked in at the same stand and when, how many departures took off from the same runway in the minutes before and after, how many aircraft had pushed back without yet taking off, and which runways were in use that hour. Each of these reads the queue the departure was part of.</p>
+    <p>Each flight strip below is one change to the model, scored on the held-back months and kept only when a paired bootstrap put the gain clear of zero.</p>
+  </div>
+  <div class="strips" id="strips"></div>
+  <div class="col">
+    <h3>Tried and rejected</h3>
+  </div>
+  <div class="strips" id="strips-x"></div>
 </section>
 
-<footer class="col" id="foot"></footer>
+<section id="winter">
+  <div class="signs"><span class="sign loc">G</span><span class="sign dir">De-icing pad <svg viewBox="0 0 16 16"><path d="M13 13L3 3M3 10V3h7" fill="none" stroke="currentColor" stroke-width="2.4"/></svg></span></div>
+  <div class="col">
+    <h2>January 2026 was a winter month</h2>
+    <p>Aircraft de-iced on the stand wait before off-block, which does not count. Aircraft de-iced at a remote pad do it during taxi-out, which does. The data shows which airports do which: in 2025 snow, taxi-out stretches at Paris, Munich and Istanbul, while at Heathrow the delay lands before off-block instead.</p>
+  </div>
+  <figure>
+    <div class="legend"><span><i style="background:var(--edge)"></i>extra taxi-out in snow</span><span><i style="background:var(--ink-3)"></i>extra wait before off-block in snow</span></div>
+    <div class="chart" id="c-deice"></div>
+    <figcaption>Winter 2025 departures (January, February, November, December): median in snow or freezing precipitation minus median in mild dry weather (above 3°C, no precipitation), from METARs at take-off. Airports with fewer than 50 snow departures are omitted.</figcaption>
+  </figure>
+  <div class="metar" id="metar"></div>
+  <div class="col">
+    <p>The months held back for validation could not show this. January 2025 was mild at most of these airports; January 2026 was not.</p>
+  </div>
+  <figure>
+    <div class="legend"><span><i style="background:var(--ink-3)"></i>January 2025 (validation)</span><span><i style="background:var(--stop)"></i>January 2026 (scored)</span></div>
+    <div class="chart" id="c-snow"></div>
+    <figcaption>Share of departures taking off in snow or freezing precipitation, from the METAR nearest before take-off.</figcaption>
+  </figure>
+  <div class="col">
+    <p>Runway use moved as well. Heathrow ran easterly, taking off from 09R, far more often in 2026. Paris used 27R for departures in July 2025, apparently during works on the northern runways, and not at all in July 2026. The model learned its runway and queue effects from 2025's mix.</p>
+  </div>
+  <figure>
+    <div class="legend"><span><i style="background:var(--ink-3)"></i>2025</span><span><i style="background:var(--edge)"></i>2026</span></div>
+    <div class="chart" id="c-shift"></div>
+    <figcaption>For each airport, the departure runway whose share changed most between the same month of 2025 and 2026 (January or July, whichever moved more).</figcaption>
+  </figure>
+</section>
+
+<section id="takeoff">
+  <div class="signs"><span class="sign stop" id="rwy-sign">09R-27L</span><span class="sign loc">H</span></div>
+  <div class="col">
+    <h2>Cleared for take-off</h2>
+    <p>Each upload to the competition is scored on the real January and July 2026 flights, and only a team's best score counts. The validation score has tracked the test score only loosely: the first model did better on the test set than on validation, later ones did worse, which is what a snowier January and a different runway mix would produce.</p>
+  </div>
+  <figure>
+    <div class="legend"><span><i style="background:var(--ink-3)"></i>other teams, best score</span><span><i style="background:var(--edge)"></i>our uploads, test</span><span><i style="border:2px solid var(--edge);background:transparent"></i>same, validation</span></div>
+    <div class="chart" id="c-board"></div>
+    <figcaption id="lb-cap"></figcaption>
+  </figure>
+  <div class="col">
+    <h3>Still ahead</h3>
+    <ul>
+      <li><strong>Winter, measured on a winter.</strong> The live reading of how far other departures run over their reference is in the model, but January 2025 was too mild to show its de-icing side. A February and December 2025 holdout can.</li>
+      <li><strong>Stands that opened in 2026.</strong> Munich's stands 103 to 108 and a handful of new Frankfurt positions (consistent with its Terminal 3 opening) never appear in 2025. They now borrow a reference from neighbouring stands or their runway; only the 2026 score can say what that is worth.</li>
+      <li><strong>Where the validation gain went.</strong> Uploads that differ from the last one in a single airport or month measure each slice's real 2026 contribution, which validation cannot.</li>
+      <li><strong>Rome.</strong> Still the airport with the largest error per flight, almost all of it from off-blocks copied from the schedule on delayed flights.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="references">
+  <div class="signs"><span class="sign loc">INFO</span></div>
+  <div class="col">
+    <h2>References</h2>
+    <ol class="refs">
+      <li>EUROCONTROL Performance Review Commission and OpenSky Network, <a href="https://prc-data-challenge-2026.netlify.app/" target="_blank" rel="noopener">PRC Data Challenge 2026</a>: overview, data description and ranking rules. <span class="src">prc-data-challenge-2026.netlify.app</span></li>
+      <li>EUROCONTROL, <a href="https://ansperformance.eu/library/ATXOT_indicator_documentation_mar23.pdf" target="_blank" rel="noopener">Additional taxi-out time performance indicator document</a>, Edition 01.00, March 2023. Reference taxi time as the 10th percentile per stand and runway. <span class="src">ansperformance.eu</span></li>
+      <li>EUROCONTROL, <a href="https://www.eurocontrol.int/sites/default/files/2019-10/ao-data-flow-specs.pdf" target="_blank" rel="noopener">Airport Operator Data Flow, Data Specification</a>, Edition 00-11. Definitions of AOBT, ATOT and the de-icing indicator. <span class="src">eurocontrol.int</span></li>
+      <li>EUROCONTROL, <a href="https://www.eurocontrol.int/sites/default/files/2025-01/eurocontrol-specification-for-acdm.pdf" target="_blank" rel="noopener">Specification for Airport Collaborative Decision Making</a>, Edition 1.0, January 2025. TOBT, TSAT, TTOT and pre-departure sequencing. <span class="src">eurocontrol.int</span></li>
+      <li>EUROCONTROL, <a href="https://www.eurocontrol.int/sites/default/files/2025-06/eurocontrol-dpi-impl-guide-2-700.pdf.pdf" target="_blank" rel="noopener">Network Manager DPI Implementation Guide</a>, Edition 2.700. How A-CDM airports send off-block and taxi times to the Network Manager. <span class="src">eurocontrol.int</span></li>
+      <li>EUROCONTROL, <a href="https://www.eurocontrol.int/publication/european-wake-turbulence-categorisation-and-separation-minima-approach-and-departure" target="_blank" rel="noopener">RECAT-EU wake turbulence categorisation and separation minima</a>. <span class="src">eurocontrol.int</span></li>
+      <li>Aviation Intelligence Portal, <a href="https://ansperformance.eu/definition/slot-tolerance-window/" target="_blank" rel="noopener">slot tolerance window</a> (−5 to +10 minutes around a CTOT). <span class="src">ansperformance.eu</span></li>
+      <li>Heathrow Airport, <a href="https://www.heathrow.com/company/local-community/noise/operations/runway-alternation" target="_blank" rel="noopener">runway alternation</a> and <a href="https://www.heathrow.com/content/dam/heathrow/web/common/documents/company/team-heathrow/airside/winter-operations/HADIP-Winter-2019-20.pdf" target="_blank" rel="noopener">Aircraft De-icing Plan</a>. <span class="src">heathrow.com</span></li>
+      <li>Amsterdam Airport Schiphol, <a href="https://www.schiphol.nl/en/schiphol-as-a-neighbour/noise-and-runway-combinations/" target="_blank" rel="noopener">noise and runway combinations</a>. Preferential runways 36L and 24 for take-off. <span class="src">schiphol.nl</span></li>
+      <li>Flughafen Zürich, <a href="https://www.flughafen-zuerich.ch/en/company/responsibility/noise-and-sound-insulation/flight-operations/operating-concepts" target="_blank" rel="noopener">operating concepts</a>. Runway use by time of day. <span class="src">flughafen-zuerich.ch</span></li>
+      <li>Fraport, <a href="https://www.fraport.com/en/sustainability/dialog-with-neighbors/noise-and-air/flight-operations/runway-system-and-operating-hours.html" target="_blank" rel="noopener">runway system and operating hours</a>. Runway 18 West for southbound take-offs only. <span class="src">fraport.com</span></li>
+      <li>Iowa Environmental Mesonet, <a href="https://mesonet.agron.iastate.edu/request/download.phtml" target="_blank" rel="noopener">ASOS / METAR archive</a>. Weather at the ten airports, January 2025 to July 2026. <span class="src">mesonet.agron.iastate.edu</span></li>
+      <li>ICAO, Doc 4444 PANS-ATM: wake turbulence categories and departure separation; ICAO Doc 9432, Manual of Radiotelephony.</li>
+    </ol>
+  </div>
+</section>
+
+<footer id="foot"></footer>
+</main>
 </div>
 
-<script type="application/json" id="d">{"rmse_final":383.6,"rmse_single":475.5,"rmse_before_mixture":409.4,"mae_final":164.1,"mae_single":166.6,"rmse_predict_mean":686.2,"rmse_if_orphans_perfect":290.0,"rmse_if_joined_perfect":251.2,"target":{"mean":1012.1,"sd":686.2,"p50":923.0,"p90":1505.0},"concentration":[[0.0,0.0],[0.00034,0.5272],[0.00068,0.5662],[0.00102,0.5889],[0.00136,0.6051],[0.00169,0.6176],[0.00203,0.6279],[0.00237,0.6366],[0.00271,0.6445],[0.00305,0.6514],[0.00339,0.6575],[0.00373,0.663],[0.00407,0.6681],[0.00441,0.6729],[0.00475,0.6773],[0.00508,0.6813],[0.00542,0.6852],[0.00576,0.6888],[0.0061,0.6923],[0.00644,0.6956],[0.00678,0.6987],[0.00712,0.7017],[0.00746,0.7046],[0.0078,0.7073],[0.00814,0.7099],[0.00847,0.7124],[0.00881,0.7148],[0.00915,0.7171],[0.00949,0.7194],[0.00983,0.7215],[0.01017,0.7236],[0.01051,0.7256],[0.01085,0.7275],[0.01119,0.7294],[0.01153,0.7313],[0.01186,0.733],[0.0122,0.7348],[0.01254,0.7364],[0.01288,0.7381],[0.01322,0.7397],[0.01356,0.7412],[0.0139,0.7427],[0.01424,0.7442],[0.01458,0.7457],[0.01492,0.7471],[0.01525,0.7485],[0.01559,0.7499],[0.01593,0.7512],[0.01627,0.7525],[0.01661,0.7538],[0.01695,0.7551],[0.01729,0.7563],[0.01763,0.7576],[0.01797,0.7588],[0.01831,0.7599],[0.01864,0.7611],[0.01898,0.7622],[0.01932,0.7634],[0.01966,0.7645],[0.02,0.7656],[0.02462,0.779],[0.02923,0.7905],[0.03385,0.8004],[0.03846,0.8092],[0.04308,0.8171],[0.04769,0.8243],[0.05231,0.8309],[0.05692,0.8369],[0.06154,0.8426],[0.06615,0.848],[0.07077,0.853],[0.07538,0.8577],[0.08,0.8621],[0.08462,0.8664],[0.08923,0.8704],[0.09385,0.8742],[0.09846,0.8779],[0.10308,0.8814],[0.10769,0.8848],[0.11231,0.888],[0.11692,0.8911],[0.12154,0.8941],[0.12615,0.897],[0.13077,0.8997],[0.13538,0.9024],[0.14,0.905],[0.14462,0.9075],[0.14923,0.9099],[0.15385,0.9122],[0.15846,0.9145],[0.16308,0.9167],[0.16769,0.9188],[0.17231,0.9209],[0.17692,0.9229],[0.18154,0.9248],[0.18615,0.9267],[0.19077,0.9285],[0.19538,0.9303],[0.2,0.932],[0.22759,0.9414],[0.25517,0.9495],[0.28276,0.9564],[0.31034,0.9625],[0.33793,0.9677],[0.36552,0.9724],[0.3931,0.9764],[0.42069,0.9799],[0.44828,0.983],[0.47586,0.9857],[0.50345,0.988],[0.53103,0.9901],[0.55862,0.9918],[0.58621,0.9934],[0.61379,0.9947],[0.64138,0.9958],[0.66897,0.9967],[0.69655,0.9975],[0.72414,0.9981],[0.75172,0.9986],[0.77931,0.9991],[0.8069,0.9994],[0.83448,0.9996],[0.86207,0.9998],[0.88966,0.9999],[0.91724,1.0],[0.94483,1.0],[0.97241,1.0],[1.0,1.0]],"groups":{"joined":{"n":339046,"share":0.9844,"rmse":292.3,"err_share":0.5714,"rmse_before":292.3,"err_share_before":0.5018,"mean":1005.1,"sd":476.2,"p50":921.0,"p99":2579.5,"max":87002.0,"mae":157.9},"orphan":{"n":5373,"share":0.0156,"rmse":2010.8,"err_share":0.4286,"rmse_before":2313.7,"err_share_before":0.4982,"mean":1456.8,"sd":3958.2,"p50":976.0,"p99":11049.1,"max":88132.0,"mae":557.9}},"hist":{"bin_sec":120,"n_bins":40,"counts":{"joined":[203,1408,4372,10771,25239,42146,49907,48068,41223,32537,24564,17242,12140,8314,5688,3844,2589,1743,1433,1043,823,690,521,432,362,290,228,167,160,123,90,87,58,61,59,47,45,31,38,22,238],"orphan":[191,135,134,135,284,459,579,640,596,534,418,292,217,151,117,71,54,32,28,20,16,10,10,8,7,7,6,6,5,5,7,5,5,1,2,1,6,8,2,1,168]}},"clip":[[1800,580.5],[2700,562.8],[3600,554.1],[5400,541.7],[7200,532.0],[10800,515.1],[14400,498.8],[21600,470.1],[43200,410.7],[86400,383.1]],"monthly":[[1,604.8],[2,628.3],[3,461.7],[4,436.0],[5,469.4],[6,554.9],[7,745.0],[8,533.8],[9,560.3],[10,437.1],[11,532.0],[12,514.7]],"identity":{"max_abs_error":0.0,"rows":2085047},"strategies":[{"name":"Guess the group average for no-record flights","rmse":573.8,"verdict":"rejected","note":"much worse: the model does find a pattern in these flights"},{"name":"Tell a single model which fields are blank","rmse":474.8,"verdict":"rejected","note":"slightly worse than the 471.7s single model it was tested against"},{"name":"One model for every flight","rmse":475.5,"verdict":"baseline","note":"the starting point"},{"name":"A separate model for no-record flights","rmse":442.5,"verdict":"kept","note":"splitting the problem in two"},{"name":"Give the model the airline","rmse":419.3,"verdict":"rejected","note":"worse than the 409.4s it was added to: the model memorised airlines"},{"name":"Make that separate model simpler","rmse":415.8,"verdict":"kept","note":"a small group needs a small model, or it memorises"},{"name":"Tell the separate model which fields are blank","rmse":409.4,"verdict":"kept","note":"helps tell no-record flights apart from each other"},{"name":"Hedge between the schedule gap and a normal taxi","rmse":383.6,"verdict":"shipped","note":"the blend described in section 08"}],"negative":{"n":369,"lszh":298,"min":-12},"artifact":{"orphans":22470,"lirf_orphans":1488,"lirf_at_share":0.485,"other_at_share":0.019,"lirf_dev_share":0.873,"by_airport":[{"adep":"LIRF","n":1488,"at_share":0.485,"dev_share":0.873},{"adep":"LFPG","n":3773,"at_share":0.003,"dev_share":0.046},{"adep":"LSZH","n":2291,"at_share":0.023,"dev_share":0.037},{"adep":"LTFM","n":3645,"at_share":0.05,"dev_share":0.018},{"adep":"EHAM","n":4084,"at_share":0.027,"dev_share":0.014},{"adep":"EGLL","n":1414,"at_share":0.003,"dev_share":0.005},{"adep":"EDDF","n":1956,"at_share":0.002,"dev_share":0.002},{"adep":"EDDM","n":1010,"at_share":0.0,"dev_share":0.002},{"adep":"LEBL","n":1862,"at_share":0.019,"dev_share":0.002},{"adep":"LEMD","n":947,"at_share":0.002,"dev_share":0.001}],"lirf_by_gap":[{"lo_h":null,"hi_h":1,"n":113,"at_share":0.407,"day_shift":0,"y_over_gap":3.04},{"lo_h":1,"hi_h":2,"n":748,"at_share":0.373,"day_shift":0,"y_over_gap":0.5},{"lo_h":2,"hi_h":3,"n":384,"at_share":0.604,"day_shift":0,"y_over_gap":0.67},{"lo_h":3,"hi_h":4,"n":116,"at_share":0.543,"day_shift":1,"y_over_gap":0.66},{"lo_h":4,"hi_h":6,"n":64,"at_share":0.781,"day_shift":0,"y_over_gap":0.8},{"lo_h":6,"hi_h":8,"n":13,"at_share":0.923,"day_shift":0,"y_over_gap":0.93},{"lo_h":8,"hi_h":12,"n":21,"at_share":1.0,"day_shift":0,"y_over_gap":1.0},{"lo_h":12,"hi_h":18,"n":21,"at_share":0.762,"day_shift":5,"y_over_gap":1.13},{"lo_h":18,"hi_h":24,"n":6,"at_share":0.167,"day_shift":5,"y_over_gap":1.15},{"lo_h":24,"hi_h":null,"n":2,"at_share":0.5,"day_shift":2,"y_over_gap":0.97}],"over_6h":{"n":69,"orphan":68,"at_schedule":52,"day_shift":14,"unexplained":4}}}</script>
+<script type="application/json" id="d">{"rmse_final":343.6,"rmse_before_mixture":371.7,"mae_final":152.2,"rmse_predict_mean":686.2,"rmse_if_orphans_perfect":234.2,"rmse_if_joined_perfect":251.5,"target":{"mean":1012.1,"sd":686.2,"p50":923.0,"p90":1505.0},"concentration":[[0.0,0.0],[0.00034,0.489],[0.00068,0.5335],[0.00102,0.5585],[0.00136,0.5764],[0.00169,0.5902],[0.00203,0.6016],[0.00237,0.6113],[0.00271,0.6197],[0.00305,0.6271],[0.00339,0.6338],[0.00373,0.6397],[0.00407,0.6451],[0.00441,0.6502],[0.00475,0.6548],[0.00508,0.6591],[0.00542,0.6631],[0.00576,0.6669],[0.0061,0.6705],[0.00644,0.6739],[0.00678,0.6772],[0.00712,0.6803],[0.00746,0.6833],[0.0078,0.6861],[0.00814,0.6888],[0.00847,0.6914],[0.00881,0.6939],[0.00915,0.6964],[0.00949,0.6987],[0.00983,0.7009],[0.01017,0.7031],[0.01051,0.7052],[0.01085,0.7072],[0.01119,0.7092],[0.01153,0.7111],[0.01186,0.713],[0.0122,0.7148],[0.01254,0.7166],[0.01288,0.7183],[0.01322,0.72],[0.01356,0.7216],[0.0139,0.7232],[0.01424,0.7248],[0.01458,0.7263],[0.01492,0.7279],[0.01525,0.7293],[0.01559,0.7308],[0.01593,0.7322],[0.01627,0.7336],[0.01661,0.7349],[0.01695,0.7362],[0.01729,0.7375],[0.01763,0.7388],[0.01797,0.7401],[0.01831,0.7413],[0.01864,0.7426],[0.01898,0.7438],[0.01932,0.745],[0.01966,0.7461],[0.02,0.7473],[0.02462,0.7616],[0.02923,0.7738],[0.03385,0.7844],[0.03846,0.7939],[0.04308,0.8024],[0.04769,0.8102],[0.05231,0.8174],[0.05692,0.824],[0.06154,0.8302],[0.06615,0.836],[0.07077,0.8415],[0.07538,0.8466],[0.08,0.8515],[0.08462,0.8561],[0.08923,0.8605],[0.09385,0.8647],[0.09846,0.8687],[0.10308,0.8725],[0.10769,0.8762],[0.11231,0.8797],[0.11692,0.8831],[0.12154,0.8863],[0.12615,0.8894],[0.13077,0.8924],[0.13538,0.8953],[0.14,0.8981],[0.14462,0.9008],[0.14923,0.9034],[0.15385,0.9059],[0.15846,0.9084],[0.16308,0.9107],[0.16769,0.913],[0.17231,0.9153],[0.17692,0.9174],[0.18154,0.9195],[0.18615,0.9215],[0.19077,0.9235],[0.19538,0.9254],[0.2,0.9273],[0.22759,0.9375],[0.25517,0.9462],[0.28276,0.9537],[0.31034,0.9602],[0.33793,0.9658],[0.36552,0.9707],[0.3931,0.975],[0.42069,0.9788],[0.44828,0.982],[0.47586,0.9849],[0.50345,0.9874],[0.53103,0.9896],[0.55862,0.9914],[0.58621,0.993],[0.61379,0.9944],[0.64138,0.9956],[0.66897,0.9966],[0.69655,0.9974],[0.72414,0.9981],[0.75172,0.9986],[0.77931,0.999],[0.8069,0.9994],[0.83448,0.9996],[0.86207,0.9998],[0.88966,0.9999],[0.91724,1.0],[0.94483,1.0],[0.97241,1.0],[1.0,1.0]],"groups":{"joined":{"n":339046,"share":0.9844,"rmse":236.0,"err_share":0.4644,"rmse_before":236.0,"err_share_before":0.3968,"mean":1005.1,"sd":476.2,"p50":921.0,"p99":2579.5,"max":87002.0,"mae":145.7},"orphan":{"n":5373,"share":0.0156,"rmse":2013.4,"err_share":0.5356,"rmse_before":2311.4,"err_share_before":0.6032,"mean":1456.8,"sd":3958.2,"p50":976.0,"p99":11049.1,"max":88132.0,"mae":563.1}},"hist":{"bin_sec":120,"n_bins":40,"counts":{"joined":[203,1408,4372,10771,25239,42146,49907,48068,41223,32537,24564,17242,12140,8314,5688,3844,2589,1743,1433,1043,823,690,521,432,362,290,228,167,160,123,90,87,58,61,59,47,45,31,38,22,238],"orphan":[191,135,134,135,284,459,579,640,596,534,418,292,217,151,117,71,54,32,28,20,16,10,10,8,7,7,6,6,5,5,7,5,5,1,2,1,6,8,2,1,168]}},"clip":[[1800,575.4],[2700,555.7],[3600,545.5],[5400,531.6],[7200,520.8],[10800,501.9],[14400,483.5],[21600,450.6],[43200,379.2],[86400,343.0]],"monthly":[[1,604.8],[2,628.3],[3,461.7],[4,436.0],[5,469.4],[6,554.9],[7,745.0],[8,533.8],[9,560.3],[10,437.1],[11,532.0],[12,514.7]],"identity":{"max_abs_error":0.0,"rows":2085047},"negative":{"n":369,"lszh":298,"min":-12},"artifact":{"orphans":22470,"lirf_orphans":1488,"lirf_at_share":0.485,"other_at_share":0.019,"lirf_dev_share":0.873,"by_airport":[{"adep":"LIRF","n":1488,"at_share":0.485,"dev_share":0.873},{"adep":"LFPG","n":3773,"at_share":0.003,"dev_share":0.046},{"adep":"LSZH","n":2291,"at_share":0.023,"dev_share":0.037},{"adep":"LTFM","n":3645,"at_share":0.05,"dev_share":0.018},{"adep":"EHAM","n":4084,"at_share":0.027,"dev_share":0.014},{"adep":"EGLL","n":1414,"at_share":0.003,"dev_share":0.005},{"adep":"EDDF","n":1956,"at_share":0.002,"dev_share":0.002},{"adep":"EDDM","n":1010,"at_share":0.0,"dev_share":0.002},{"adep":"LEBL","n":1862,"at_share":0.019,"dev_share":0.002},{"adep":"LEMD","n":947,"at_share":0.002,"dev_share":0.001}],"lirf_by_gap":[{"lo_h":null,"hi_h":1,"n":113,"at_share":0.407,"day_shift":0,"y_over_gap":3.04},{"lo_h":1,"hi_h":2,"n":748,"at_share":0.373,"day_shift":0,"y_over_gap":0.5},{"lo_h":2,"hi_h":3,"n":384,"at_share":0.604,"day_shift":0,"y_over_gap":0.67},{"lo_h":3,"hi_h":4,"n":116,"at_share":0.543,"day_shift":1,"y_over_gap":0.66},{"lo_h":4,"hi_h":6,"n":64,"at_share":0.781,"day_shift":0,"y_over_gap":0.8},{"lo_h":6,"hi_h":8,"n":13,"at_share":0.923,"day_shift":0,"y_over_gap":0.93},{"lo_h":8,"hi_h":12,"n":21,"at_share":1.0,"day_shift":0,"y_over_gap":1.0},{"lo_h":12,"hi_h":18,"n":21,"at_share":0.762,"day_shift":5,"y_over_gap":1.13},{"lo_h":18,"hi_h":24,"n":6,"at_share":0.167,"day_shift":5,"y_over_gap":1.15},{"lo_h":24,"hi_h":null,"n":2,"at_share":0.5,"day_shift":2,"y_over_gap":0.97}],"over_6h":{"n":69,"orphan":68,"at_schedule":52,"day_shift":14,"unexplained":4}},"airports":[{"icao":"EDDF","name":"Frankfurt","deps":230141,"deps_2026":36317,"p10":478.0,"p50":837.0,"p90":1251.0,"at_share":0.0123,"no_nm":0.0085,"runways":[{"rwy":"18","share":0.6084,"p50":888.0,"jan25":0.636,"jan26":0.6239,"jul25":0.6473,"jul26":0.634},{"rwy":"25C","share":0.2,"p50":735.0,"jan25":0.251,"jan26":0.1735,"jul25":0.28,"jul26":0.2084},{"rwy":"07C","share":0.1877,"p50":777.0,"jan25":0.1104,"jan26":0.1995,"jul25":0.0698,"jul26":0.1504}],"arrivals":[{"rwy":"25L","share":0.2887},{"rwy":"25R","share":0.2127},{"rwy":"07R","share":0.2108},{"rwy":"07L","share":0.1753},{"rwy":"25C","share":0.1099}]},{"icao":"EDDM","name":"Munich","deps":167334,"deps_2026":25966,"p10":533.0,"p50":774.0,"p90":1135.0,"at_share":0.0498,"no_nm":0.006,"runways":[{"rwy":"26L","share":0.3455,"p50":720.0,"jan25":0.3482,"jan26":0.3284,"jul25":0.4745,"jul26":0.4739},{"rwy":"26R","share":0.2342,"p50":774.0,"jan25":0.2809,"jan26":0.2485,"jul25":0.3187,"jul26":0.2911},{"rwy":"08R","share":0.2217,"p50":847.0,"jan25":0.1782,"jan26":0.1712,"jul25":0.1245,"jul26":0.1384},{"rwy":"08L","share":0.1987,"p50":721.0,"jan25":0.1926,"jan26":0.2519,"jul25":0.0823,"jul26":0.0966}],"arrivals":[{"rwy":"26R","share":0.3164},{"rwy":"26L","share":0.2621},{"rwy":"08R","share":0.2302},{"rwy":"08L","share":0.1913}]},{"icao":"EGLL","name":"London Heathrow","deps":239546,"deps_2026":39840,"p10":909.0,"p50":1319.0,"p90":1806.0,"at_share":0.0487,"no_nm":0.0059,"runways":[{"rwy":"09R","share":0.3655,"p50":1310.0,"jan25":0.2018,"jan26":0.4636,"jul25":0.1128,"jul26":0.3827},{"rwy":"27R","share":0.3216,"p50":1368.0,"jan25":0.4089,"jan26":0.2633,"jul25":0.4446,"jul26":0.2994},{"rwy":"27L","share":0.3124,"p50":1317.0,"jan25":0.3883,"jan26":0.2731,"jul25":0.4425,"jul26":0.3116}],"arrivals":[{"rwy":"09L","share":0.3512},{"rwy":"27L","share":0.3256},{"rwy":"27R","share":0.3092},{"rwy":"09R","share":0.014}]},{"icao":"EHAM","name":"Amsterdam Schiphol","deps":247951,"deps_2026":38182,"p10":458.0,"p50":742.0,"p90":1157.0,"at_share":0.0125,"no_nm":0.0165,"runways":[{"rwy":"24","share":0.3438,"p50":627.0,"jan25":0.4332,"jan26":0.3201,"jul25":0.3264,"jul26":0.2285},{"rwy":"36L","share":0.2363,"p50":1049.0,"jan25":0.1265,"jan26":0.1167,"jul25":0.2973,"jul26":0.4081},{"rwy":"18L","share":0.2242,"p50":701.0,"jan25":0.371,"jan26":0.3742,"jul25":0.1605,"jul26":0.0862},{"rwy":"36C","share":0.1246,"p50":711.0,"jan25":0.0292,"jan26":0.0495,"jul25":0.1805,"jul26":0.2237},{"rwy":"09","share":0.0317,"p50":800.0,"jan25":0.0126,"jan26":0.054,"jul25":0,"jul26":0.0184},{"rwy":"22","share":0.0189,"p50":238.0,"jan25":0.021,"jan26":0.0161,"jul25":0.0169,"jul26":0.0125},{"rwy":"04","share":0.0114,"p50":341.0,"jan25":0.0021,"jan26":0.0068,"jul25":0.0159,"jul26":0.0217},{"rwy":"18C","share":0.0081,"p50":848.0,"jan25":0.0037,"jan26":0.0619,"jul25":0.0026,"jul26":0.0006}],"arrivals":[{"rwy":"18R","share":0.3726},{"rwy":"06","share":0.2431},{"rwy":"18C","share":0.1516},{"rwy":"36R","share":0.1152},{"rwy":"27","share":0.0422},{"rwy":"22","share":0.0393},{"rwy":"36C","share":0.0286}]},{"icao":"LEBL","name":"Barcelona","deps":179705,"deps_2026":30080,"p10":595.0,"p50":906.0,"p90":1357.0,"at_share":0.0561,"no_nm":0.0104,"runways":[{"rwy":"24L","share":0.6929,"p50":914.0,"jan25":0.8018,"jan26":0.7487,"jul25":0.745,"jul26":0.5927},{"rwy":"06R","share":0.2913,"p50":876.0,"jan25":0.1864,"jan26":0.2298,"jul25":0.2322,"jul26":0.387},{"rwy":"24R","share":0.01,"p50":1184.0,"jan25":0.0066,"jan26":0.0146,"jul25":0.0162,"jul26":0.0116},{"rwy":"06L","share":0.0058,"p50":882.0,"jan25":0.0052,"jan26":0.0069,"jul25":0.0065,"jul26":0.0088}],"arrivals":[{"rwy":"24R","share":0.6523},{"rwy":"06L","share":0.1939},{"rwy":"02","share":0.1224},{"rwy":"24L","share":0.0314}]},{"icao":"LEMD","name":"Madrid","deps":212242,"deps_2026":36954,"p10":656.0,"p50":985.0,"p90":1402.0,"at_share":0.0446,"no_nm":0.0045,"runways":[{"rwy":"36R","share":0.3991,"p50":1050.0,"jan25":0.338,"jan26":0.4252,"jul25":0.3832,"jul26":0.3002},{"rwy":"36L","share":0.3967,"p50":903.0,"jan25":0.3527,"jan26":0.3982,"jul25":0.4116,"jul26":0.3508},{"rwy":"14L","share":0.1209,"p50":1051.0,"jan25":0.1866,"jan26":0.1057,"jul25":0.1189,"jul26":0.1847},{"rwy":"14R","share":0.0832,"p50":910.0,"jan25":0.1228,"jan26":0.0708,"jul25":0.0864,"jul26":0.1642}],"arrivals":[{"rwy":"32R","share":0.4299},{"rwy":"32L","share":0.37},{"rwy":"18L","share":0.1156},{"rwy":"18R","share":0.0845}]},{"icao":"LFPG","name":"Paris Charles de Gaulle","deps":239552,"deps_2026":39872,"p10":655.0,"p50":954.0,"p90":1444.0,"at_share":0.0413,"no_nm":0.0158,"runways":[{"rwy":"08L","share":0.3139,"p50":903.0,"jan25":0.2717,"jan26":0.2179,"jul25":0.1231,"jul26":0.3133},{"rwy":"26R","share":0.3003,"p50":906.0,"jan25":0.2793,"jan26":0.363,"jul25":0.495,"jul26":0.2532},{"rwy":"09R","share":0.134,"p50":1012.0,"jan25":0.1907,"jan26":0.1219,"jul25":0.0665,"jul26":0.2228},{"rwy":"27L","share":0.1121,"p50":908.0,"jan25":0.256,"jan26":0.2953,"jul25":0.1419,"jul26":0.2044},{"rwy":"27R","share":0.0898,"p50":1030.0,"jan25":0.0003,"jan26":0.0004,"jul25":0.161,"jul26":0.0007},{"rwy":"09L","share":0.0482,"p50":1085.0,"jan25":0.0006,"jan26":0.0002,"jul25":0.0111,"jul26":0.0007}],"arrivals":[{"rwy":"26L","share":0.3162},{"rwy":"08R","share":0.2904},{"rwy":"09L","share":0.1703},{"rwy":"27R","share":0.1594},{"rwy":"09R","share":0.0349},{"rwy":"27L","share":0.0208}]},{"icao":"LIRF","name":"Rome Fiumicino","deps":160704,"deps_2026":26899,"p10":670.0,"p50":1025.0,"p90":1689.0,"at_share":0.181,"no_nm":0.0093,"runways":[{"rwy":"25","share":0.9007,"p50":1013.0,"jan25":0.791,"jan26":0.9191,"jul25":0.9078,"jul26":0.8862},{"rwy":"16R","share":0.0698,"p50":1332.0,"jan25":0.1092,"jan26":0.0742,"jul25":0.0798,"jul26":0.0975},{"rwy":"34L","share":0.0258,"p50":1211.0,"jan25":0.096,"jan26":0.0044,"jul25":0.0085,"jul26":0.0104}],"arrivals":[{"rwy":"16L","share":0.6984},{"rwy":"16R","share":0.1448},{"rwy":"34R","share":0.1281},{"rwy":"34L","share":0.0281}]},{"icao":"LSZH","name":"Zurich","deps":134907,"deps_2026":23150,"p10":400.0,"p50":711.0,"p90":1080.0,"at_share":0.0113,"no_nm":0.017,"runways":[{"rwy":"28","share":0.6286,"p50":673.0,"jan25":0.6198,"jan26":0.7116,"jul25":0.5733,"jul26":0.5882},{"rwy":"32","share":0.2437,"p50":719.0,"jan25":0.2637,"jan26":0.1723,"jul25":0.3125,"jul26":0.2884},{"rwy":"16","share":0.0955,"p50":973.0,"jan25":0.0864,"jan26":0.1036,"jul25":0.0987,"jul26":0.0987},{"rwy":"10","share":0.019,"p50":822.0,"jan25":0.0123,"jan26":0,"jul25":0,"jul26":0.0094},{"rwy":"34","share":0.0103,"p50":876.0,"jan25":0.0117,"jan26":0.0087,"jul25":0.0125,"jul26":0.0122}],"arrivals":[{"rwy":"14","share":0.698},{"rwy":"28","share":0.2006},{"rwy":"34","share":0.0973}]},{"icao":"LTFM","name":"Istanbul","deps":272965,"deps_2026":47581,"p10":662.0,"p50":963.0,"p90":1502.0,"at_share":0.0515,"no_nm":0.0134,"runways":[{"rwy":"36","share":0.4622,"p50":891.0,"jan25":0.3395,"jan26":0.2561,"jul25":0.5331,"jul26":0.5169},{"rwy":"35L","share":0.2926,"p50":1011.0,"jan25":0.2131,"jan26":0.1727,"jul25":0.3781,"jul26":0.3923},{"rwy":"18","share":0.116,"p50":1018.0,"jan25":0.2654,"jan26":0.3028,"jul25":0.0172,"jul26":0.0263},{"rwy":"17R","share":0.0769,"p50":1267.0,"jan25":0.171,"jan26":0.1952,"jul25":0.0145,"jul26":0.0189},{"rwy":"34L","share":0.0322,"p50":1314.0,"jan25":0.0,"jan26":0.0429,"jul25":0.0462,"jul26":0.0426},{"rwy":"35R","share":0.0119,"p50":1028.0,"jan25":0.0017,"jan26":0.0044,"jul25":0.0091,"jul26":0.0015},{"rwy":"16R","share":0.0056,"p50":1672.0,"jan25":0.0004,"jan26":0.0239,"jul25":0.0015,"jul26":0.0015}],"arrivals":[{"rwy":"35R","share":0.4055},{"rwy":"34L","share":0.3001},{"rwy":"17L","share":0.1028},{"rwy":"36","share":0.0949},{"rwy":"16R","share":0.0789},{"rwy":"18","share":0.0177}]}],"snow":[{"icao":"EDDF","jan25":0.0073,"jan26":0.0753},{"icao":"EDDM","jan25":0.0523,"jan26":0.1072},{"icao":"EGLL","jan25":0.0067,"jan26":0.0009},{"icao":"EHAM","jan25":0.0346,"jan26":0.0524},{"icao":"LEBL","jan25":0.0,"jan26":0.0},{"icao":"LEMD","jan25":0.0002,"jan26":0.0004},{"icao":"LFPG","jan25":0.0251,"jan26":0.0135},{"icao":"LIRF","jan25":0.0,"jan26":0.0},{"icao":"LSZH","jan25":0.0456,"jan26":0.1338},{"icao":"LTFM","jan25":0.0,"jan26":0.0846}],"deicing":[{"icao":"EDDF","n_snow":535,"taxi_extra":146.0,"delay_extra":290.0},{"icao":"EDDM","n_snow":2193,"taxi_extra":669.0,"delay_extra":359.0},{"icao":"EGLL","n_snow":198,"taxi_extra":124.0,"delay_extra":835.5},{"icao":"EHAM","n_snow":1214,"taxi_extra":142.5,"delay_extra":484.5},{"icao":"LEBL","n_snow":0},{"icao":"LEMD","n_snow":7},{"icao":"LFPG","n_snow":874,"taxi_extra":1193.5,"delay_extra":536.0},{"icao":"LIRF","n_snow":0},{"icao":"LSZH","n_snow":1080,"taxi_extra":264.5,"delay_extra":439.0},{"icao":"LTFM","n_snow":3202,"taxi_extra":421.0,"delay_extra":180.0}],"lirf_matched":{"n":159216,"at_share":0.1782,"long_at_share":0.7717,"long_n":1222,"by_late":[{"label":"early","n":36000,"at_share":0.1729},{"label":"0–5 min","n":25540,"at_share":0.3721},{"label":"5–15 min","n":38756,"at_share":0.213},{"label":"15–60 min","n":49845,"at_share":0.0806},{"label":"1–2 h","n":7094,"at_share":0.0506},{"label":"over 2 h","n":1981,"at_share":0.0056}]},"ladder":[{"name":"One model for every flight","rmse":475.5},{"name":"A separate model for flights with no flight-plan record","rmse":442.5},{"name":"Make that model small, so it cannot memorise","rmse":415.8},{"name":"Tell it which fields are blank","rmse":409.4},{"name":"Hedge between the schedule gap and a normal taxi","rmse":383.6},{"name":"Read the airport around each flight: arrivals, stands, queues","rmse":378.0},{"name":"Use the flight plan: airline, destination, planned off-block","rmse":370.3},{"name":"Train longer (1,200 rounds)","rmse":369.6},{"name":"Hedge for flights with a record too","rmse":352.4},{"name":"Weather, and keep the small model's inputs small","rmse":346.1},{"name":"Read how far the airport's other departures run over their reference, live","rmse":344.3}],"rejected":[{"name":"Weight the schedule-copy classifier by what a mistake costs","rmse":344.4,"against":344.3},{"name":"Guess the group average for no-record flights","rmse":573.8,"against":442.5},{"name":"Tell one model which fields are blank","rmse":474.8,"against":471.7},{"name":"Give the no-record model the airline","rmse":419.3,"against":409.4}],"uploads":[{"v":"v1","validation":383.6,"test":370.9},{"v":"v2","validation":346.1,"test":363.1},{"v":"v3","validation":346.6,"test":361.5}],"leaderboard":{"date":"29 September 2026","teams":201,"leader":220.7,"tenth":237.0,"quartile":277.9,"median":299.3,"ours":361.5,"rank":137},"metar":{"station":"EHAM","time":"2026-01-05 08:25 UTC","raw":"EHAM 050825Z 20009KT 0700 R18C/1200N R27/1200U R18R/0700N R06/1400U SHSN VV005 00/M00 Q1008 TEMPO 2000"},"arrivals_2026":344693}</script>
 <script>
 (function(){
 "use strict";
-var D=JSON.parse(document.getElementById("d").textContent);
-function css(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+var D=JSON.parse(document.getElementById("d").textContent||"{}");
+var NS="http://www.w3.org/2000/svg";
 function fmt(n){return Math.round(n).toLocaleString("en-GB");}
 function pct(x,d){return (100*x).toFixed(d==null?0:d)+"%";}
-function mono(s){return s+'px '+css("--mono").replace(/"/g,"'");}
-function mins(s){return (s/60).toFixed(1);}
-function set(id,txt){var e=document.getElementById(id);if(e)e.textContent=txt;}
-function fit(cv,h){
-  var w=Math.max(300,cv.parentNode.clientWidth||620),dpr=window.devicePixelRatio||1;
-  cv.style.width=w+"px";cv.style.height=h+"px";
-  cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);
-  var g=cv.getContext("2d");g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,w,h);
-  return {g:g,w:w,h:h};
-}
+function mmss(s){s=Math.round(s);return Math.floor(s/60)+":"+String(s%60).padStart(2,"0");}
+function set(id,t){var e=document.getElementById(id);if(e)e.textContent=t;}
 function el(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e;}
-function concAt(f){
-  var c=D.concentration;
-  for(var i=1;i<c.length;i++){if(c[i][0]>=f){var a=c[i-1],b=c[i],t=(f-a[0])/((b[0]-a[0])||1);return a[1]+t*(b[1]-a[1]);}}
-  return 1;
+function S(tag,attrs,txt){var e=document.createElementNS(NS,tag);for(var k in attrs)e.setAttribute(k,attrs[k]);if(txt!=null)e.textContent=txt;return e;}
+function svgIn(id,h,label){
+  var host=document.getElementById(id);host.textContent="";
+  var w=Math.max(320,Math.round(host.clientWidth||640));
+  var s=S("svg",{width:w,height:h,viewBox:"0 0 "+w+" "+h,role:"img","aria-label":label});
+  host.appendChild(s);return {s:s,w:w,h:h};
 }
-var VERDICT={rejected:"worse",baseline:"start",kept:"kept",shipped:"current"};
+function add(p,c){p.appendChild(c);return c;}
+if(!D.airports){return;}
 
-function facts(){
-  var h=document.getElementById("facts");h.textContent="";
-  [["scored by","RMSE","error in seconds, lower wins"],
-   ["scored on","Jan + Jul","2026 departures"],
-   ["airports","10","large European hubs"],
-   ["practice data","2.1M","departures, all of 2025"],
-   ["typical taxi-out",fmt(D.target.p50)+"s","about "+mins(D.target.p50)+" minutes"],
-   ["prize","€5,000","top three teams"]].forEach(function(f){
-    var d=el("div");d.appendChild(el("p","k",f[0]));
-    var v=el("p","v",f[1]);v.appendChild(document.createTextNode(" "));
-    var s=document.createElement("small");s.textContent=f[2];v.appendChild(s);
-    d.appendChild(v);h.appendChild(d);
+/* ---------- departure board ---------- */
+function remarks(){
+  var snow={};(D.snow||[]).forEach(function(r){snow[r.icao]=r;});
+  var longest=D.airports.reduce(function(a,b){return b.p50>a.p50?b:a;});
+  return D.airports.map(function(a){
+    if(a.at_share>0.1)return ["SCHED COPIED "+pct(a.at_share),"red"];
+    if(a.icao===longest.icao)return ["LONGEST TAXI","amber"];
+    var s=snow[a.icao];if(s&&s.jan26>=0.07)return ["SNOW JAN26 "+pct(s.jan26),"amber"];
+    var best=null,bd=0;
+    a.runways.forEach(function(r){[["JUL",r.jul25,r.jul26],["JAN",r.jan25,r.jan26]].forEach(function(m){
+      var d=m[2]-m[1];if(Math.abs(d)>Math.abs(bd)){bd=d;best=[r.rwy,m[0]];}});});
+    if(best&&Math.abs(bd)>=0.1)return ["RWY "+best[0]+" "+(bd>0?"+":"")+Math.round(100*bd)+"PT "+best[1],"amber"];
+    return ["ON TIME",""];
+  });
+}
+function board(){
+  var g=document.getElementById("board");g.textContent="";
+  ["Airport","ICAO","Rwy","Taxi","P90","Remarks"].forEach(function(h){g.appendChild(el("div","bh",h));});
+  var rm=remarks(),i=0;
+  function flaps(txt,n,cls){
+    var box=el("div","flaps");txt=String(txt).toUpperCase();
+    for(var k=0;k<n;k++){var c=el("span","flap"+(cls?" "+cls:""),txt[k]||" ");c.style.setProperty("--i",i++);box.appendChild(c);}
+    return box;
+  }
+  D.airports.forEach(function(a,r){
+    var city=a.name.split(" ")[0].replace("London","Heathrow").replace("Amsterdam","Schiphol").replace("Paris","Paris CDG").replace("Rome","Fiumicino");
+    g.appendChild(flaps(city,10));
+    g.appendChild(flaps(a.icao,4,"amber"));
+    g.appendChild(flaps(a.runways[0].rwy,3));
+    g.appendChild(flaps(mmss(a.p50),5));
+    g.appendChild(flaps(mmss(a.p90),5));
+    g.appendChild(flaps(rm[r][0],18,rm[r][1]));
   });
 }
 
-function text(){
-  var h=document.getElementById("scorecard");h.textContent="";
-  [["typical miss",D.mae_final,"bar-mae","The average of how far off each prediction is, ignoring direction. Under three minutes."],
-   ["the competition's score",D.rmse_final,"bar-rmse","Square each miss, average, then take the square root. The same predictions, reported as more than twice as bad."]
+/* ---------- departure diagram ---------- */
+function plane(p,x,y,rot,sc,cls){
+  var gp=add(p,S("g",{transform:"translate("+x+","+y+") rotate("+rot+") scale("+sc+")"}));
+  add(gp,S("path",{d:"M20,0 C20,-2.6 17,-3.2 13,-3.2 L-18,-2.4 Q-21,0 -18,2.4 L13,3.2 C17,3.2 20,2.6 20,0Z M3,-2.6 L-6,-17 L-10,-17 L-5,-2.6Z M3,2.6 L-6,17 L-10,17 L-5,2.6Z M-14,-2.2 L-18.5,-8 L-20.5,-8 L-18,-2.2Z M-14,2.2 L-18.5,8 L-20.5,8 L-18,2.2Z",
+    fill:"currentColor",style:"color:var("+(cls||"--ink")+")"}));
+  return gp;
+}
+function departure(){
+  var o=svgIn("c-departure",300,"A departure from stand to take-off, with the timestamps recorded along it"),s=o.s,W=o.w;
+  var x0=24,x1=W-24,span=x1-x0,Y=170;
+  var X=function(f){return x0+f*span;};
+  var stand=X(.06),push=X(.13),pad0=X(.42),pad1=X(.54),hold=X(.66),rw0=X(.69),rw1=X(.97);
+  // apron and stand
+  add(s,S("rect",{x:x0,y:Y-34,width:push-x0+10,height:68,fill:"var(--line-soft)"}));
+  add(s,S("line",{x1:stand,y1:Y-34,x2:stand,y2:Y+34,stroke:"var(--taxi-bright)","stroke-width":2,"stroke-dasharray":"4 3"}));
+  plane(s,stand+2,Y-14,90,0.95,"--ink-2");
+  // taxiway centreline with edge lights
+  add(s,S("path",{d:"M"+stand+","+(Y+6)+" Q"+push+","+(Y+6)+" "+push+","+Y+" L"+hold+","+Y,fill:"none",stroke:"var(--taxi-bright)","stroke-width":3}));
+  for(var e=push+12;e<hold-6;e+=22){add(s,S("circle",{cx:e,cy:Y-15,r:2.2,fill:"var(--edge)"}));add(s,S("circle",{cx:e,cy:Y+15,r:2.2,fill:"var(--edge)"}));}
+  // de-icing pad
+  add(s,S("rect",{x:pad0,y:Y-28,width:pad1-pad0,height:56,rx:3,fill:"none",stroke:"var(--edge)","stroke-width":1.4,"stroke-dasharray":"5 4"}));
+  add(s,S("text",{x:(pad0+pad1)/2,y:Y+46,"text-anchor":"middle",class:"ax"},"remote de-icing"));
+  add(s,S("text",{x:(pad0+pad1)/2,y:Y+60,"text-anchor":"middle",class:"ax"},"(winter, some airports)"));
+  // holding point: stop bar and sign
+  add(s,S("line",{x1:hold,y1:Y-20,x2:hold,y2:Y+20,stroke:"var(--stop)","stroke-width":4}));
+  add(s,S("rect",{x:hold-34,y:Y-52,width:44,height:18,fill:"var(--stop)"}));
+  add(s,S("text",{x:hold-12,y:Y-39,"text-anchor":"middle",class:"dl",fill:"#fff"},"27R"));
+  // queue
+  plane(s,hold-30,Y,0,0.72,"--ink-3");plane(s,hold-62,Y,0,0.72,"--ink-3");
+  // runway
+  add(s,S("rect",{x:rw0,y:Y-18,width:rw1-rw0,height:36,fill:"var(--asphalt)"}));
+  for(var k=0;k<5;k++)add(s,S("rect",{x:rw0+4,y:Y-14+k*6.4,width:14,height:3.4,fill:"var(--paint)"}));
+  for(var c=rw0+30;c<rw1-18;c+=26)add(s,S("rect",{x:c,y:Y-1.2,width:14,height:2.4,fill:"var(--paint)"}));
+  add(s,S("path",{d:"M"+hold+","+Y+" L"+(rw0+22)+","+Y,fill:"none",stroke:"var(--taxi-bright)","stroke-width":3}));
+  plane(s,rw1-6,Y-40,-18,1,"--ink");
+  // timeline above
+  var T=46;
+  add(s,S("line",{x1:x0,y1:T,x2:x1,y2:T,class:"base"}));
+  var marks=[[stand-10,"schedule","SCHED_TIME","--ink-3"],[stand+22,"plan · TOBT · TSAT","EOBT_1, LOBT","--ink-3"],
+             [push,"off-block","BLOCK_TIME","--stop"],[rw1-40,"take-off","MVT_TIME","--edge"]];
+  marks.forEach(function(m,i){
+    var mx=m[0];
+    add(s,S("line",{x1:mx,y1:T-5,x2:mx,y2:T+5,stroke:"var("+m[3]+")","stroke-width":2}));
+    add(s,S("line",{x1:mx,y1:T+5,x2:mx,y2:Y-40,stroke:"var(--line)","stroke-width":1,"stroke-dasharray":"2 3"}));
+    var anchor=i===0?"start":(i===3?"end":"middle");
+    add(s,S("text",{x:mx+(i===0?-2:0),y:T-12-(i===1?14:0),"text-anchor":anchor,class:"lbb"},m[1]));
+    add(s,S("text",{x:mx,y:T+18+(i===1?14:0),"text-anchor":anchor,class:"ax"},m[2]));
+  });
+  add(s,S("text",{x:push+6,y:T+32,class:"ax",fill:"var(--stop)"},"blank in 2026"));
+  // bracket
+  var B=Y+86;
+  add(s,S("path",{d:"M"+push+","+(B-8)+" L"+push+","+B+" L"+(rw1-40)+","+B+" L"+(rw1-40)+","+(B-8),fill:"none",stroke:"var(--ink-2)","stroke-width":1.2}));
+  add(s,S("text",{x:(push+rw1-40)/2,y:B+17,"text-anchor":"middle",class:"lbb"},"taxi-out = take-off − off-block"));
+  add(s,S("text",{x:(stand+push)/2,y:Y+52,"text-anchor":"middle",class:"ax"},"stand"));
+  add(s,S("text",{x:hold-46,y:Y+46,"text-anchor":"middle",class:"ax"},"queue"));
+  add(s,S("text",{x:(rw0+rw1)/2,y:Y+46,"text-anchor":"middle",class:"ax"},"runway"));
+}
+
+/* ---------- kept / removed ---------- */
+function kept(){
+  var o=svgIn("c-kept",170,"Timestamps kept and removed in the scored file"),s=o.s,W=o.w;
+  var items=[["schedule","SCHED_TIME",1],["flight plan","EOBT · IOBT · LOBT",1],["NM off-block","AOBT_3",1],
+             ["airport off-block","BLOCK_TIME",0],["take-off","MVT_TIME",1],["arrivals' in-block","BLOCK_TIME (ARR)",1]];
+  var cols=W<560?2:3,cw=(W-16)/cols,rh=52;
+  items.forEach(function(it,i){
+    var cx=8+(i%cols)*cw,cy=8+Math.floor(i/cols)*(rh+6);
+    var ok=it[2]===1;
+    add(s,S("rect",{x:cx+4,y:cy,width:cw-8,height:rh,rx:3,fill:"var(--panel)",stroke:ok?"var(--line)":"var(--stop)","stroke-width":ok?1:1.6,"stroke-dasharray":ok?"":"5 3"}));
+    add(s,S("rect",{x:cx+4,y:cy,width:6,height:rh,fill:ok?"var(--lead)":"var(--stop)"}));
+    add(s,S("text",{x:cx+20,y:cy+21,class:"lbb"},it[0]));
+    add(s,S("text",{x:cx+20,y:cy+39,class:"ax"},it[1]+(ok?"":" · removed")));
+  });
+  var rows=Math.ceil(items.length/cols);o.s.setAttribute("height",16+rows*(rh+6));o.s.setAttribute("viewBox","0 0 "+W+" "+(16+rows*(rh+6)));
+}
+
+/* ---------- runway tiles ---------- */
+function parse(r){var m=/^(\d{1,2})([LCR]?)$/.exec(r);return m?{n:+m[1],s:m[2]}:null;}
+function tiles(){
+  var host=document.getElementById("tiles");host.textContent="";
+  D.airports.forEach(function(a){
+    var t=el("div","tile");host.appendChild(t);
+    var svg=S("svg",{viewBox:"0 0 200 170",role:"img","aria-label":a.name+" runway schematic"});t.appendChild(svg);
+    // collect physical runways from departure and arrival designators
+    var phys={},all=a.runways.map(function(r){return r.rwy;}).concat(a.arrivals.map(function(r){return r.rwy;}));
+    all.forEach(function(r){var p=parse(r);if(!p)return;
+      var low=p.n>18?p.n-18:p.n,suf=p.n>18?({L:"R",R:"L",C:"C","":""})[p.s]:p.s;
+      var key=low+suf;if(!phys[key])phys[key]={low:low,suf:suf,dep:[]};});
+    a.runways.forEach(function(r){var p=parse(r.rwy);if(!p)return;
+      var low=p.n>18?p.n-18:p.n,suf=p.n>18?({L:"R",R:"L",C:"C","":""})[p.s]:p.s;
+      phys[low+suf].dep.push({n:p.n,share:r.share,rwy:r.rwy});});
+    var list=Object.keys(phys).map(function(k){return phys[k];});
+    // cluster near-parallel runways and spread them side by side
+    list.sort(function(x,y){return x.low-y.low||"LCR".indexOf(x.suf||"C")-"LCR".indexOf(y.suf||"C");});
+    var clusters=[];
+    list.forEach(function(r){var c=clusters.filter(function(c){return Math.abs(c.h-r.low)<=3||Math.abs(c.h-r.low)>=15;})[0];
+      if(c)c.rs.push(r);else clusters.push({h:r.low,rs:[r]});});
+    var cx=100,cy=86,L=66,sp=16;
+    add(svg,S("text",{x:188,y:16,"text-anchor":"end",class:"ax"},"N"));
+    add(svg,S("path",{d:"M184,22 l4,-3 l4,3 M188,19 v12",fill:"none",stroke:"var(--ink-3)","stroke-width":1.2,transform:"translate(-4,0)"}));
+    clusters.forEach(function(c){
+      c.rs.sort(function(x,y){ // order across the cluster from left to right of the low-number heading
+        var ox="LCR".indexOf(x.suf||"C"),oy="LCR".indexOf(y.suf||"C");return (x.low-y.low)*3+(ox-oy);});
+      var nC=c.rs.length;
+      c.rs.forEach(function(r,i){
+        var th=r.low*10*Math.PI/180,dx=Math.sin(th),dy=-Math.cos(th),lx=dy,ly=-dx;
+        var off=(i-(nC-1)/2)*sp*-1;
+        var ox=cx+lx*off,oy=cy+ly*off;
+        var ax=ox-dx*L,ay=oy-dy*L,bx=ox+dx*L,by=oy+dy*L;
+        add(svg,S("line",{x1:ax,y1:ay,x2:bx,y2:by,stroke:"var(--asphalt)","stroke-width":9,"stroke-linecap":"butt"}));
+        add(svg,S("line",{x1:ax,y1:ay,x2:bx,y2:by,stroke:"var(--paint)","stroke-width":1,"stroke-dasharray":"5 5",opacity:.8}));
+        r.dep.forEach(function(d){
+          var hd=d.n*10*Math.PI/180,ux=Math.sin(hd),uy=-Math.cos(hd);
+          var sx=ox-ux*L*0.15,sy=oy-uy*L*0.15,ex=ox+ux*L*0.95,ey=oy+uy*L*0.95;
+          var w=1.5+d.share*9;
+          add(svg,S("line",{x1:sx,y1:sy,x2:ex-ux*6,y2:ey-uy*6,stroke:"var(--edge)","stroke-width":w,"stroke-linecap":"round",opacity:.9}));
+          add(svg,S("path",{d:"M"+ex+","+ey+" L"+(ex-ux*9+uy*6)+","+(ey-uy*9-ux*6)+" L"+(ex-ux*9-uy*6)+","+(ey-uy*9+ux*6)+"Z",fill:"var(--edge)"}));
+          // runway number at the threshold where the departure starts
+          var tx=ox-ux*(L+11),ty=oy-uy*(L+11);
+          add(svg,S("text",{x:tx,y:ty+4,"text-anchor":"middle",class:"dl",fill:"var(--ink-2)","font-size":"11"},d.rwy));
+        });
+      });
+    });
+    t.appendChild(el("h4",null,a.icao));
+    t.appendChild(el("div","city",a.name));
+    var tx=el("div","tx");
+    tx.appendChild(document.createTextNode("median "));tx.appendChild(el("b",null,mmss(a.p50)));
+    tx.appendChild(document.createTextNode(" · P90 "+mmss(a.p90)));
+    tx.appendChild(document.createElement("br"));
+    tx.appendChild(document.createTextNode(a.runways.slice(0,3).map(function(r){return r.rwy+" "+pct(r.share);}).join(" · ")));
+    t.appendChild(tx);
+  });
+}
+
+/* ---------- score ---------- */
+function scorecards(){
+  var h=document.getElementById("scorecards");h.textContent="";
+  [["typical miss",D.mae_final,"edge","Average distance between prediction and truth, ignoring direction."],
+   ["the competition's score",D.rmse_final,"stop","The same predictions, squared, averaged and rooted. The few large misses more than double it."]
   ].forEach(function(x){
-    var d=el("div");
-    d.appendChild(el("p","lab",x[0]));
-    d.appendChild(el("p","big "+x[2],Math.round(x[1])+"s"));
-    d.appendChild(el("p","say",x[3]));
-    h.appendChild(d);
+    var c=el("div","card");c.appendChild(el("p","k",x[0]));c.appendChild(el("p","v "+x[2],fmt(x[1])+" s"));
+    c.appendChild(el("p","s",x[3]));h.appendChild(c);
   });
-  var O=D.groups.orphan,J=D.groups.joined,A=D.artifact,L=A.over_6h;
-  set("ident-rows",fmt(D.identity.rows));
-  set("firstmodel","Guessing the same average taxi-out for every flight scores "+fmt(D.rmse_predict_mean)+"s. That is the number to beat. "+
-    "The model scores "+fmt(D.rmse_single)+"s.");
-  var head=concAt(O.share),first=D.concentration[1];
-  set("conc-text","The worst "+pct(O.share,1)+" of flights, about fifteen in a thousand, make up "+pct(head)+
-    " of the total squared error. The worst "+pct(first[0],2)+" alone, about "+Math.round(first[0]*1e4)+
-    " flights in ten thousand, make up "+pct(first[1])+". Fine-tuning the model for everyone else only works on what is left.");
-  set("med-o",fmt(O.p50)+" seconds");set("med-j",fmt(J.p50));
-  set("over6-orphan",L.orphan);set("over6-n",L.n);set("over6-n2",L.n);
-  set("over6-at",L.at_schedule);set("over6-day",L.day_shift-(L.at_schedule+L.day_shift+L.unexplained-L.n));
-  set("over6-left",L.unexplained===1?"One remains":(L.unexplained+" remain"));
-  set("a-lirf-n",fmt(A.lirf_orphans));set("a-lirf-dev",pct(A.lirf_dev_share));
-  set("a-lirf-at",pct(A.lirf_at_share));set("a-other-at",pct(A.other_at_share,1));
-  set("mix-before",D.rmse_before_mixture+"s");set("mix-after",D.rmse_final+"s");
-  set("mix-o-before",fmt(O.rmse_before)+"s");set("mix-o-after",fmt(O.rmse)+"s");
-  set("final-rmse",D.rmse_final+"s");set("single-rmse",D.rmse_single+"s");
-  set("o-rmse",fmt(O.rmse)+"s");set("o-share",pct(O.err_share));
-  set("oracle-o",D.rmse_if_orphans_perfect+"s");set("oracle-j",D.rmse_if_joined_perfect+"s");
-  set("neg-n",fmt(D.negative.n));set("neg-min",String(D.negative.min).replace("-","minus "));
-  set("neg-lszh",pct(D.negative.lszh/D.negative.n));
-  var c7=D.clip.filter(function(p){return p[0]===7200;})[0],cmax=D.clip[D.clip.length-1];
-  set("clip-text","Some real taxi-outs do run past two hours, and some recorded ones run for many hours for the reasons in section 08. "+
-    "A cap below the true value guarantees a big miss on exactly the flights the squared score punishes hardest. "+
-    "Capping at two hours scores "+c7[1]+"s, against "+cmax[1]+"s with the cap at a full day. That is "+Math.round(c7[1]-cmax[1])+
-    " seconds lost, more than any single input to the model is worth.");
-  var s=document.getElementById("stamp");s.textContent="";
-  [["example",""," "],["scheduled","14:25:00",""],["pushback","14:25:00","eq"],["takeoff","18:41:30",""],
-   ["taxi-out","15,390 s: four hours and sixteen minutes","eq"]].forEach(function(r){
-    s.appendChild(el("span","k",r[0]));s.appendChild(el("span",r[2]||null,r[1]));
-  });
-  document.getElementById("foot").textContent=
-    "All figures come from the January and July 2025 flights held back from training ("+
-    fmt(J.n+O.n)+" departures out of 2.1 million), except where a figure says all of 2025. "+
-    "The model uses only information present in the competition's scoring file. "+
-    "Figures are regenerated by pipeline/report_findings.py in the project repository.";
 }
-
-var concPts=[];
+function concAt(f){var c=D.concentration;for(var i=1;i<c.length;i++){if(c[i][0]>=f){var a=c[i-1],b=c[i],t=(f-a[0])/((b[0]-a[0])||1);return a[1]+t*(b[1]-a[1]);}}return 1;}
 function conc(){
-  var o=fit(document.getElementById("c-conc"),290),g=o.g,W=o.w,H=o.h;
-  var L=48,R=16,T=16,B=36,x0=L,x1=W-R,y0=T,y1=H-B;
-  var sx=function(p){return x0+Math.pow(p,0.42)*(x1-x0);};
-  var sy=function(p){return y1-p*(y1-y0);};
-  concPts=[];
-  g.strokeStyle=css("--line-soft");g.lineWidth=1;
-  [0,.25,.5,.75,1].forEach(function(p){g.beginPath();g.moveTo(x0,sy(p)+.5);g.lineTo(x1,sy(p)+.5);g.stroke();});
-  g.strokeStyle=css("--dead");g.setLineDash([3,4]);g.beginPath();
-  for(var q=0;q<=1.0001;q+=0.02){var X=sx(q),Y=sy(q);if(q===0)g.moveTo(X,Y);else g.lineTo(X,Y);}
-  g.stroke();g.setLineDash([]);
-  g.beginPath();g.moveTo(sx(0),y1);
-  D.concentration.forEach(function(p){g.lineTo(sx(p[0]),sy(p[1]));concPts.push([sx(p[0]),sy(p[1]),p]);});
-  g.lineTo(x1,y1);g.closePath();
-  g.fillStyle=css("--orphan");g.globalAlpha=.12;g.fill();g.globalAlpha=1;
-  g.strokeStyle=css("--orphan");g.lineWidth=2;g.lineJoin="round";g.beginPath();
-  D.concentration.forEach(function(p,i){var X=sx(p[0]),Y=sy(p[1]);if(i===0)g.moveTo(X,Y);else g.lineTo(X,Y);});
-  g.stroke();
+  var o=svgIn("c-conc",280,"Share of squared error against share of flights"),s=o.s,W=o.w,H=o.h;
+  var x0=52,x1=W-16,y0=14,y1=H-40;
+  var sx=function(p){return x0+Math.pow(p,0.42)*(x1-x0);},sy=function(p){return y1-p*(y1-y0);};
+  [0,.25,.5,.75,1].forEach(function(p){add(s,S("line",{x1:x0,y1:sy(p),x2:x1,y2:sy(p),class:"grid"}));
+    add(s,S("text",{x:x0-8,y:sy(p)+4,"text-anchor":"end",class:"ax"},pct(p)));});
+  var diag="";for(var q=0;q<=1.0001;q+=0.02)diag+=(q===0?"M":"L")+sx(q)+","+sy(q);
+  add(s,S("path",{d:diag,fill:"none",stroke:"var(--ink-3)","stroke-dasharray":"3 4"}));
+  var d="M"+sx(0)+","+y1;D.concentration.forEach(function(p){d+="L"+sx(p[0])+","+sy(p[1]);});
+  add(s,S("path",{d:d+"L"+x1+","+y1+"Z",fill:"var(--stop)",opacity:.12}));
+  var line="";D.concentration.forEach(function(p,i){line+=(i?"L":"M")+sx(p[0])+","+sy(p[1]);});
+  add(s,S("path",{d:line,fill:"none",stroke:"var(--stop)","stroke-width":2.2}));
   var sh=D.groups.orphan.share,v=concAt(sh),mx=sx(sh),my=sy(v);
-  g.strokeStyle=css("--ink-3");g.lineWidth=1;g.setLineDash([2,3]);
-  g.beginPath();g.moveTo(mx,y1);g.lineTo(mx,my);g.lineTo(x0,my);g.stroke();g.setLineDash([]);
-  g.fillStyle=css("--orphan");g.beginPath();g.arc(mx,my,4.5,0,6.2832);g.fill();
-  g.fillStyle=css("--ink");g.font='500 '+mono(12);g.textAlign="left";g.textBaseline="top";
-  var label="worst "+pct(sh,1)+" of flights  =  "+pct(v)+" of the error";
-  g.fillText(label,Math.min(mx+11,x1-g.measureText(label).width-4),my+10);
-  g.fillStyle=css("--ink-3");g.font=mono(11);g.textAlign="right";g.textBaseline="middle";
-  [0,.25,.5,.75,1].forEach(function(p){g.fillText(pct(p),L-9,sy(p));});
-  g.textAlign="center";g.textBaseline="top";
-  [0.001,0.01,0.05,0.2,0.5,1].forEach(function(p){g.fillText(p<0.01?pct(p,1):pct(p),sx(p),y1+8);});
-  g.fillText("share of flights, worst predicted first",(x0+x1)/2,y1+24);
-  g.strokeStyle=css("--line");g.beginPath();g.moveTo(x0,y1+.5);g.lineTo(x1,y1+.5);g.stroke();
+  add(s,S("path",{d:"M"+mx+","+y1+"V"+my+"H"+x0,fill:"none",stroke:"var(--ink-3)","stroke-dasharray":"2 3"}));
+  add(s,S("circle",{cx:mx,cy:my,r:4.5,fill:"var(--stop)"}));
+  var lab="worst "+pct(sh,1)+" of flights = "+pct(v)+" of the error";
+  add(s,S("text",{x:Math.min(mx+10,x1-8),y:my+18,"text-anchor":mx+10>x1-260?"end":"start",class:"lbb"},lab));
+  [0.001,0.01,0.05,0.2,0.5,1].forEach(function(p){add(s,S("text",{x:sx(p),y:y1+16,"text-anchor":"middle",class:"ax"},p<0.01?pct(p,1):pct(p)));});
+  add(s,S("text",{x:(x0+x1)/2,y:y1+32,"text-anchor":"middle",class:"ax"},"share of flights, worst predicted first"));
+  add(s,S("line",{x1:x0,y1:y1,x2:x1,y2:y1,class:"base"}));
+  var first=D.concentration[1];
+  set("conc-text","The worst "+pct(sh,1)+" of flights make up "+pct(v)+" of the total squared error; the worst "+pct(first[0],2)+
+    ", about "+Math.round(first[0]*1e4)+" flights in ten thousand, make up "+pct(first[1])+".");
 }
-
 function tbl(){
   var t=document.getElementById("tbl");t.textContent="";
   var J=D.groups.joined,O=D.groups.orphan;
-  [["","with a record","no record",""],
-   ["flights",fmt(J.n),fmt(O.n)],
-   ["share of all flights",pct(J.share,2),pct(O.share,2)],
-   ["typical taxi-out (median)",fmt(J.p50)+"s",fmt(O.p50)+"s"],
-   ["slowest 1% start at",fmt(J.p99)+"s",fmt(O.p99)+"s"],
-   ["longest",fmt(J.max)+"s",fmt(O.max)+"s"],
-   ["score, before the fix",fmt(J.rmse_before)+"s",fmt(O.rmse_before)+"s"],
-   ["share of total error, before",pct(J.err_share_before,1),pct(O.err_share_before,1)],
-   ["score, now",fmt(J.rmse)+"s",fmt(O.rmse)+"s","hl"],
-   ["share of total error, now",pct(J.err_share,1),pct(O.err_share,1),"hl"]
+  [["","with a flight-plan record","no record"],
+   ["departures",fmt(J.n),fmt(O.n)],["share of departures",pct(J.share,2),pct(O.share,2)],
+   ["median taxi-out",fmt(J.p50)+" s",fmt(O.p50)+" s"],["99th percentile",fmt(J.p99)+" s",fmt(O.p99)+" s"],
+   ["longest",fmt(J.max)+" s",fmt(O.max)+" s"],["score (RMSE)",fmt(J.rmse)+" s",fmt(O.rmse)+" s"],
+   ["share of squared error",pct(J.err_share,1),pct(O.err_share,1)]
   ].forEach(function(r,i){
-    var tr=el("tr");if(r[3])tr.className=r[3];
-    r.slice(0,3).forEach(function(c,k){
-      var e=el(i?"td":"th",null,c);
-      if(i&&!r[3]&&k===1)e.className="j"; if(i&&!r[3]&&k===2)e.className="o";
-      tr.appendChild(e);
-    });
+    var tr=el("tr");if(i>=6)tr.className="now";
+    r.forEach(function(c,k){var e=el(i?"td":"th",null,c);if(i&&k===1)e.className="e";if(i&&k===2)e.className="t";tr.appendChild(e);});
     t.appendChild(tr);
   });
 }
-
-var distBars=[];
 function dist(){
-  var o=fit(document.getElementById("c-dist"),250),g=o.g,W=o.w,H=o.h;
-  var L=48,R=16,T=14,B=38,x0=L,x1=W-R,y0=T,y1=H-B;
-  var nb=D.hist.n_bins,BIN=D.hist.bin_sec,s={},peak=0;
-  ["joined","orphan"].forEach(function(k){
-    var c=D.hist.counts[k],tot=c.reduce(function(a,b){return a+b;},0);
-    s[k]=c.map(function(v){return v/tot;});
-    s[k].forEach(function(v){if(v>peak)peak=v;});
-  });
-  distBars=[];
-  g.strokeStyle=css("--line-soft");g.lineWidth=1;
-  for(var q=0;q<=1.001;q+=0.25){var yy=y1-q*(y1-y0);g.beginPath();g.moveTo(x0,yy+.5);g.lineTo(x1,yy+.5);g.stroke();}
+  var o=svgIn("c-dist",230,"Taxi-out distributions of the two groups"),s=o.s,W=o.w,H=o.h;
+  var x0=48,x1=W-14,y0=12,y1=H-38,nb=D.hist.n_bins,BIN=D.hist.bin_sec,sh={},peak=0;
+  ["joined","orphan"].forEach(function(k){var c=D.hist.counts[k],tot=c.reduce(function(a,b){return a+b;},0);
+    sh[k]=c.map(function(v){return v/tot;});sh[k].forEach(function(v){if(v>peak)peak=v;});});
   var bw=(x1-x0)/(nb+1);
-  ["joined","orphan"].forEach(function(k){
-    var col=css(k==="joined"?"--joined":"--orphan");
-    g.beginPath();g.moveTo(x0,y1);
-    for(var i=0;i<=nb;i++){var y=y1-(s[k][i]/peak)*(y1-y0);g.lineTo(x0+i*bw,y);g.lineTo(x0+(i+1)*bw,y);}
-    g.lineTo(x1,y1);g.closePath();
-    g.fillStyle=col;g.globalAlpha=.16;g.fill();g.globalAlpha=1;
-    g.strokeStyle=col;g.lineWidth=2;g.lineJoin="round";g.beginPath();
-    for(var j=0;j<=nb;j++){var y2=y1-(s[k][j]/peak)*(y1-y0);
-      if(j===0)g.moveTo(x0,y2);else g.lineTo(x0+j*bw,y2);g.lineTo(x0+(j+1)*bw,y2);}
-    g.stroke();
+  [0,.5,1].forEach(function(p){var y=y1-p*(y1-y0);add(s,S("line",{x1:x0,y1:y,x2:x1,y2:y,class:"grid"}));
+    add(s,S("text",{x:x0-8,y:y+4,"text-anchor":"end",class:"ax"},pct(p*peak)));});
+  [["joined","--edge"],["orphan","--taxi"]].forEach(function(k){
+    var d="M"+x0+","+y1;for(var i=0;i<=nb;i++){var y=y1-(sh[k[0]][i]/peak)*(y1-y0);d+="L"+(x0+i*bw)+","+y+"L"+(x0+(i+1)*bw)+","+y;}
+    add(s,S("path",{d:d+"L"+x1+","+y1+"Z",fill:"var("+k[1]+")",opacity:.14}));
+    add(s,S("path",{d:d.replace("M"+x0+","+y1+"L","M"),fill:"none",stroke:"var("+k[1]+")","stroke-width":2}));
   });
-  for(var b=0;b<=nb;b++)distBars.push({x0:x0+b*bw,x1:x0+(b+1)*bw,i:b,j:s.joined[b],o:s.orphan[b],last:b===nb});
-  g.fillStyle=css("--ink-3");g.font=mono(11);g.textAlign="right";g.textBaseline="middle";
-  g.fillText(pct(peak),L-9,y0+2);g.fillText("0",L-9,y1);
-  g.textAlign="center";g.textBaseline="top";
-  for(var m=0;m<=nb;m+=8)g.fillText(Math.round(m*BIN/60)+"m",x0+m*bw+bw/2,y1+8);
-  g.fillText("60m+",x0+nb*bw+bw/2,y1+8);
-  g.fillText("taxi-out time",(x0+x1)/2,y1+24);
-  g.strokeStyle=css("--line");g.beginPath();g.moveTo(x0,y1+.5);g.lineTo(x1,y1+.5);g.stroke();
+  for(var m=0;m<=nb;m+=8)add(s,S("text",{x:x0+m*bw+bw/2,y:y1+16,"text-anchor":"middle",class:"ax"},m===nb?"80m+":Math.round(m*BIN/60)+"m"));
+  add(s,S("text",{x:(x0+x1)/2,y:y1+32,"text-anchor":"middle",class:"ax"},"taxi-out time"));
+  add(s,S("line",{x1:x0,y1:y1,x2:x1,y2:y1,class:"base"}));
 }
-
-var gapBars=[];
-function gapc(){
-  var o=fit(document.getElementById("c-gap"),240),g=o.g,W=o.w,H=o.h;
-  var L=48,R=12,T=24,B=38,x0=L,x1=W-R,y0=T,y1=H-B;
-  var bins=D.artifact.lirf_by_gap,bw=(x1-x0)/bins.length;
-  gapBars=[];
-  g.strokeStyle=css("--line-soft");g.lineWidth=1;
-  [0,.5,1].forEach(function(p){var yy=y1-p*(y1-y0);g.beginPath();g.moveTo(x0,yy+.5);g.lineTo(x1,yy+.5);g.stroke();});
-  bins.forEach(function(b,i){
-    var X=x0+i*bw,h=b.at_share*(y1-y0);
-    g.fillStyle=css("--line");g.fillRect(X+4,y0,bw-8,y1-y0);
-    g.fillStyle=css("--orphan");g.fillRect(X+4,y1-h,bw-8,h);
-    g.fillStyle=css("--ink-2");g.font=mono(10.5);g.textAlign="center";g.textBaseline="bottom";
-    g.fillText(fmt(b.n),X+bw/2,y0-5);
-    var lab=b.lo_h==null?"<"+b.hi_h+"h":(b.hi_h==null?">"+b.lo_h+"h":b.lo_h+"–"+b.hi_h+"h");
-    g.fillStyle=css("--ink-3");g.textBaseline="top";g.fillText(lab,X+bw/2,y1+8);
-    gapBars.push({x0:X,x1:X+bw,b:b,lab:lab});
-  });
-  g.fillStyle=css("--ink-3");g.font=mono(11);g.textAlign="right";g.textBaseline="middle";
-  [0,.5,1].forEach(function(p){g.fillText(pct(p),L-9,y1-p*(y1-y0));});
-  g.textAlign="center";g.textBaseline="top";
-  g.fillText("how late the flight took off, against its schedule",(x0+x1)/2,y1+24);
-}
-
-function ladder(){
-  var host=document.getElementById("ladder");host.textContent="";
-  var worst=Math.max.apply(null,D.strategies.map(function(s){return s.rmse;}));
-  var best=Math.min.apply(null,D.strategies.map(function(s){return s.rmse;}));
-  var floor=best*0.86;
-  D.strategies.forEach(function(s){
-    var row=el("div","row"),top=el("div","top");
-    top.appendChild(el("span",null,s.name));
-    var right=el("span");right.style.display="inline-flex";right.style.alignItems="baseline";right.style.gap="10px";
-    right.appendChild(el("span","tag "+s.verdict,VERDICT[s.verdict]||s.verdict));
-    right.appendChild(el("span","sc",s.rmse.toFixed(1)+"s"));
-    top.appendChild(right);
-    var tr=el("div","track"),fl=el("div","fill");
-    fl.style.width=(100*(s.rmse-floor)/(worst-floor))+"%";
-    fl.style.background=s.verdict==="rejected"?css("--dead"):(s.verdict==="shipped"?css("--joined"):css("--orphan"));
-    tr.appendChild(fl);
-    row.appendChild(top);row.appendChild(tr);row.appendChild(el("div","why",s.note));
-    host.appendChild(row);
-  });
-}
-
-var clipPts=[];
-function clipc(){
-  var o=fit(document.getElementById("c-clip"),240),g=o.g,W=o.w,H=o.h;
-  var L=56,R=18,T=18,B=38,x0=L,x1=W-R,y0=T,y1=H-B;
+function clip(){
+  var o=svgIn("c-clip",220,"Score by prediction cap"),s=o.s,W=o.w,H=o.h;
+  var x0=58,x1=W-18,y0=18,y1=H-38;
   var xs=D.clip.map(function(p){return Math.log(p[0]);}),ys=D.clip.map(function(p){return p[1];});
-  var xmin=Math.min.apply(null,xs),xmax=Math.max.apply(null,xs);
-  var ymin=Math.min.apply(null,ys),ymax=Math.max.apply(null,ys);
-  var pad=(ymax-ymin)*0.16||10;ymin-=pad;ymax+=pad;
-  var sx=function(v){return x0+(Math.log(v)-xmin)/(xmax-xmin)*(x1-x0);};
-  var sy=function(v){return y1-(v-ymin)/(ymax-ymin)*(y1-y0);};
-  clipPts=[];
-  g.strokeStyle=css("--line-soft");g.lineWidth=1;
-  for(var k=0;k<=4;k++){var yy=y0+k*(y1-y0)/4;g.beginPath();g.moveTo(x0,yy+.5);g.lineTo(x1,yy+.5);g.stroke();}
-  g.strokeStyle=css("--orphan");g.lineWidth=2;g.lineJoin="round";g.beginPath();
-  D.clip.forEach(function(p,i){var X=sx(p[0]),Y=sy(p[1]);if(i===0)g.moveTo(X,Y);else g.lineTo(X,Y);clipPts.push([X,Y,p]);});
-  g.stroke();
-  D.clip.forEach(function(p){
-    var X=sx(p[0]),Y=sy(p[1]),was=p[0]===7200;
-    g.fillStyle=was?css("--orphan"):css("--panel");g.strokeStyle=css("--orphan");g.lineWidth=was?2:1.5;
-    g.beginPath();g.arc(X,Y,was?5.5:3.5,0,6.2832);g.fill();g.stroke();
-    if(was){
-      g.fillStyle=css("--ink");g.font='500 '+mono(12);g.textAlign="left";g.textBaseline="middle";
-      var s="the two-hour cap once in the code";
-      g.fillText(s,Math.min(X+12,x1-g.measureText(s).width-4),Y-9);
-      g.fillStyle=css("--ink-3");
-      g.fillText(p[1]+"s",Math.min(X+12,x1-40),Y+9);
-    }
-  });
-  g.fillStyle=css("--ink-3");g.font=mono(11);g.textAlign="right";g.textBaseline="middle";
-  for(var k2=0;k2<=4;k2++)g.fillText(Math.round(ymax-(k2*(ymax-ymin)/4))+"s",L-9,y0+k2*(y1-y0)/4);
-  g.textAlign="center";g.textBaseline="top";
-  [1800,3600,7200,21600,86400].forEach(function(v){g.fillText(v>=3600?(v/3600)+"h":(v/60)+"m",sx(v),y1+8);});
-  g.fillText("predictions capped at",(x0+x1)/2,y1+24);
-  g.strokeStyle=css("--line");g.beginPath();g.moveTo(x0,y1+.5);g.lineTo(x1,y1+.5);g.stroke();
+  var xa=Math.min.apply(null,xs),xb=Math.max.apply(null,xs),ya=Math.min.apply(null,ys),yb=Math.max.apply(null,ys),pd=(yb-ya)*.15;ya-=pd;yb+=pd;
+  var sx=function(v){return x0+(Math.log(v)-xa)/(xb-xa)*(x1-x0);},sy=function(v){return y1-(v-ya)/(yb-ya)*(y1-y0);};
+  for(var k=0;k<=3;k++){var yv=ya+k*(yb-ya)/3;add(s,S("line",{x1:x0,y1:sy(yv),x2:x1,y2:sy(yv),class:"grid"}));
+    add(s,S("text",{x:x0-8,y:sy(yv)+4,"text-anchor":"end",class:"ax"},Math.round(yv)+" s"));}
+  var d="";D.clip.forEach(function(p,i){d+=(i?"L":"M")+sx(p[0])+","+sy(p[1]);});
+  add(s,S("path",{d:d,fill:"none",stroke:"var(--stop)","stroke-width":2}));
+  D.clip.forEach(function(p){var two=p[0]===7200;add(s,S("circle",{cx:sx(p[0]),cy:sy(p[1]),r:two?5:3.2,fill:two?"var(--stop)":"var(--panel)",stroke:"var(--stop)","stroke-width":1.5}));
+    if(two)add(s,S("text",{x:sx(p[0])+10,y:sy(p[1])-8,class:"lbb"},"cap at 2 h: "+p[1]+" s"));});
+  [1800,3600,7200,21600,86400].forEach(function(v){add(s,S("text",{x:sx(v),y:y1+16,"text-anchor":"middle",class:"ax"},v>=3600?(v/3600)+" h":(v/60)+" m"));});
+  add(s,S("text",{x:(x0+x1)/2,y:y1+32,"text-anchor":"middle",class:"ax"},"predictions capped at"));
+  add(s,S("line",{x1:x0,y1:y1,x2:x1,y2:y1,class:"base"}));
+  var c7=D.clip.filter(function(p){return p[0]===7200;})[0],cm=D.clip[D.clip.length-1];
+  set("clip-text","The squared score also decides where to cap a prediction. Some real taxi-outs run past two hours, and some recorded ones run for many hours. Capping at two hours scores "+c7[1]+" s against "+cm[1]+" s with the cap at a full day: "+Math.round(c7[1]-cm[1])+" seconds lost on exactly the flights the score punishes most.");
 }
 
-var monthBars=[];
-function months(){
-  var o=fit(document.getElementById("c-month"),200),g=o.g,W=o.w,H=o.h;
-  var L=48,R=16,T=16,B=32,x0=L,x1=W-R,y0=T,y1=H-B;
-  var peak=Math.max.apply(null,D.monthly.map(function(p){return p[1];}))*1.08;
-  var bw=(x1-x0)/D.monthly.length,names=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  monthBars=[];
-  D.monthly.forEach(function(p,i){
-    var scored=(p[0]===1||p[0]===7),h=(p[1]/peak)*(y1-y0),X=x0+i*bw;
-    g.fillStyle=scored?css("--orphan"):css("--dead");
-    g.fillRect(X+3,y1-h,bw-6,h);
-    monthBars.push({x0:X,x1:X+bw,m:p[0],sd:p[1],scored:scored});
-    g.fillStyle=scored?css("--ink"):css("--ink-3");
-    g.font=(scored?'500 ':'')+mono(11);g.textAlign="center";g.textBaseline="top";
-    g.fillText(names[p[0]-1],X+bw/2,y1+8);
-  });
-  g.fillStyle=css("--ink-3");g.font=mono(11);g.textAlign="right";g.textBaseline="middle";
-  g.fillText(Math.round(peak)+"s",L-9,y0+2);g.fillText("0",L-9,y1);
-  g.strokeStyle=css("--line");g.lineWidth=1;g.beginPath();g.moveTo(x0,y1+.5);g.lineTo(x1,y1+.5);g.stroke();
+/* ---------- LIRF ---------- */
+function lirf(){
+  var L=D.lirf_matched,o=svgIn("c-lirf",220,"Rome Fiumicino: share of off-blocks equal to the schedule by delay"),s=o.s,W=o.w,H=o.h;
+  var x0=48,x1=W-10,y0=26,y1=H-38,bins=L.by_late,bw=(x1-x0)/bins.length,top=Math.max(0.4,Math.max.apply(null,bins.map(function(b){return b.at_share;}))*1.1);
+  [0,top/2,top].forEach(function(p){var y=y1-p/top*(y1-y0);add(s,S("line",{x1:x0,y1:y,x2:x1,y2:y,class:"grid"}));
+    add(s,S("text",{x:x0-8,y:y+4,"text-anchor":"end",class:"ax"},pct(p)));});
+  bins.forEach(function(b,i){var X=x0+i*bw,h=b.at_share/top*(y1-y0);
+    add(s,S("rect",{x:X+6,y:y1-h,width:bw-12,height:h,fill:"var(--stop)"}));
+    add(s,S("text",{x:X+bw/2,y:y1-h-6,"text-anchor":"middle",class:"lbb"},pct(b.at_share)));
+    add(s,S("text",{x:X+bw/2,y:y0-10,"text-anchor":"middle",class:"ax"},fmt(b.n)));
+    add(s,S("text",{x:X+bw/2,y:y1+16,"text-anchor":"middle",class:"ax"},b.label));});
+  add(s,S("text",{x:(x0+x1)/2,y:y1+32,"text-anchor":"middle",class:"ax"},"how late the Network Manager saw the aircraft leave, against schedule"));
+  add(s,S("line",{x1:x0,y1:y1,x2:x1,y2:y1,class:"base"}));
+  set("lirf-at",pct(L.at_share));set("lirf-long",pct(L.long_at_share));
+  set("lirf-orph",pct(D.artifact.lirf_at_share));
+  set("neg-text","At the other extreme, "+fmt(D.negative.n)+" departures in 2025 took off before they left the stand by the record, by up to "+Math.abs(D.negative.min)+" seconds; "+fmt(D.negative.lszh)+" of them are at Zurich.");
 }
 
-function bindTip(id,tid,find){
-  var cv=document.getElementById(id),tip=document.getElementById(tid);
-  cv.addEventListener("mousemove",function(ev){
-    var b=cv.getBoundingClientRect(),x=ev.clientX-b.left,y=ev.clientY-b.top;
-    var lines=find(x,y);
-    if(!lines){tip.hidden=true;return;}
-    tip.textContent="";
-    lines.forEach(function(l,i){if(i)tip.appendChild(document.createElement("br"));tip.appendChild(document.createTextNode(l));});
-    tip.hidden=false;
-    var hb=tip.getBoundingClientRect();
-    tip.style.left=Math.min(Math.max(4,x+14),cv.clientWidth-hb.width-4)+"px";
-    tip.style.top=Math.max(4,y-hb.height-10)+"px";
+/* ---------- strips ---------- */
+function strips(){
+  var h=document.getElementById("strips");h.textContent="";
+  var L=D.ladder,top=L[0].rmse,low=L[L.length-1].rmse;
+  L.forEach(function(r,i){
+    var st=el("div","strip");st.appendChild(el("div","no",String(i+1).padStart(2,"0")));
+    var nm=el("div","nm",r.name);var bar=el("div","bar");bar.style.width=(100*(r.rmse-low*0.9)/(top-low*0.9)).toFixed(1)+"%";nm.appendChild(bar);st.appendChild(nm);
+    var sc=el("div","sc");sc.appendChild(el("b",null,r.rmse.toFixed(1)+" s"));
+    sc.appendChild(el("span",null,i?"−"+(L[i-1].rmse-r.rmse).toFixed(1)+" s":"start"));st.appendChild(sc);h.appendChild(st);
   });
-  cv.addEventListener("mouseleave",function(){tip.hidden=true;});
+  var x=document.getElementById("strips-x");x.textContent="";
+  D.rejected.forEach(function(r){
+    var st=el("div","strip x");st.appendChild(el("div","no","×"));
+    var nm=el("div","nm",r.name);nm.appendChild(el("small",null,"against "+r.against.toFixed(1)+" s"));st.appendChild(nm);
+    var sc=el("div","sc");sc.appendChild(el("b",null,r.rmse.toFixed(1)+" s"));sc.appendChild(el("span",null,"+"+(r.rmse-r.against).toFixed(1)+" s"));
+    st.appendChild(sc);x.appendChild(st);
+  });
+}
+
+/* ---------- winter ---------- */
+function deice(){
+  var rows=D.deicing.filter(function(r){return r.taxi_extra!=null;});
+  var o=svgIn("c-deice",36+rows.length*34,"Extra taxi-out and extra off-block wait in snow"),s=o.s,W=o.w;
+  var x0=70,x1=W-60,mid=x0,mx=Math.max.apply(null,rows.map(function(r){return Math.max(r.taxi_extra,r.delay_extra,0);}))*1.05;
+  var sx=function(v){return x0+Math.max(0,v)/mx*(x1-x0);};
+  [0,600,1200].forEach(function(v){if(v<=mx){add(s,S("line",{x1:sx(v),y1:4,x2:sx(v),y2:o.h-18,class:"grid"}));
+    add(s,S("text",{x:sx(v),y:o.h-4,"text-anchor":"middle",class:"ax"},v/60+" min"));}});
+  rows.sort(function(a,b){return b.taxi_extra-a.taxi_extra;});
+  rows.forEach(function(r,i){var y=10+i*34;
+    add(s,S("text",{x:x0-10,y:y+15,"text-anchor":"end",class:"lbb"},r.icao));
+    add(s,S("rect",{x:x0,y:y,width:Math.max(1,sx(r.taxi_extra)-x0),height:11,fill:"var(--edge)"}));
+    add(s,S("rect",{x:x0,y:y+13,width:Math.max(1,sx(r.delay_extra)-x0),height:11,fill:"var(--ink-3)"}));
+    add(s,S("text",{x:sx(r.taxi_extra)+6,y:y+10,class:"ax"},(r.taxi_extra>=0?"+":"")+Math.round(r.taxi_extra/60*10)/10+" min"));
+    add(s,S("text",{x:sx(r.delay_extra)+6,y:y+23,class:"ax"},(r.delay_extra>=0?"+":"")+Math.round(r.delay_extra/60*10)/10+" min"));
+  });
+}
+function metar(){
+  var m=D.metar,h=document.getElementById("metar");h.textContent="";
+  h.appendChild(el("p","kicker","METAR · "+m.station+" · "+m.time));
+  var raw=el("div","metar-raw");var hot={"0700":"hs","SHSN":"hs","VV005":"hs","00/M00":"hi","R18R/0700N":"hi","R18C/1200N":"hi"};
+  m.raw.split(" ").forEach(function(t,i){if(i)raw.appendChild(document.createTextNode(" "));raw.appendChild(el("span","tok "+(hot[t]||""),t));});
+  h.appendChild(raw);
+  var dl=el("dl");
+  [["0700","visibility 700 metres"],["R18R/0700N","runway visual range on 18R 700 metres, no change"],["SHSN","snow showers"],
+   ["VV005","sky obscured, vertical visibility 500 feet"],["00/M00","temperature 0°C, dew point just below 0°C"]].forEach(function(p){
+    dl.appendChild(el("dt",null,p[0]));dl.appendChild(el("dd",null,p[1]));});
+  h.appendChild(dl);
+  h.appendChild(el("p","kicker","Schiphol, 5 January 2026, 08:25 UTC. Between 2 and 7 January Schiphol ran about a third to three quarters of its usual departures."));
+}
+function dumbbell(id,rows,a,b,colA,colB,label,max){
+  var o=svgIn(id,24+rows.length*28,label),s=o.s,W=o.w;
+  var x0=96,x1=W-54,top=max||Math.max.apply(null,rows.map(function(r){return Math.max(r[a],r[b]);}))*1.1;
+  var sx=function(v){return x0+v/top*(x1-x0);};
+  [0,top/2,top].forEach(function(v){add(s,S("line",{x1:sx(v),y1:4,x2:sx(v),y2:o.h-18,class:"grid"}));
+    add(s,S("text",{x:sx(v),y:o.h-4,"text-anchor":"middle",class:"ax"},pct(v)));});
+  rows.forEach(function(r,i){var y=14+i*28;
+    add(s,S("text",{x:x0-10,y:y+4,"text-anchor":"end",class:"lbb"},r.label));
+    add(s,S("line",{x1:sx(r[a]),y1:y,x2:sx(r[b]),y2:y,stroke:"var(--line)","stroke-width":3}));
+    add(s,S("circle",{cx:sx(r[a]),cy:y,r:5,fill:"var("+colA+")"}));
+    add(s,S("circle",{cx:sx(r[b]),cy:y,r:5.5,fill:"var("+colB+")"}));
+    add(s,S("text",{x:Math.max(sx(r[a]),sx(r[b]))+10,y:y+4,class:"ax"},pct(r[a],1)+" → "+pct(r[b],1)));
+  });
+}
+function snow(){
+  var rows=D.snow.map(function(r){return {label:r.icao,a:r.jan25,b:r.jan26};}).sort(function(x,y){return y.b-x.b;});
+  dumbbell("c-snow",rows,"a","b","--ink-3","--stop","January snow share by airport");
+}
+function shift(){
+  var rows=D.airports.map(function(a){
+    var best=null;a.runways.forEach(function(r){[["Jul",r.jul25,r.jul26],["Jan",r.jan25,r.jan26]].forEach(function(m){
+      var d=Math.abs(m[2]-m[1]);if(!best||d>best.d)best={d:d,label:a.icao+" "+r.rwy+" "+m[0],a:m[1],b:m[2]};});});
+    return best;}).sort(function(x,y){return y.d-x.d;});
+  dumbbell("c-shift",rows,"a","b","--ink-3","--edge","Largest runway share change per airport, 2025 to 2026");
+}
+
+/* ---------- leaderboard ---------- */
+function lboard(){
+  var B=D.leaderboard,U=D.uploads,o=svgIn("c-board",170,"Leaderboard positions"),s=o.s,W=o.w;
+  var lo=200,hi=400,x0=20,x1=W-20,sx=function(v){return x0+(Math.min(hi,v)-lo)/(hi-lo)*(x1-x0);};
+  var Y=78;
+  // runway-styled axis
+  add(s,S("rect",{x:x0,y:Y-12,width:x1-x0,height:24,fill:"var(--asphalt)"}));
+  for(var c=x0+10;c<x1-10;c+=24)add(s,S("rect",{x:c,y:Y-1,width:12,height:2,fill:"var(--paint)",opacity:.7}));
+  for(var v=200;v<=400;v+=50){add(s,S("text",{x:sx(v),y:Y+30,"text-anchor":"middle",class:"ax"},v+" s"));}
+  [["leader",B.leader],["10th",B.tenth],["top quarter",B.quartile],["median team",B.median]].forEach(function(m,i){
+    var X=sx(m[1]);add(s,S("line",{x1:X,y1:Y-12,x2:X,y2:Y-30-(i%2)*14,stroke:"var(--ink-3)","stroke-width":1}));
+    add(s,S("circle",{cx:X,cy:Y,r:4,fill:"var(--paint)"}));
+    add(s,S("text",{x:X,y:Y-34-(i%2)*14,"text-anchor":"middle",class:"ax"},m[0]+" "+m[1]));});
+  U.forEach(function(u,i){
+    var X=sx(u.test),V=sx(u.validation),yy=Y+48+i*0;
+    add(s,S("line",{x1:X,y1:Y+12,x2:X,y2:Y+44,stroke:"var(--edge)","stroke-width":1}));
+    add(s,S("circle",{cx:X,cy:Y,r:5,fill:"var(--edge)"}));
+    add(s,S("circle",{cx:V,cy:Y,r:5,fill:"none",stroke:"var(--edge)","stroke-width":2}));
+    add(s,S("text",{x:X,y:Y+56+(i%2)*14,"text-anchor":"middle",class:"lbb"},u.v+" "+u.test));
+  });
+  set("lb-cap","Best score per team on "+B.date+", "+B.teams+" teams; axis stops at 400 s. Filled blue dots are our uploads' test scores, rings the same models' validation scores. Our best, "+B.ours+" s, ranks "+B.rank+"th.");
+}
+
+function text(){
+  var med=D.airports.map(function(a){return a.p50;}).sort(function(a,b){return a-b;});
+  set("t-median",mmss((med[4]+med[5])/2)+" (minutes and seconds) at the middle airport, from "+mmss(med[0])+" at the quickest to "+mmss(med[9])+" at Heathrow");
+  set("ident-rows",fmt(D.identity.rows));set("arr-2026",fmt(D.arrivals_2026));
+  document.getElementById("foot").textContent="Model figures are measured on the January and July 2025 departures held back from training ("+
+    fmt(D.groups.joined.n+D.groups.orphan.n)+" departures). Airport, runway and weather figures use all 2025 departures and the 2026 scored file, in aggregate only. "+
+    "Everything on this page is regenerated by pipeline/report_findings.py in the project repository.";
 }
 
 function render(){
-  facts();text();conc();tbl();dist();gapc();ladder();clipc();months();
+  board();departure();kept();tiles();scorecards();conc();tbl();dist();clip();lirf();strips();deice();metar();snow();shift();lboard();text();
 }
-
-bindTip("c-conc","t1",function(x){
-  var best=null,bd=1e9;
-  concPts.forEach(function(p){var d=Math.abs(p[0]-x);if(d<bd){bd=d;best=p;}});
-  if(!best||bd>26)return null;
-  return ["worst "+pct(best[2][0],2)+" of flights","make up "+pct(best[2][1],1)+" of the squared error"];
-});
-bindTip("c-dist","t2",function(x){
-  for(var i=0;i<distBars.length;i++){var b=distBars[i];
-    if(x>=b.x0&&x<=b.x1)return [b.last?"60 minutes and over":
-      (Math.round(b.i*D.hist.bin_sec/60)+"–"+Math.round((b.i+1)*D.hist.bin_sec/60)+" minutes"),
-      "with a record  "+pct(b.j,2)+" of group","no record      "+pct(b.o,2)+" of group"];}
-  return null;
-});
-bindTip("c-gap","t5",function(x){
-  for(var i=0;i<gapBars.length;i++){var b=gapBars[i];
-    if(x>=b.x0&&x<=b.x1)return ["took off "+b.lab+" after schedule",fmt(b.b.n)+" flights",
-      pct(b.b.at_share)+" with pushback = schedule",b.b.day_shift+" with pushback a day early"];}
-  return null;
-});
-bindTip("c-clip","t3",function(x){
-  var best=null,bd=1e9;
-  clipPts.forEach(function(p){var d=Math.abs(p[0]-x);if(d<bd){bd=d;best=p;}});
-  if(!best||bd>24)return null;
-  return ["capped at "+(best[2][0]>=3600?(best[2][0]/3600)+" hours":(best[2][0]/60)+" minutes"),"score "+best[2][1]+"s"];
-});
-bindTip("c-month","t4",function(x){
-  for(var i=0;i<monthBars.length;i++){var b=monthBars[i];
-    if(x>=b.x0&&x<=b.x1)return [["January","February","March","April","May","June","July","August","September","October","November","December"][b.m-1]+(b.scored?" (scored)":""),
-      "varies by "+Math.round(b.sd)+"s"];}
-  return null;
-});
-var rt;window.addEventListener("resize",function(){clearTimeout(rt);rt=setTimeout(render,120);});
-if(window.matchMedia)try{window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change",render);}catch(e){}
+var rt;window.addEventListener("resize",function(){clearTimeout(rt);rt=setTimeout(function(){departure();kept();conc();dist();clip();lirf();deice();snow();shift();lboard();},150);});
 render();
 })();
 </script>
