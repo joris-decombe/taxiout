@@ -13,12 +13,18 @@ from it and verified.
 |---|---|---|---|
 | v1 | 384s | **370.9s** | first submission |
 | v2 | 346.1s | **363.1s** | surroundings, weather, flight fields, matched mixture |
-| v3 | 346.6s | not yet | v2's matched predictions, v1's orphan predictions exactly |
+| v3 | 346.6s | **361.5s** | v2's matched predictions, v1's orphan predictions exactly |
 
-v2's orphan model predicted hours for five departures to Nice (see
-`train.ORPHAN_CATEGORICALS`), which validation could not see. **Before each
-upload, diff the new predictions against the last scored file** by group and
-airport, and read the largest changes: validation alone missed this.
+v3 splits the two cleanly. The Nice predictions in v2's orphan model (see
+`train.ORPHAN_CATEGORICALS`) cost 1.6s on the test set. **The matched-group
+changes are worth 9.4s on the test set (v1 to v3), against about 37s on
+validation.** Validation over-promised them by a factor of four, so the next
+question is which of them fail to transfer to 2026: the matched mixture (if
+LIRF's at-schedule rate changed), the surroundings, or the weather.
+
+**Before each upload, diff the new predictions against the last scored file**
+by group and airport, and read the largest changes: validation alone missed
+the Nice predictions.
 
 Leaderboard on 29 September 2026: leader 220.7s, 10th 237.0s, median team
 299.2s.
