@@ -4,14 +4,24 @@ Submissions close **11 October 2026, 23:59:59 CET**. Ranking takes each
 team's **best** score, at up to 5 uploads a day, so an upload never costs
 anything but a slot.
 
-Current model: **346.1s validation RMSE** on January + July 2025 (240.7s on
-the rows with a Network Manager record, 2,006s on the rest), against a 686s
-standard deviation for those months. `data/submission_v2.parquet` is built
-from it and verified, not yet uploaded.
+Current model: **346.6s validation RMSE** on January + July 2025 (240.7s on
+the rows with a Network Manager record, 2,011s on the rest), against a 686s
+standard deviation for those months. `data/submission_v3.parquet` is built
+from it and verified.
 
-On the test set, v1 (the 384s-validation model) scored **370.9s**, rank 139
-of 200 on 29 September 2026. The leader was at 220.7s, the 10th team at
-237.0s, the median team at 299.2s.
+| Upload | Validation | Test | What changed |
+|---|---|---|---|
+| v1 | 384s | **370.9s** | first submission |
+| v2 | 346.1s | **363.1s** | surroundings, weather, flight fields, matched mixture |
+| v3 | 346.6s | not yet | v2's matched predictions, v1's orphan predictions exactly |
+
+v2's orphan model predicted hours for five departures to Nice (see
+`train.ORPHAN_CATEGORICALS`), which validation could not see. **Before each
+upload, diff the new predictions against the last scored file** by group and
+airport, and read the largest changes: validation alone missed this.
+
+Leaderboard on 29 September 2026: leader 220.7s, 10th 237.0s, median team
+299.2s.
 
 ## Model, in priority order
 

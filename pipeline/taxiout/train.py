@@ -117,11 +117,12 @@ class Mixture:
 
     at_schedule: lgb.Booster
     normal: lgb.Booster
-    # The numeric feature columns this mixture was fitted on.
+    # The numeric and categorical feature columns this mixture was fitted on.
     columns: list[str]
+    categoricals: list[str]
 
     def predict(self, frame: pl.DataFrame) -> np.ndarray:
-        matrix = _to_frame(frame, self.columns)
+        matrix = _to_frame(frame, self.columns, self.categoricals)
         p = self.at_schedule.predict(matrix)
         r = self.normal.predict(matrix)
         gap = frame["sched_to_takeoff_sec"].to_numpy().astype(float)
@@ -164,32 +165,44 @@ def orphan_columns() -> list[str]:
     return [c for c in features.FEATURE_COLUMNS if c not in dropped]
 
 
-def _to_frame(frame: pl.DataFrame, columns: list[str]) -> pd.DataFrame:
+# The orphan group's categoricals: the four it had before the flight-table
+# ones were added. The flight-table ones are null on these rows by
+# construction, except the destination. With it, the 31-leaf model predicted
+# 9,000s to 20,000s for five 2026 departures to Nice (LFMN), two of which
+# took off within 17 minutes of schedule. Validation did not see it (346.1s
+# with, 346.6s without); the test score did (v2: 346s validation, 363s test).
+ORPHAN_CATEGORICALS = [schema.ADEP, schema.RUNWAY, schema.STAND, schema.AIRCRAFT_TYPE]
+
+
+def _to_frame(frame: pl.DataFrame, columns: list[str], categoricals: list[str]) -> pd.DataFrame:
     """Feature matrix with the categorical columns typed as categories.
 
     Both training and prediction go through here. They must: LightGBM compares
     the categorical dtypes of the two and refuses to predict when they differ,
     so casting in only one place fails at the last line of a long training run.
     """
-    x = frame.select(columns + features.CATEGORICAL_COLUMNS).to_pandas()
-    for column in features.CATEGORICAL_COLUMNS:
+    x = frame.select(columns + categoricals).to_pandas()
+    for column in categoricals:
         x[column] = x[column].astype("category")
     return x
 
 
-def _to_dataset(frame: pl.DataFrame, columns: list[str]) -> lgb.Dataset:
-    x = _to_frame(frame, columns)
+def _to_dataset(frame: pl.DataFrame, columns: list[str], categoricals: list[str]) -> lgb.Dataset:
+    x = _to_frame(frame, columns, categoricals)
     y = frame.select(schema.TARGET).to_numpy().ravel()
-    return lgb.Dataset(x, label=y, categorical_feature=features.CATEGORICAL_COLUMNS)
+    return lgb.Dataset(x, label=y, categorical_feature=categoricals)
 
 
-def _fit(train_frame: pl.DataFrame, columns: list[str], params: dict, num_rounds: int) -> lgb.Booster:
-    return lgb.train(params, _to_dataset(train_frame, columns), num_boost_round=num_rounds)
+def _fit(
+    train_frame: pl.DataFrame, columns: list[str], categoricals: list[str], params: dict, num_rounds: int
+) -> lgb.Booster:
+    return lgb.train(params, _to_dataset(train_frame, columns, categoricals), num_boost_round=num_rounds)
 
 
 def _fit_mixture(
     rows: pl.DataFrame,
     columns: list[str],
+    categoricals: list[str],
     params: dict,
     num_rounds: int,
     classifier_params: dict,
@@ -198,11 +211,11 @@ def _fit_mixture(
     label = rows.select(off_block_at_schedule().fill_null(False).cast(pl.Int8)).to_numpy().ravel()
     at_schedule = lgb.train(
         classifier_params,
-        lgb.Dataset(_to_frame(rows, columns), label=label, categorical_feature=features.CATEGORICAL_COLUMNS),
+        lgb.Dataset(_to_frame(rows, columns, categoricals), label=label, categorical_feature=categoricals),
         num_boost_round=classifier_rounds,
     )
-    normal = _fit(rows.filter(label == 0), columns, params, num_rounds)
-    return Mixture(at_schedule=at_schedule, normal=normal, columns=list(columns))
+    normal = _fit(rows.filter(label == 0), columns, categoricals, params, num_rounds)
+    return Mixture(at_schedule=at_schedule, normal=normal, columns=list(columns), categoricals=list(categoricals))
 
 
 def fit(departures: pl.LazyFrame, around: pl.DataFrame) -> TrainedModel:
@@ -218,12 +231,12 @@ def fit(departures: pl.LazyFrame, around: pl.DataFrame) -> TrainedModel:
     orphan_rows = frame.filter(~has_flight_record())
 
     joined = _fit_mixture(
-        joined_rows, list(features.FEATURE_COLUMNS),
+        joined_rows, list(features.FEATURE_COLUMNS), list(features.CATEGORICAL_COLUMNS),
         PARAMS, JOINED_ROUNDS, JOINED_CLASSIFIER_PARAMS, JOINED_CLASSIFIER_ROUNDS,
     )
     orphan = (
         _fit_mixture(
-            orphan_rows, orphan_columns(),
+            orphan_rows, orphan_columns(), ORPHAN_CATEGORICALS,
             SPARSE_PARAMS, ORPHAN_ROUNDS, CLASSIFIER_PARAMS, CLASSIFIER_ROUNDS,
         )
         if len(orphan_rows) >= MIN_SPARSE_ROWS
