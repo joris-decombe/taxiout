@@ -13,7 +13,11 @@ to 26h late are either at schedule or a day plus a normal taxi (about -9s).
 Built as `data/submission_v6.parquet`; `submission_v6_nolobt.parquet` is
 the same fit without the LOBT window. `submission_v7.parquet` adds the
 LIRF late-orphan rule (`train.LIRF_ORPHAN_RULE`, -5.2s, 95% CI
--10.2s to -1.4s): **324.6s validation**.
+-10.2s to -1.4s): 324.6s validation.
+Round 4 (`pipeline/experiments_round4.py`, from [RESEARCH.md](RESEARCH.md))
+blends a CatBoost twin into the matched regressor: **321.8s validation**
+(-2.7s, 95% CI -3.4s to -2.2s), built as `submission_v8.parquet`. Queueing
+features and recalibrating p did nothing.
 
 | Upload | Validation | Test | What changed |
 |---|---|---|---|

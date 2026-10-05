@@ -45,9 +45,9 @@ the classifier at 0.87 AUC. Weighting the classifier by that cost, with an
 explicit EOBT == SCHED flag and a stand-area categorical, measured +0.1s
 (95% CI -0.9s to +0.9s): no effect, so it is not in.
 
-Current validation: 324.6s overall, with the anchored matched regressor,
-the LOBT window and LIRF's day-shift and late-orphan rules (constants
-below), on top of the
+Current validation, with the anchored matched regressor,
+the LOBT window, LIRF's day-shift and late-orphan rules, and a CatBoost
+twin of the matched regressor (constants below): 321.8s. All on top of the
 live excess features and the reference fallback in features.py (343.6s).
 
 The simulator only earns its place if adding its queue-delay estimate as a
@@ -146,6 +146,16 @@ LIRF_ORPHAN_RULE = True
 LIRF_ORPHAN_BANDS_H = (1, 2, 3, 4, 6, 8, 14)
 LIRF_ORPHAN_FULL_ABOVE_H = 6
 
+# The matched normal-taxi prediction is a blend of the LightGBM regressor and
+# a CatBoost one boosted from the same anchor, at this weight on CatBoost.
+# 50/50 took validation from 324.6s to 321.8s (95% CI -3.4s to -2.2s;
+# January and July both better); 70/30 scored the same. 0 disables it.
+JOINED_CATBOOST_WEIGHT = 0.5
+CATBOOST_PARAMS = {
+    "loss_function": "RMSE", "iterations": 2000, "learning_rate": 0.1, "depth": 8,
+    "thread_count": -1, "verbose": 0, "allow_writing_files": False,
+}
+
 
 def has_flight_record() -> pl.Expr:
     """Whether the movement joined to a Network Manager flight record.
@@ -178,12 +188,19 @@ class Mixture:
     categoricals: list[str]
     # Whether `normal` predicts the deviation from `_anchor` rather than the taxi.
     anchored: bool = False
+    # A CatBoost twin of `normal`, blended in at `catboost_weight`.
+    catboost: object | None = None
+    catboost_weight: float = 0.0
 
     def components(self, frame: pl.DataFrame) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """The at-schedule probability, the normal-taxi prediction, and the gap they mix."""
         matrix = _to_frame(frame, self.columns, self.categoricals)
         p = self.at_schedule.predict(matrix)
         r = self.normal.predict(matrix) + (_anchor(frame) if self.anchored else 0.0)
+        if self.catboost is not None:
+            twin = self.catboost.predict(_catboost_pool(frame, self.columns, self.categoricals))
+            twin = twin + (_anchor(frame) if self.anchored else 0.0)
+            r = (1 - self.catboost_weight) * r + self.catboost_weight * twin
         gap = frame["sched_to_takeoff_sec"].to_numpy().astype(float)
         # Without a schedule there is no artifact value to mix in.
         gap = np.where(np.isnan(gap), r, gap)
@@ -346,6 +363,22 @@ def _anchor(frame: pl.DataFrame) -> np.ndarray:
     return np.nan_to_num(np.where(np.isnan(nm), fallback, np.clip(nm, 0, ANCHOR_CAP_SEC)))
 
 
+def _catboost_pool(frame: pl.DataFrame, columns: list[str], categoricals: list[str], label: bool = False,
+                   anchored: bool = False):
+    """CatBoost's input: categoricals as strings, the anchor as a training baseline only."""
+    from catboost import Pool
+
+    x = frame.select(columns + categoricals).with_columns(
+        pl.col(c).cast(pl.Utf8).fill_null("NA") for c in categoricals
+    ).to_pandas()
+    return Pool(
+        x,
+        label=frame[schema.TARGET].to_numpy() if label else None,
+        cat_features=categoricals,
+        baseline=_anchor(frame) if label and anchored else None,
+    )
+
+
 def _to_dataset(
     frame: pl.DataFrame, columns: list[str], categoricals: list[str], anchored: bool = False
 ) -> lgb.Dataset:
@@ -372,6 +405,7 @@ def _fit_mixture(
     classifier_rounds: int,
     normal_max_sec: float | None = None,
     anchored: bool = False,
+    catboost_weight: float = 0.0,
 ) -> Mixture:
     label = rows.select(off_block_at_schedule().fill_null(False).cast(pl.Int8)).to_numpy().ravel()
     at_schedule = lgb.train(
@@ -383,9 +417,15 @@ def _fit_mixture(
     if normal_max_sec is not None:
         normal_rows = normal_rows.filter(pl.col(schema.TARGET) < normal_max_sec)
     normal = _fit(normal_rows, columns, categoricals, params, num_rounds, anchored)
+    twin = None
+    if catboost_weight > 0:
+        from catboost import CatBoostRegressor
+
+        twin = CatBoostRegressor(**CATBOOST_PARAMS)
+        twin.fit(_catboost_pool(normal_rows, columns, categoricals, label=True, anchored=anchored))
     return Mixture(
         at_schedule=at_schedule, normal=normal, columns=list(columns), categoricals=list(categoricals),
-        anchored=anchored,
+        anchored=anchored, catboost=twin, catboost_weight=catboost_weight,
     )
 
 
@@ -404,7 +444,7 @@ def fit(departures: pl.LazyFrame, around: pl.DataFrame) -> TrainedModel:
     joined = _fit_mixture(
         joined_rows, list(features.FEATURE_COLUMNS), list(features.CATEGORICAL_COLUMNS),
         PARAMS, JOINED_ROUNDS, JOINED_CLASSIFIER_PARAMS, JOINED_CLASSIFIER_ROUNDS,
-        anchored=JOINED_ANCHORED,
+        anchored=JOINED_ANCHORED, catboost_weight=JOINED_CATBOOST_WEIGHT,
     )
     orphan = (
         _fit_mixture(

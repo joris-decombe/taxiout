@@ -11,9 +11,12 @@ each with `prod`, the current model:
   queue    + `context.QUEUEING_COLUMNS` on the matched group: adjusted
            traffic (Simaiakis and Balakrishnan, Transportation Science 2016)
            and the flight's place in its runway busy period
+           -> 324.5s, -0.1s (95% CI -0.3s to +0.1s): no effect
   catboost prod, with the matched normal-taxi regressor's prediction
            blended with a CatBoost one boosted from the same anchor
            (Prokhorenkova et al., NeurIPS 2018); scored at several weights
+           -> 30%: 322.4s, 50%: 321.8s (-2.7s, 95% CI -3.4s to -2.2s;
+              January -2.2s, July -3.3s), 70%: 321.9s. Kept at 50%.
 
 Recalibrating the at-schedule probability (isotonic, per group) was ruled
 out before fitting: even calibrated in-sample on validation itself, by

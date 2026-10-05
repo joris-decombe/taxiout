@@ -93,15 +93,22 @@ the rare regimes matter more than the bulk.
 
 | # | Candidate | Basis | Status |
 |---|---|---|---|
-| 1 | Queueing features: adjusted traffic, runway busy-period position | Simaiakis and Balakrishnan | `experiments_round4.py queue` |
+| 1 | Queueing features: adjusted traffic, runway busy-period position | Simaiakis and Balakrishnan | no effect: -0.1s (95% CI -0.3s to +0.1s); take-off minus AOBT already holds the queue's outcome |
 | 2 | Calibrated mixture weights: cross-fitted isotonic calibration of `p` | Niculescu-Mizil and Caruana; the LIRF result | ruled out: an in-sample oracle gains at most 0.5s once the LIRF rules apply |
-| 3 | CatBoost blended with LightGBM | Ordered target statistics avoid prediction shift (Prokhorenkova et al., 2018, [arXiv:1706.09516](https://arxiv.org/abs/1706.09516)); EUROCONTROL's benchmark | `experiments_round4.py catboost` |
+| 3 | CatBoost blended with LightGBM | Ordered target statistics avoid prediction shift (Prokhorenkova et al., 2018, [arXiv:1706.09516](https://arxiv.org/abs/1706.09516)); EUROCONTROL's benchmark | **in: -2.7s** (95% CI -3.4s to -2.2s) at 50/50, both months better; `train.JOINED_CATBOOST_WEIGHT` |
 | 4 | Stacking on out-of-fold predictions | Wolpert (1992); cross-fitting (Chernozhukov et al., 2018, [arXiv:1608.00060](https://arxiv.org/abs/1608.00060)) | if time |
 | 5 | Seed averaging | Variance reduction | cheap |
 | 6 | Monotone constraints on queue counts | The convex, non-decreasing relation above | with 1 |
 | – | Neural nets, TabPFN, distributional boosting (NGBoost) | Wrong scale, or they model a full distribution when RMSE needs the mean | not pursued |
 
 ## Tried and rejected
+
+- **Queueing features** (adjusted traffic, busy-period position): -0.1s.
+  Counting the queue adds nothing once the model sees `MVT − AOBT`, which
+  is the waiting itself.
+- **The flight table's arrival times** (`ARVT_1`, `ARVT_3`: airborne time,
+  planned and actual block-to-arrival, arrival delay): correlation with
+  the current model's residual about 0.01 in every form.
 
 - **Linear leaves** (`linear_tree`): +607s, extrapolation on a few rows;
   still 292s matched against 229s when bounded.
