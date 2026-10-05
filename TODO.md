@@ -12,7 +12,8 @@ the matched regressor learns the deviation from take-off minus AOBT
 to 26h late are either at schedule or a day plus a normal taxi (about -9s).
 Built as `data/submission_v6.parquet`; `submission_v6_nolobt.parquet` is
 the same fit without the LOBT window. `submission_v7.parquet` adds the
-LIRF late-orphan rule (`train.LIRF_ORPHAN_RULE`, -2.9s, CI crosses zero).
+LIRF late-orphan rule (`train.LIRF_ORPHAN_RULE`, -5.2s, 95% CI
+-10.2s to -1.4s): **324.6s validation**.
 
 | Upload | Validation | Test | What changed |
 |---|---|---|---|

@@ -45,8 +45,9 @@ the classifier at 0.87 AUC. Weighting the classifier by that cost, with an
 explicit EOBT == SCHED flag and a stand-area categorical, measured +0.1s
 (95% CI -0.9s to +0.9s): no effect, so it is not in.
 
-Current validation: 329.8s overall, with the anchored matched regressor,
-the LOBT window and LIRF's day-shift rule (constants below), on top of the
+Current validation: 324.6s overall, with the anchored matched regressor,
+the LOBT window and LIRF's day-shift and late-orphan rules (constants
+below), on top of the
 live excess features and the reference fallback in features.py (343.6s).
 
 The simulator only earns its place if adding its queue-delay estimate as a
@@ -137,11 +138,13 @@ DAY_SHIFT_AIRPORTS = ("LIRF",)
 # climbs from 42% at 1-2h to 100% past 8h. The orphan regressor's "normal"
 # value there ranged from -3,500s to 20,000s, half-absorbing the artifact
 # the classifier missed. The rule makes the second component a normal taxi
-# and averages p with the band's training share. -2.9s on validation (95%
-# CI -7.7s to +1.0s; January and July both better), so it is measured on
-# the leaderboard before it is trusted.
-LIRF_ORPHAN_RULE = False
+# and replaces p with the band's training share past 6h (88% to 100%; all
+# 9 validation orphans 8h to 14h late were at schedule), averaging the two
+# below it. -5.2s on validation (95% CI -10.2s to -1.4s; January and July
+# both better). Averaging everywhere gave only -2.9s.
+LIRF_ORPHAN_RULE = True
 LIRF_ORPHAN_BANDS_H = (1, 2, 3, 4, 6, 8, 14)
+LIRF_ORPHAN_FULL_ABOVE_H = 6
 
 
 def has_flight_record() -> pl.Expr:
@@ -225,7 +228,8 @@ class TrainedModel:
             if LIRF_ORPHAN_RULE:
                 band_rate = _lirf_band_rate(rows, gap, self.lirf_art_rates)
                 late = ~np.isnan(band_rate)
-                p = np.where(late, 0.5 * (p + band_rate), p)
+                trusted = late & (gap / 3600 > LIRF_ORPHAN_FULL_ABOVE_H)
+                p = np.where(trusted, band_rate, np.where(late, 0.5 * (p + band_rate), p))
                 r = np.where(late, self.day_shift_taxi, r)
             if DAY_SHIFT:
                 r = np.where(_day_shift_band(rows, gap), DAY_SEC + self.day_shift_taxi, r)
