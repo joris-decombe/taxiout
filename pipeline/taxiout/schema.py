@@ -55,6 +55,10 @@ CALLSIGN = "CALLSIGN_flt"
 WAKE_CATEGORY = "WK_TBL_CAT_flt"
 EOBT = "EOBT_1_flt"
 IOBT = "IOBT_flt"
+# The last off-block time in the flight plan. On every 2025 departure that
+# has one, BLOCK_TIME lies within +-3606s of it: the movement and flight
+# tables look to have been joined on that window.
+LOBT = "LOBT_flt"
 # An opaque hash, but a stable one: the same operator gets the same value.
 OPERATOR = "AIRCRAFT_OPERATOR_flt"
 MARKET_SEGMENT = "MARKET_SEGMENT_flt"

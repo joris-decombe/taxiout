@@ -45,8 +45,9 @@ the classifier at 0.87 AUC. Weighting the classifier by that cost, with an
 explicit EOBT == SCHED flag and a stand-area categorical, measured +0.1s
 (95% CI -0.9s to +0.9s): no effect, so it is not in.
 
-Current validation (with the live excess features and the reference
-fallback in features.py): 343.6s overall.
+Current validation: 329.8s overall, with the anchored matched regressor,
+the LOBT window and LIRF's day-shift rule (constants below), on top of the
+live excess features and the reference fallback in features.py (343.6s).
 
 The simulator only earns its place if adding its queue-delay estimate as a
 feature beats this number.
@@ -96,6 +97,52 @@ JOINED_CLASSIFIER_ROUNDS = 600
 # schedule. The artifact rows agree to within a few seconds.
 AT_SCHEDULE_TOLERANCE_SEC = 10
 
+# Rows above this are left out of the orphan group's normal-taxi regressor.
+# None keeps them all. See `experiments_round3.py` on day-shifted rows.
+ORPHAN_NORMAL_MAX_SEC: float | None = None
+
+# Whether the matched regressor starts from the NM's own taxi-out
+# (`_anchor`) and learns only the departure's deviation from it. Worth
+# 1.1s on validation (95% CI -1.7s to -0.6s), `experiments_round3.py`.
+JOINED_ANCHORED = True
+ANCHOR_CAP_SEC = 7200
+
+# BLOCK_TIME lies within LOBT +- 3606s on every 2025 departure with a LOBT
+# (2,062,577 of them), so a matched prediction is projected into that
+# window, and the at-schedule probability is zero where the schedule falls
+# outside it. Worth 3.8s on validation (95% CI -8.6s to -1.1s). The bound
+# was first published by another team; see the README's prior work.
+LOBT_WINDOW = True
+LOBT_WINDOW_SEC = 3606
+
+# Day-shifted orphans: a taxi-out of one day plus a normal taxi, with no
+# at-schedule off-block. At LIRF, every 2025 orphan that took off 14h to
+# 26h after schedule was one of two kinds: at schedule (8, target = gap) or
+# day-shifted (11), never a normal taxi. So there the mixture's second
+# component is a day plus a normal taxi rather than the regressor, which
+# had learnt part of the day on its own:
+#
+#     p * gap + (1 - p) * (86,400 + median normal taxi)
+#
+# 339.1s to 329.8s on validation. At other airports the band holds
+# ordinary late flights, so it is LIRF only.
+DAY_SHIFT = True
+DAY_SEC = 86_400
+DAY_SHIFT_MIN_SEC = 80_000
+DAY_SHIFT_BAND_H = (14, 26)
+DAY_SHIFT_AIRPORTS = ("LIRF",)
+
+# LIRF orphans more than an hour late are either at schedule (target = gap)
+# or a normal taxi (median ~1,030s, p90 under 2,000s); the at-schedule share
+# climbs from 42% at 1-2h to 100% past 8h. The orphan regressor's "normal"
+# value there ranged from -3,500s to 20,000s, half-absorbing the artifact
+# the classifier missed. The rule makes the second component a normal taxi
+# and averages p with the band's training share. -2.9s on validation (95%
+# CI -7.7s to +1.0s; January and July both better), so it is measured on
+# the leaderboard before it is trusted.
+LIRF_ORPHAN_RULE = False
+LIRF_ORPHAN_BANDS_H = (1, 2, 3, 4, 6, 8, 14)
+
 
 def has_flight_record() -> pl.Expr:
     """Whether the movement joined to a Network Manager flight record.
@@ -126,14 +173,21 @@ class Mixture:
     # The numeric and categorical feature columns this mixture was fitted on.
     columns: list[str]
     categoricals: list[str]
+    # Whether `normal` predicts the deviation from `_anchor` rather than the taxi.
+    anchored: bool = False
 
-    def predict(self, frame: pl.DataFrame) -> np.ndarray:
+    def components(self, frame: pl.DataFrame) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """The at-schedule probability, the normal-taxi prediction, and the gap they mix."""
         matrix = _to_frame(frame, self.columns, self.categoricals)
         p = self.at_schedule.predict(matrix)
-        r = self.normal.predict(matrix)
+        r = self.normal.predict(matrix) + (_anchor(frame) if self.anchored else 0.0)
         gap = frame["sched_to_takeoff_sec"].to_numpy().astype(float)
         # Without a schedule there is no artifact value to mix in.
         gap = np.where(np.isnan(gap), r, gap)
+        return p, r, gap
+
+    def predict(self, frame: pl.DataFrame) -> np.ndarray:
+        p, r, gap = self.components(frame)
         return p * gap + (1 - p) * r
 
 
@@ -147,16 +201,97 @@ class TrainedModel:
     # must join the same one, so it travels with the model.
     unimpeded: pl.DataFrame
     validation_rmse: float
+    # The normal taxi added to a day for day-shifted orphans, `normal_orphan_taxi`.
+    day_shift_taxi: float
+    # At-schedule share per LIRF orphan gap band, keyed by the band's lower edge.
+    lirf_art_rates: dict[int, float]
 
     def predict(self, frame: pl.DataFrame) -> np.ndarray:
         mask = frame.select(has_flight_record()).to_numpy().ravel()
         out = np.empty(len(frame), dtype=float)
         if mask.any():
-            out[mask] = self.joined.predict(frame.filter(has_flight_record()))
+            rows = frame.filter(has_flight_record())
+            p, r, gap = self.joined.components(rows)
+            if LOBT_WINDOW:
+                low, high = _lobt_window(rows)
+                p = np.where(_sched_in_window(rows), p, 0.0)
+                out[mask] = np.clip(p * gap + (1 - p) * r, low, high)
+            else:
+                out[mask] = p * gap + (1 - p) * r
         if (~mask).any():
+            rows = frame.filter(~has_flight_record())
             model = self.joined if self.orphan is None else self.orphan
-            out[~mask] = model.predict(frame.filter(~has_flight_record()))
+            p, r, gap = model.components(rows)
+            if LIRF_ORPHAN_RULE:
+                band_rate = _lirf_band_rate(rows, gap, self.lirf_art_rates)
+                late = ~np.isnan(band_rate)
+                p = np.where(late, 0.5 * (p + band_rate), p)
+                r = np.where(late, self.day_shift_taxi, r)
+            if DAY_SHIFT:
+                r = np.where(_day_shift_band(rows, gap), DAY_SEC + self.day_shift_taxi, r)
+            out[~mask] = p * gap + (1 - p) * r
         return out
+
+
+def _lobt_window(rows: pl.DataFrame) -> tuple[np.ndarray, np.ndarray]:
+    """The taxi-out range that keeps BLOCK_TIME within LOBT +- 3606s."""
+    takeoff_lobt = rows.select(
+        (pl.col(schema.MVT_TIME) - pl.col(schema.LOBT)).dt.total_seconds()
+    ).to_numpy().ravel().astype(float)
+    # A missing LOBT leaves the prediction unbounded.
+    return (
+        np.nan_to_num(takeoff_lobt - LOBT_WINDOW_SEC, nan=-np.inf),
+        np.nan_to_num(takeoff_lobt + LOBT_WINDOW_SEC, nan=np.inf),
+    )
+
+
+def _sched_in_window(rows: pl.DataFrame) -> np.ndarray:
+    """Whether an at-schedule BLOCK_TIME is possible at all, given the LOBT."""
+    sched_lobt = rows.select(
+        (pl.col(schema.SCHED_TIME) - pl.col(schema.LOBT)).dt.total_seconds().abs()
+    ).to_numpy().ravel().astype(float)
+    return ~(sched_lobt > LOBT_WINDOW_SEC)
+
+
+def normal_orphan_taxi(orphans: pl.DataFrame) -> float:
+    """Median taxi-out of the day-shift airports' ordinary orphans."""
+    rows = orphans.filter(
+        pl.col(schema.ADEP).is_in(DAY_SHIFT_AIRPORTS)
+        & ~off_block_at_schedule().fill_null(False)
+        & (pl.col(schema.TARGET) < DAY_SHIFT_MIN_SEC)
+    )
+    return float(rows[schema.TARGET].median()) if len(rows) else 0.0
+
+
+def lirf_art_rates(orphans: pl.DataFrame) -> dict[int, float]:
+    """At-schedule share of LIRF's ordinary orphans per gap band."""
+    rows = orphans.filter(
+        (pl.col(schema.ADEP) == "LIRF") & (pl.col(schema.TARGET) < DAY_SHIFT_MIN_SEC)
+    ).with_columns(
+        off_block_at_schedule().fill_null(False).alias("_art"),
+        (pl.col("sched_to_takeoff_sec") / 3600).alias("_gap_h"),
+    )
+    rates = {}
+    for low, high in zip(LIRF_ORPHAN_BANDS_H, LIRF_ORPHAN_BANDS_H[1:]):
+        band = rows.filter((pl.col("_gap_h") > low) & (pl.col("_gap_h") <= high))
+        rates[low] = float(band["_art"].mean()) if len(band) else 1.0
+    return rates
+
+
+def _lirf_band_rate(rows: pl.DataFrame, gap: np.ndarray, rates: dict[int, float]) -> np.ndarray:
+    """The row's band share, NaN outside LIRF or outside the bands."""
+    gap_h = gap / 3600
+    lirf = (rows[schema.ADEP] == "LIRF").to_numpy()
+    out = np.full(len(rows), np.nan)
+    for (low, rate), high in zip(rates.items(), LIRF_ORPHAN_BANDS_H[1:]):
+        out[lirf & (gap_h > low) & (gap_h <= high)] = rate
+    return out
+
+
+def _day_shift_band(rows: pl.DataFrame, gap: np.ndarray) -> np.ndarray:
+    gap_h = gap / 3600
+    low, high = DAY_SHIFT_BAND_H
+    return rows[schema.ADEP].is_in(DAY_SHIFT_AIRPORTS).to_numpy() & (gap_h > low) & (gap_h <= high)
 
 
 def orphan_columns() -> list[str]:
@@ -196,16 +331,31 @@ def _to_frame(frame: pl.DataFrame, columns: list[str], categoricals: list[str]) 
     return x
 
 
-def _to_dataset(frame: pl.DataFrame, columns: list[str], categoricals: list[str]) -> lgb.Dataset:
+def _anchor(frame: pl.DataFrame) -> np.ndarray:
+    """The NM's own taxi-out, take-off minus AOBT, as a starting point.
+
+    Capped, because a multi-hour gap there is a stale AOBT more often than a
+    taxi; rows without an AOBT start from the unimpeded reference.
+    """
+    nm = frame["aobt_to_takeoff_sec"].to_numpy().astype(float)
+    fallback = frame["unimpeded_taxi_sec"].to_numpy().astype(float)
+    return np.nan_to_num(np.where(np.isnan(nm), fallback, np.clip(nm, 0, ANCHOR_CAP_SEC)))
+
+
+def _to_dataset(
+    frame: pl.DataFrame, columns: list[str], categoricals: list[str], anchored: bool = False
+) -> lgb.Dataset:
     x = _to_frame(frame, columns, categoricals)
     y = frame.select(schema.TARGET).to_numpy().ravel()
-    return lgb.Dataset(x, label=y, categorical_feature=categoricals)
+    init = _anchor(frame) if anchored else None
+    return lgb.Dataset(x, label=y, init_score=init, categorical_feature=categoricals)
 
 
 def _fit(
-    train_frame: pl.DataFrame, columns: list[str], categoricals: list[str], params: dict, num_rounds: int
+    train_frame: pl.DataFrame, columns: list[str], categoricals: list[str], params: dict, num_rounds: int,
+    anchored: bool = False,
 ) -> lgb.Booster:
-    return lgb.train(params, _to_dataset(train_frame, columns, categoricals), num_boost_round=num_rounds)
+    return lgb.train(params, _to_dataset(train_frame, columns, categoricals, anchored), num_boost_round=num_rounds)
 
 
 def _fit_mixture(
@@ -216,6 +366,8 @@ def _fit_mixture(
     num_rounds: int,
     classifier_params: dict,
     classifier_rounds: int,
+    normal_max_sec: float | None = None,
+    anchored: bool = False,
 ) -> Mixture:
     label = rows.select(off_block_at_schedule().fill_null(False).cast(pl.Int8)).to_numpy().ravel()
     at_schedule = lgb.train(
@@ -223,8 +375,14 @@ def _fit_mixture(
         lgb.Dataset(_to_frame(rows, columns, categoricals), label=label, categorical_feature=categoricals),
         num_boost_round=classifier_rounds,
     )
-    normal = _fit(rows.filter(label == 0), columns, categoricals, params, num_rounds)
-    return Mixture(at_schedule=at_schedule, normal=normal, columns=list(columns), categoricals=list(categoricals))
+    normal_rows = rows.filter(label == 0)
+    if normal_max_sec is not None:
+        normal_rows = normal_rows.filter(pl.col(schema.TARGET) < normal_max_sec)
+    normal = _fit(normal_rows, columns, categoricals, params, num_rounds, anchored)
+    return Mixture(
+        at_schedule=at_schedule, normal=normal, columns=list(columns), categoricals=list(categoricals),
+        anchored=anchored,
+    )
 
 
 def fit(departures: pl.LazyFrame, around: pl.DataFrame) -> TrainedModel:
@@ -242,17 +400,21 @@ def fit(departures: pl.LazyFrame, around: pl.DataFrame) -> TrainedModel:
     joined = _fit_mixture(
         joined_rows, list(features.FEATURE_COLUMNS), list(features.CATEGORICAL_COLUMNS),
         PARAMS, JOINED_ROUNDS, JOINED_CLASSIFIER_PARAMS, JOINED_CLASSIFIER_ROUNDS,
+        anchored=JOINED_ANCHORED,
     )
     orphan = (
         _fit_mixture(
             orphan_rows, orphan_columns(), ORPHAN_CATEGORICALS,
             SPARSE_PARAMS, ORPHAN_ROUNDS, CLASSIFIER_PARAMS, CLASSIFIER_ROUNDS,
+            ORPHAN_NORMAL_MAX_SEC,
         )
         if len(orphan_rows) >= MIN_SPARSE_ROWS
         else None
     )
     return TrainedModel(
-        joined=joined, orphan=orphan, unimpeded=unimpeded, validation_rmse=float("nan")
+        joined=joined, orphan=orphan, unimpeded=unimpeded, validation_rmse=float("nan"),
+        day_shift_taxi=normal_orphan_taxi(orphan_rows),
+        lirf_art_rates=lirf_art_rates(orphan_rows),
     )
 
 

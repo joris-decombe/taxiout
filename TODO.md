@@ -4,13 +4,15 @@ Submissions close **11 October 2026, 23:59:59 CET**. Ranking takes each
 team's **best** score, at up to 5 uploads a day, so an upload never costs
 anything but a slot.
 
-Current model: **343.6s validation RMSE** on January + July 2025, against a
-686s standard deviation for those months. It adds the live excess features
-and the stand-group/runway reference fallback to v3.
-Uploaded as v5 (`data/submission_v4.parquet`, with fallback) and v4
-(`data/submission_v4_nofallback.parquet`). Without the fallback, v4's no-record predictions equal v3's; with it, they
-move by hundreds of seconds at some airports, mostly LIRF, because no-record
-rows with a missing or unseen stand now get a runway-level reference.
+Current model: **329.8s validation RMSE** on January + July 2025, against a
+686s standard deviation for those months (v5 was 343.6s). Round 3
+(`pipeline/experiments_round3.py`, 6 October 2026) added three things:
+the matched regressor learns the deviation from take-off minus AOBT
+(-1.1s), predictions respect the LOBT window (-3.8s), and LIRF orphans 14h
+to 26h late are either at schedule or a day plus a normal taxi (about -9s).
+Built as `data/submission_v6.parquet`; `submission_v6_nolobt.parquet` is
+the same fit without the LOBT window. `submission_v7.parquet` adds the
+LIRF late-orphan rule (`train.LIRF_ORPHAN_RULE`, -2.9s, CI crosses zero).
 
 | Upload | Validation | Test | What changed |
 |---|---|---|---|
@@ -164,9 +166,8 @@ Measured over March 2025, 163,367 departures:
 ## Compliance and housekeeping
 
 - [x] **GPLv3 licence.** `LICENSE` holds the canonical text.
-- [ ] **Make the repo public** before the deadline. Prize eligibility requires
-      it. The history has been audited: 28 paths ever added, no parquet, no
-      credential, so the flip is safe.
+- [x] **Make the repo public.** Done 6 October 2026, after auditing the
+      history again: 48 paths ever added, no parquet, no credential.
 - [ ] **Reproducible documentation.** An eligibility requirement in its own
       right, not just good practice. *Taxi-Out, Measured* is now covered:
       `pipeline/report_findings.py` rebuilds its data and page source in

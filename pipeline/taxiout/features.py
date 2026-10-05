@@ -150,6 +150,8 @@ def add_schedule_features(frame: pl.LazyFrame) -> pl.LazyFrame:
         # recorded at the schedule instead (see train.py).
         (pl.col(schema.AOBT) - pl.col(schema.SCHED_TIME)).dt.total_seconds().alias("aobt_vs_sched_sec"),
         pl.col(schema.AOBT).dt.second().alias("aobt_second"),
+        (takeoff - pl.col(schema.LOBT)).dt.total_seconds().alias("lobt_to_takeoff_sec"),
+        (pl.col(schema.SCHED_TIME) - pl.col(schema.LOBT)).dt.total_seconds().alias("sched_vs_lobt_sec"),
     )
 
 

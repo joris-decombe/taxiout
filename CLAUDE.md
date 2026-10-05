@@ -178,9 +178,15 @@ tail matters more than its bulk.
 
 The rules require the final solution on a **public** GitHub repo under
 **GPLv3** (`LICENSE` holds the text), with reproducible documentation and any
-external data openly licensed. This repo is private today; the history has been
-checked and has never contained a parquet or a credential, so flipping it is
-safe when the time comes.
+external data openly licensed. The repo has been public since 6 October 2026
+(history audited first: no parquet, no credential), so anything committed is
+published: keep data, credentials and scores-by-row out of it.
+
+Solutions must be **original**: reusing another implementation needs its
+authors' permission and significant changes. Other teams publish their
+repos during the challenge. Read their write-ups for ideas if useful, never
+their code, verify any idea on our own data, and credit it in the README's
+prior-work section.
 
 **Submission rules** are on the challenge site's ranking page
 (<https://prc-data-challenge-2026.netlify.app/ranking.html>), not the overview

@@ -40,9 +40,8 @@ organisers fork the repo for administration. Failing any of those makes an
 entry ineligible for a prize, though not for scoring. An open-access paper in
 the Journal of Open Aviation Science is encouraged.
 
-This repo is currently **private**, which suits work in progress and does not
-suit the deadline. The history has been checked and has never contained a
-parquet or a credential, so the flip is safe whenever it happens.
+This repo has been **public** since 6 October 2026. Its history was checked
+first and has never contained a parquet or a credential.
 
 **Ranking takes each team's best submission**, and the limit is 5 uploads a
 day (1 GB per bucket). Both are on the site's
@@ -221,3 +220,37 @@ first, since that is the easiest thing to get wrong.
 ## Key dates
 
 Submissions close **11 October 2026, 23:59:59 CET**.
+
+## Prior work
+
+Everything in `pipeline/` is written here. Ideas that came from elsewhere
+are listed below, each reimplemented from its description and checked on
+the 2025 data before use; no code was taken from any of them.
+
+**Literature.**
+
+- I. Simaiakis and H. Balakrishnan, "A queuing model of the airport
+  departure process", *Transportation Science*, 2016
+  ([PDF](https://www.mit.edu/~hamsa/pubs/SimaiakisBalakrishnan_TS2014.pdf)):
+  taxi-out as unimpeded time plus runway queue plus surface congestion, and
+  the number of take-offs between push-back and take-off as the queue
+  measure, which `context.py`'s `*_deps_since_aobt` counts also measure.
+- EUROCONTROL's additional taxi-out time indicator: the unimpeded reference
+  per stand and runway (`features.unimpeded_taxi_reference`).
+
+**Other teams' public write-ups.** Read for ideas (READMEs only, never
+their source), each idea verified on our data before use:
+
+- **The LOBT window**, from
+  [EnioAguiar/prc-taxiout-2026](https://github.com/EnioAguiar/prc-taxiout-2026):
+  `BLOCK_TIME` lies within ±3,606s of `LOBT_flt` on every 2025 departure
+  that has one. Confirmed here on the same 2,062,577 rows; `train.py`
+  projects matched predictions into that window (`LOBT_WINDOW`).
+- **Linear leaves** (LightGBM's `linear_tree`), reported as a large gain by
+  [radekacar/joyous-rainbow](https://github.com/radekacar/joyous-rainbow).
+  Tried and rejected: on this model a few rows extrapolate to ±300,000s
+  (`experiments_round3.py`).
+- **LIRF's day-shifted orphans** were found here in the 2025 data
+  (`train.DAY_SHIFT`). The README of
+  [skylinkapi/prc-data-challenge-2026-kind-mango](https://github.com/skylinkapi/prc-data-challenge-2026-kind-mango)
+  describes a similar 24-hour fallback for LIRF.
