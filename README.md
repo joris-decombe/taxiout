@@ -227,7 +227,8 @@ Everything in `pipeline/` is written here. Ideas that came from elsewhere
 are listed below, each reimplemented from its description and checked on
 the 2025 data before use; no code was taken from any of them.
 
-**Literature.**
+**Literature.** [RESEARCH.md](RESEARCH.md) surveys it: why the mixture,
+the LOBT projection and the anchor work, and which models to try next.
 
 - I. Simaiakis and H. Balakrishnan, "A queuing model of the airport
   departure process", *Transportation Science*, 2016

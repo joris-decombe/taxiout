@@ -188,6 +188,11 @@ repos during the challenge. Read their write-ups for ideas if useful, never
 their code, verify any idea on our own data, and credit it in the README's
 prior-work section.
 
+The ranking page also states that submissions are monitored for "attempts
+to learn from or exploit the ranking process", which the organisers
+consider unfair. Upload only genuine candidates for best model, never
+variants built to measure a slice or a single change on the test set.
+
 **Submission rules** are on the challenge site's ranking page
 (<https://prc-data-challenge-2026.netlify.app/ranking.html>), not the overview
 or eligibility pages: teams are ranked on their **best** RMSE across all

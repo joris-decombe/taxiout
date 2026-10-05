@@ -61,6 +61,20 @@ FEATURE_COLUMNS = [
     "cfg_rwy_mixed",
 ]
 
+# Queueing-theory measures, kept apart until they earn a place in
+# FEATURE_COLUMNS (`experiments_round4.py`). Simaiakis and Balakrishnan's
+# adjusted traffic is the aircraft taxiing out when a flight pushes back plus
+# those pushing back while it taxis; taxi-out grows with it, convex and
+# non-decreasing. A runway busy period is a run of departures less than
+# BUSY_GAP_SEC apart: a flight deep into one most likely waited in a queue.
+QUEUEING_COLUMNS = [
+    "apt_pushbacks_during_taxi",
+    "apt_adjusted_traffic",
+    "rwy_busy_rank",
+    "rwy_busy_elapsed",
+]
+BUSY_GAP_SEC = 150.0
+
 
 def _seconds(expr: pl.Expr) -> pl.Expr:
     return expr.dt.total_seconds()
@@ -164,6 +178,17 @@ def _nearest_gaps(sorted_times: np.ndarray, t: np.ndarray) -> tuple[np.ndarray, 
     return prev, nxt
 
 
+def _busy_period(sorted_times: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Per take-off: departures before it in its busy period, and seconds since it began."""
+    n = len(sorted_times)
+    if n == 0:
+        return np.zeros(0), np.zeros(0)
+    starts = np.ones(n, dtype=bool)
+    starts[1:] = np.diff(sorted_times) > BUSY_GAP_SEC
+    start_idx = np.maximum.accumulate(np.where(starts, np.arange(n), 0))
+    return (np.arange(n) - start_idx).astype(float), sorted_times - sorted_times[start_idx]
+
+
 def _epoch(series: pl.Series) -> np.ndarray:
     return series.dt.epoch("ms").cast(pl.Float64).to_numpy() / 1000.0
 
@@ -188,12 +213,16 @@ def _queue_features(deps: pl.DataFrame, arrs: pl.DataFrame) -> pl.DataFrame:
             - np.searchsorted(apt_dep_t, aobt, "right"),
         }
         cols["apt_surface_at_aobt"][np.isnan(aobt)] = np.nan
+        # Strictly after our own push-back, so the flight does not count itself.
+        cols["apt_pushbacks_during_taxi"] = _count_between(apt_aobt_t, aobt + 1e-3, takeoff)
+        cols["apt_adjusted_traffic"] = cols["apt_surface_at_aobt"] + cols["apt_pushbacks_during_taxi"]
         for m in AROUND_TAKEOFF_MIN:
             w = 60.0 * m
             cols[f"apt_deps_around_{m}m"] = _count_between(apt_dep_t, takeoff - w, takeoff + w)
 
         rwy_cols = {name: np.full(len(group), np.nan) for name in (
             "rwy_deps_since_aobt", "rwy_arrs_since_aobt", "rwy_prev_dep_gap", "rwy_next_dep_gap",
+            "rwy_busy_rank", "rwy_busy_elapsed",
             *[f"rwy_deps_before_{m}m" for m in AROUND_TAKEOFF_MIN],
             *[f"rwy_deps_after_{m}m" for m in AROUND_TAKEOFF_MIN],
             *[f"rwy_arrs_around_{m}m" for m in AROUND_TAKEOFF_MIN],
@@ -209,6 +238,10 @@ def _queue_features(deps: pl.DataFrame, arrs: pl.DataFrame) -> pl.DataFrame:
             rwy_arr_t = np.sort(arr_t_all[arr_runway == key])
             rwy_cols["rwy_deps_since_aobt"][idx] = _count_between(rwy_dep_t, a, t)
             rwy_cols["rwy_arrs_since_aobt"][idx] = _count_between(rwy_arr_t, a, t)
+            rank, elapsed = _busy_period(rwy_dep_t)
+            pos = np.searchsorted(rwy_dep_t, t, side="left")
+            rwy_cols["rwy_busy_rank"][idx] = rank[pos]
+            rwy_cols["rwy_busy_elapsed"][idx] = elapsed[pos]
             prev, nxt = _nearest_gaps(rwy_dep_t, t)
             rwy_cols["rwy_prev_dep_gap"][idx] = prev
             rwy_cols["rwy_next_dep_gap"][idx] = nxt
@@ -271,5 +304,5 @@ def build(movements: pl.LazyFrame) -> pl.DataFrame:
         stand.join(queue, on=schema.MVT_ID, how="full", coalesce=True)
         .join(config, on=schema.MVT_ID, how="left")
     ).select(
-        schema.MVT_ID, *FEATURE_COLUMNS
+        schema.MVT_ID, *FEATURE_COLUMNS, *QUEUEING_COLUMNS
     )

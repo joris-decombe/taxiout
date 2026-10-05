@@ -307,7 +307,7 @@ def orphan_columns() -> list[str]:
     cannot separate the orphan shift from noise, so the smaller set stays.
     """
     dropped = (
-        set(context.FEATURE_COLUMNS) | set(weather.FEATURE_COLUMNS)
+        set(context.FEATURE_COLUMNS) | set(context.QUEUEING_COLUMNS) | set(weather.FEATURE_COLUMNS)
         | set(features.LIVE_EXCESS_COLUMNS) | {"unimpeded_level"}
     )
     return [c for c in features.FEATURE_COLUMNS if c not in dropped]

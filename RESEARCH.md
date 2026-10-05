@@ -1,0 +1,111 @@
+# Models for taxi-out: what the literature says, and why ours works
+
+A survey of the modelling literature behind this repo's approach, and the
+candidates it suggests. Measurements are on the January and July 2025
+validation split unless stated; `experiments_round*.py` hold the details.
+
+## The problem, stated mathematically
+
+Take-off time is known exactly on the ranking set, so predicting taxi-out
+`y = MVT − BLOCK` is the same as estimating the off-block time. The data
+carries three noisy clocks for it:
+
+- **AOBT** (Network Manager off-block). `MVT − AOBT` alone scores 385s RMSE.
+- **LOBT** (flight plan). `|BLOCK − LOBT| ≤ 3,606s` on all 2,062,577 matched
+  2025 departures, so it bounds the answer to a two-hour window.
+- **SCHED**, which the recording system copies into BLOCK on a sizeable
+  share of LIRF's departures (the at-schedule artifact).
+
+The score is RMSE, whose minimiser is the conditional mean `E[y | x]`. On a
+target with a tail to 88,000s, 1.5% of rows hold half the squared error, so
+the rare regimes matter more than the bulk.
+
+## Why the current model works
+
+1. **Mixtures compute the conditional mean exactly.** By the law of total
+   expectation, `E[y|x] = P(k=art|x)·gap + P(k=normal|x)·E[y|x,normal]`
+   (+ a day-shift component at LIRF). A single regressor would have to
+   learn a jump of hours with piecewise-constant trees, which is high
+   variance. Split, each component is smooth, and the artifact component is
+   known exactly (it equals the gap). This is a mixture of experts (Jacobs,
+   Jordan, Nowlan and Hinton, 1991) with a known expert.
+2. **The mixture is only as good as its weights.** The expected cost of a
+   row is about `p(1−p)(gap − r)²`, so calibration of `p` matters most where
+   the gap is large. Boosted trees are known to give poorly calibrated
+   probabilities (Niculescu-Mizil and Caruana, ICML 2005). Replacing `p`
+   with LIRF's empirical band share past 6h late gained 5.2s on its own.
+3. **Projection onto a set that contains the truth cannot hurt.** For a
+   convex set C with `y ∈ C`, `|proj_C(ŷ) − y| ≤ |ŷ − y|` for every row. The
+   LOBT window is such a set, which is why it gains on every row where the
+   bound holds (−3.8s).
+4. **Anchoring.** Boosting from `init_score = clip(MVT − AOBT)` leaves the
+   trees only the deviation from the NM's own taxi time, instead of
+   approximating the identity in steps (−1.1s).
+5. **Structure transfers, free fits do not.** Rules derived from the data's
+   structure (the day-shift and late-orphan rules) carried to validation;
+   free-form fits produced wild values: linear leaves extrapolated to
+   ±300,000s on a few rows, and the orphan regressor ranged from −3,500s to
+   20,000s on rows whose truth is ~1,000s. The validation-to-test gap (v1:
+   384s to 371s, v5: 344s to 359s) says 2026 is shifted, which favours
+   fewer degrees of freedom.
+
+## Why gradient-boosted trees
+
+- On tabular data, trees beat neural networks because targets are irregular
+  and many features uninformative (Grinsztajn, Oyallon and Varoquaux, 2022,
+  [arXiv:2207.08815](https://arxiv.org/abs/2207.08815)).
+- EUROCONTROL's taxi-time model for six A-CDM airports (Swatowska and
+  Gabagnou, SESAR Innovation Days 2025,
+  [paper](https://www.sesarju.eu/sites/default/files/documents/sid/2025/papers/SIDs_2025_paper_119-final%20v2.pdf))
+  benchmarked linear models, random forests and CatBoost on 4.1 million
+  flights; CatBoost won. Its SHAP shares for departures: runway 19%, stand
+  14%, airport 9%, de-icing 7%, airline 5%, weather 3% in all.
+- TabArena (2025, [arXiv:2506.16791](https://arxiv.org/abs/2506.16791)) finds
+  that validation protocol and post-hoc ensembling change rankings more than
+  architecture. Tabular foundation models (TabPFN) target small datasets,
+  not two million rows.
+
+## The surface as a queue
+
+- Idris et al. (MIT, early 2000s) found the number of take-offs between
+  push-back and take-off the strongest predictor of taxi-out at Boston.
+  `context.py`'s `*_deps_since_aobt` counts measure it.
+- Simaiakis and Balakrishnan, "A queuing model of the airport departure
+  process" (Transportation Science, 2016,
+  [PDF](https://www.mit.edu/~hamsa/pubs/SimaiakisBalakrishnan_TS2014.pdf)):
+  - taxi-out = unimpeded time + ramp/taxiway interaction + runway queue;
+  - interaction is linear in the aircraft taxiing when a flight pushes back;
+  - mean taxi-out is a convex, non-decreasing function of **adjusted
+    traffic**: aircraft taxiing out at push-back plus those pushing back
+    while it taxis;
+  - zero-queue flights are a biased sample (the fastest ones), so a low
+    quantile underestimates the unimpeded time; they fit the flat region of
+    the convex curve instead;
+  - unimpeded times are right-skewed (lognormal or Erlang);
+  - the runway is a D(t)/E_k(t)/1 queue whose service rate depends on the
+    configuration.
+- Ravizza, Atkin and Burke (2013 to 2014, Stockholm-Arlanda and Zurich)
+  combined a ground-movement model (taxi distance, turns) with multiple
+  linear regression and fuzzy rule-based systems; the TSK fuzzy system was
+  the most accurate of those compared.
+
+## Candidates, by expected value
+
+| # | Candidate | Basis | Status |
+|---|---|---|---|
+| 1 | Queueing features: adjusted traffic, runway busy-period position | Simaiakis and Balakrishnan | `experiments_round4.py queue` |
+| 2 | Calibrated mixture weights: cross-fitted isotonic calibration of `p` | Niculescu-Mizil and Caruana; the LIRF result | ruled out: an in-sample oracle gains at most 0.5s once the LIRF rules apply |
+| 3 | CatBoost blended with LightGBM | Ordered target statistics avoid prediction shift (Prokhorenkova et al., 2018, [arXiv:1706.09516](https://arxiv.org/abs/1706.09516)); EUROCONTROL's benchmark | `experiments_round4.py catboost` |
+| 4 | Stacking on out-of-fold predictions | Wolpert (1992); cross-fitting (Chernozhukov et al., 2018, [arXiv:1608.00060](https://arxiv.org/abs/1608.00060)) | if time |
+| 5 | Seed averaging | Variance reduction | cheap |
+| 6 | Monotone constraints on queue counts | The convex, non-decreasing relation above | with 1 |
+| – | Neural nets, TabPFN, distributional boosting (NGBoost) | Wrong scale, or they model a full distribution when RMSE needs the mean | not pursued |
+
+## Tried and rejected
+
+- **Linear leaves** (`linear_tree`): +607s, extrapolation on a few rows;
+  still 292s matched against 229s when bounded.
+- **Orphan regressor without day-shifted rows**: +48s; it had learnt part
+  of the day-shift mass, and removing it left nothing in its place.
+- **A fitted day-shift share** `(1 − p)·q·86,400` at every airport: +5.3s.
+  The structural LIRF rule replaced it.

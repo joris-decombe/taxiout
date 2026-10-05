@@ -104,9 +104,9 @@ harness.
 - [x] **Unseen 2026 stands** now fall back to a stand-group, then runway
       reference (`features.join_unimpeded`). Validation cannot judge it
       (+0.4s, CI −0.7s to +1.7s). v4 vs v4_nofallback on the leaderboard can.
-- [ ] **Measure which slice of the v1 → v3 gain failed to transfer** with
-      hybrid uploads (v3 with v1's predictions on one slice, e.g. LIRF or
-      EHAM January): each score difference is that slice's real 2026 gain.
+- [x] ~~Measure slices of the gain with hybrid uploads.~~ Dropped: the
+      ranking page says submissions are monitored for "attempts to learn
+      from or exploit the ranking process". Upload genuine candidates only.
 - [ ] **Two LFPG rows** (the day-early easyJet off-blocks) keep LFPG's
       validation RMSE near 580s. Nothing observable flags them yet.
 - [ ] **Tuning.** Parameters are unchanged since the first baseline apart from
