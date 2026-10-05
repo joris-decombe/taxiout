@@ -26,8 +26,11 @@ features and recalibrating p did nothing.
 | v3 | 346.6s | **361.5s** | v2's matched predictions, v1's orphan predictions exactly |
 | v4 | 344.3s | **360.6s** | v3 + live excess features (orphan predictions = v3's) |
 | v5 | 343.6s | **359.0s** | v4 + stand-group/runway reference fallback |
+| v6 | 321.8s | **311.3s** | anchor, LOBT window, LIRF day-shift and late-orphan rules, CatBoost blend (`data/submission_v8.parquet`) |
 
-v5 is the best (rank 137 of 201 on 29 September 2026). The fallback was
+v6 is the best: 311.3s, rank 130 of 231 on 6 October 2026 (leader 213.9s,
+10th 225.8s, median 298.9s). v5 was rank 137 of 201 on 29 September. v6 is
+the first upload to score better on test than on validation. The fallback was
 worth 1.6s on the test set while validation, which has almost no unseen
 stands, measured it at +0.4s.
 
