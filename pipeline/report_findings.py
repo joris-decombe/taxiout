@@ -313,3 +313,8 @@ start = page.index(opening) + len(opening)
 end = page.index("</script>", start)
 PAGE.write_text(page[:start] + OUT.read_text(encoding="utf-8") + page[end:], encoding="utf-8")
 print(json.dumps({k: v for k, v in out.items() if not isinstance(v, (list, dict))}, indent=1))
+
+# And the static copy GitHub Pages serves.
+import build_site  # noqa: E402
+
+print(build_site.build())

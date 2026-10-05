@@ -118,8 +118,8 @@ artifact, a regressor for a normal taxi, combined as
 `p × (takeoff − schedule) + (1 − p) × normal`. That takes validation RMSE
 from 409s to 384s (paired-bootstrap 95% CI −46s to −11s).
 
-**Taxi-Out, Measured** (<https://claude.ai/artifact/Ez8LT8SdgrUbdp8oAeMq1i>)
-is the long-form account: what taxi-out is and why it is worth predicting,
+**[Taxi-Out, Measured](https://joris-decombe.github.io/taxiout/)** is the
+long-form account: what taxi-out is and why it is worth predicting,
 why a squared metric changes the question, which timestamps the scored data
 keeps, the error decomposition, the at-schedule recording artifact, and the
 eight strategies tried.
