@@ -314,6 +314,24 @@ footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);font-si
   <div class="formula">prediction = p × (take-off − schedule) + (1 − p) × <b>normal taxi</b></div>
   <div class="col">
     <p>where p is a classifier's estimate that the off-block was copied from the schedule. Under a squared score this blend is the best single guess. Among flights with no flight-plan record the same pattern reaches <span id="lirf-orph"></span> at Rome, and a rarer one appears at several airports: an off-block logged a day before take-off, so the taxi-out reads about 24 hours plus a normal taxi. <span id="neg-text"></span></p>
+    <p>At Rome the two patterns sort cleanly by how late the flight took off. The later it left, the likelier its off-block is the schedule, until past eight hours every one is. Between 14 and 26 hours late only two kinds are left, never a normal taxi: copied from the schedule, or logged a day early.</p>
+  </div>
+  <figure>
+    <div class="legend"><span><i style="background:var(--stop)"></i>off-block = schedule</span><span><i style="background:var(--taxi)"></i>logged a day early</span><span><i style="background:var(--edge)"></i>normal taxi</span></div>
+    <div class="chart" id="c-lirf-orph"></div>
+    <figcaption>Rome Fiumicino, 2025 departures with no flight-plan record, by take-off minus schedule. Each bar splits its departures by what the recorded taxi-out turned out to be. Numbers: departures in each band.</figcaption>
+  </figure>
+  <div class="col">
+    <p>So for those flights the model no longer guesses a free-form normal taxi. Past six hours late it uses the share copied from the schedule in 2025's records directly, and between 14 and 26 hours the alternative to the schedule is a day plus a normal taxi:</p>
+  </div>
+  <div class="formula">14 to 26 h late at Rome: prediction = p × (take-off − schedule) + (1 − p) × (<b>24 h</b> + normal taxi)</div>
+  <div class="col">
+    <h3>The flight plan's two-hour window</h3>
+    <p>A record that does link to a flight plan carries one more clock: the plan's last off-block time. On all <span id="lobt-n"></span> such departures of 2025 the airport's off-block lies within an hour of it, never more than <span id="lobt-max"></span> seconds away. The two tables look to have been joined on that window. Whatever the reason, it bounds the answer, and for the <span id="lobt-out"></span> departures whose schedule falls outside the window, the off-block cannot have been copied from the schedule at all.</p>
+  </div>
+  <div class="formula">take-off − LOBT − 1 h ≤ <b>taxi-out</b> ≤ take-off − LOBT + 1 h</div>
+  <div class="col">
+    <p>This bound was first published by another team in the challenge (<a href="https://github.com/EnioAguiar/prc-taxiout-2026" target="_blank" rel="noopener">EnioAguiar/prc-taxiout-2026</a>), and confirmed here on the 2025 records before use.</p>
   </div>
 </section>
 
@@ -329,6 +347,15 @@ footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);font-si
     <h3>Tried and rejected</h3>
   </div>
   <div class="strips" id="strips-x"></div>
+  <div class="col">
+    <h3>Why the steps that worked, worked</h3>
+    <p>A squared score is minimised by the average outcome given what is known. When a flight's record can be one of several kinds, that average splits by kind, and each part is simpler to learn than the whole:</p>
+  </div>
+  <div class="formula">E[taxi-out] = P(copied) × gap + P(day early) × (24 h + taxi) + P(normal) × E[normal taxi]</div>
+  <div class="col">
+    <p>The copied part is known exactly, so the error sits in the probabilities. Getting Rome's right was worth more than any feature. The flight-plan window works for a geometric reason: moving a prediction onto a range that contains the truth can only bring it closer, flight by flight. Starting the trees from the Network Manager's own taxi time leaves them only the difference to learn. A second kind of boosted tree, CatBoost, averaged with the first, cancels part of each one's noise.</p>
+    <p>Queue counts from queueing theory, which predict taxi-out well in the research literature, added nothing here: the Network Manager's off-block already contains the outcome of the queue. The full survey is in the repository's <a href="https://github.com/joris-decombe/taxiout/blob/main/RESEARCH.md" target="_blank" rel="noopener">RESEARCH.md</a>.</p>
+  </div>
 </section>
 
 <section id="winter">
@@ -365,7 +392,7 @@ footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);font-si
   <div class="signs"><span class="sign stop" id="rwy-sign">09R-27L</span><span class="sign loc">H</span></div>
   <div class="col">
     <h2>Cleared for take-off</h2>
-    <p>Each upload to the competition is scored on the real January and July 2026 flights, and only a team's best score counts. The validation score has tracked the test score only loosely: the first model did better on the test set than on validation, later ones did worse, which is what a snowier January and a different runway mix would produce.</p>
+    <p>Each upload to the competition is scored on the real January and July 2026 flights, and only a team's best score counts. The validation score tracked the test score only loosely: the first model did better on the test set than on validation, the next four did worse, which is what a snowier January and a different runway mix would produce. The sixth, built on the structure of the records rather than on more features, did better on the test set again: 311.3 seconds, against 359.0 for the fifth.</p>
   </div>
   <figure>
     <div class="legend"><span><i style="background:var(--ink-3)"></i>other teams, best score</span><span><i style="background:var(--edge)"></i>our uploads, test</span><span><i style="border:2px solid var(--edge);background:transparent"></i>same, validation</span></div>
@@ -377,8 +404,8 @@ footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);font-si
     <ul>
       <li><strong>Winter, measured on a winter.</strong> The live reading of how far other departures run over their reference is in the model, but January 2025 was too mild to show its de-icing side. A February and December 2025 holdout can.</li>
       <li><strong>Stands that opened in 2026.</strong> Munich's stands 103 to 108 and a handful of new Frankfurt positions (consistent with its Terminal 3 opening) never appear in 2025. They now borrow a reference from neighbouring stands or their runway; only the 2026 score can say what that is worth.</li>
-      <li><strong>Where the validation gain went.</strong> Uploads that differ from the last one in a single airport or month measure each slice's real 2026 contribution, which validation cannot.</li>
-      <li><strong>Rome.</strong> Still the airport with the largest error per flight, almost all of it from off-blocks copied from the schedule on delayed flights.</li>
+      <li><strong>Rome.</strong> Still the airport with the largest error per flight. For flights with a flight-plan record, the classifier still decides between schedule and normal taxi without a rule as clean as the no-record one.</li>
+      <li><strong>Two Paris departures.</strong> Two easyJet flights with no flight-plan record logged their off-block about a day early on flights that left on time. They carry about a quarter of all the validation error, and nothing recorded flags them.</li>
     </ul>
   </div>
 </section>
@@ -401,6 +428,12 @@ footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);font-si
       <li>Fraport, <a href="https://www.fraport.com/en/sustainability/dialog-with-neighbors/noise-and-air/flight-operations/runway-system-and-operating-hours.html" target="_blank" rel="noopener">runway system and operating hours</a>. Runway 18 West for southbound take-offs only. <span class="src">fraport.com</span></li>
       <li>Iowa Environmental Mesonet, <a href="https://mesonet.agron.iastate.edu/request/download.phtml" target="_blank" rel="noopener">ASOS / METAR archive</a>. Weather at the ten airports, January 2025 to July 2026. <span class="src">mesonet.agron.iastate.edu</span></li>
       <li>ICAO, Doc 4444 PANS-ATM: wake turbulence categories and departure separation; ICAO Doc 9432, Manual of Radiotelephony.</li>
+      <li>I. Simaiakis and H. Balakrishnan, <a href="https://www.mit.edu/~hamsa/pubs/SimaiakisBalakrishnan_TS2014.pdf" target="_blank" rel="noopener">A queuing model of the airport departure process</a>, Transportation Science, 2016. Taxi-out as unimpeded time, surface interaction and runway queue. <span class="src">mit.edu</span></li>
+      <li>A. Swatowska and L. Gabagnou, <a href="https://www.sesarju.eu/sites/default/files/documents/sid/2025/papers/SIDs_2025_paper_119-final%20v2.pdf" target="_blank" rel="noopener">A generalisable machine learning framework for taxi time prediction at A-CDM airports</a>, SESAR Innovation Days 2025. CatBoost on 4.1 million flights at six airports. <span class="src">sesarju.eu</span></li>
+      <li>L. Grinsztajn, E. Oyallon and G. Varoquaux, <a href="https://arxiv.org/abs/2207.08815" target="_blank" rel="noopener">Why do tree-based models still outperform deep learning on tabular data?</a>, NeurIPS 2022. <span class="src">arxiv.org</span></li>
+      <li>L. Prokhorenkova et al., <a href="https://arxiv.org/abs/1706.09516" target="_blank" rel="noopener">CatBoost: unbiased boosting with categorical features</a>, NeurIPS 2018. <span class="src">arxiv.org</span></li>
+      <li>A. Niculescu-Mizil and R. Caruana, Predicting good probabilities with supervised learning, ICML 2005. Calibration of boosted trees.</li>
+      <li>Other teams' public write-ups, read for ideas and credited where used: <a href="https://github.com/EnioAguiar/prc-taxiout-2026" target="_blank" rel="noopener">EnioAguiar/prc-taxiout-2026</a> (the flight-plan window), <a href="https://github.com/radekacar/joyous-rainbow" target="_blank" rel="noopener">radekacar/joyous-rainbow</a> (linear leaves, tried and rejected here), <a href="https://github.com/skylinkapi/prc-data-challenge-2026-kind-mango" target="_blank" rel="noopener">skylinkapi/prc-data-challenge-2026-kind-mango</a> (a similar 24-hour reading at Rome, found here independently). <span class="src">github.com</span></li>
     </ol>
   </div>
 </section>
@@ -705,6 +738,19 @@ function lirf(){
   set("neg-text","At the other extreme, "+fmt(D.negative.n)+" departures in 2025 took off before they left the stand by the record, by up to "+Math.abs(D.negative.min)+" seconds; "+fmt(D.negative.lszh)+" of them are at Zurich.");
 }
 
+function lirfOrph(){
+  var B=D.artifact.lirf_by_gap,o=svgIn("c-lirf-orph",230,"Rome Fiumicino, no flight-plan record: what the taxi-out turned out to be, by lateness"),s=o.s,W=o.w,H=o.h;
+  var x0=12,x1=W-12,y0=28,y1=H-40,bw=(x1-x0)/B.length;
+  B.forEach(function(b,i){var X=x0+i*bw,y=y1,parts=[[b.at_n,"--stop"],[b.day_shift,"--taxi"],[b.normal_n,"--edge"]];
+    parts.forEach(function(q){var h=q[0]/b.n*(y1-y0);if(h>0){add(s,S("rect",{x:X+4,y:y-h,width:Math.max(1,bw-8),height:h,fill:"var("+q[1]+")"}));y-=h;}});
+    add(s,S("text",{x:X+bw/2,y:y0-10,"text-anchor":"middle",class:"ax"},fmt(b.n)));
+    var lab=b.lo_h==null?"≤"+b.hi_h:b.hi_h==null?">"+b.lo_h:b.lo_h+"–"+b.hi_h;
+    add(s,S("text",{x:X+bw/2,y:y1+16,"text-anchor":"middle",class:"ax"},lab));});
+  add(s,S("text",{x:(x0+x1)/2,y:y1+32,"text-anchor":"middle",class:"ax"},"hours from schedule to take-off"));
+  add(s,S("line",{x1:x0,y1:y1,x2:x1,y2:y1,class:"base"}));
+  set("lobt-n",fmt(D.lobt.n));set("lobt-max",fmt(D.lobt.max_abs));set("lobt-out",fmt(D.lobt.sched_outside));
+}
+
 /* ---------- strips ---------- */
 function strips(){
   var h=document.getElementById("strips");h.textContent="";
@@ -719,7 +765,7 @@ function strips(){
   D.rejected.forEach(function(r){
     var st=el("div","strip x");st.appendChild(el("div","no","×"));
     var nm=el("div","nm",r.name);nm.appendChild(el("small",null,"against "+r.against.toFixed(1)+" s"));st.appendChild(nm);
-    var sc=el("div","sc");sc.appendChild(el("b",null,r.rmse.toFixed(1)+" s"));sc.appendChild(el("span",null,"+"+(r.rmse-r.against).toFixed(1)+" s"));
+    var sc=el("div","sc");sc.appendChild(el("b",null,r.rmse.toFixed(1)+" s"));var dd=r.rmse-r.against;sc.appendChild(el("span",null,(dd>=0?"+":"−")+Math.abs(dd).toFixed(1)+" s"));
     st.appendChild(sc);x.appendChild(st);
   });
 }
@@ -813,9 +859,9 @@ function text(){
 }
 
 function render(){
-  board();departure();kept();tiles();scorecards();conc();tbl();dist();clip();lirf();strips();deice();metar();snow();shift();lboard();text();
+  board();departure();kept();tiles();scorecards();conc();tbl();dist();clip();lirf();lirfOrph();strips();deice();metar();snow();shift();lboard();text();
 }
-var rt;window.addEventListener("resize",function(){clearTimeout(rt);rt=setTimeout(function(){departure();kept();conc();dist();clip();lirf();deice();snow();shift();lboard();},150);});
+var rt;window.addEventListener("resize",function(){clearTimeout(rt);rt=setTimeout(function(){departure();kept();conc();dist();clip();lirf();lirfOrph();deice();snow();shift();lboard();},150);});
 render();
 })();
 </script>

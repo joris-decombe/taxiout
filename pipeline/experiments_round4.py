@@ -18,6 +18,14 @@ each with `prod`, the current model:
            -> 30%: 322.4s, 50%: 321.8s (-2.7s, 95% CI -3.4s to -2.2s;
               January -2.2s, July -3.3s), 70%: 321.9s. Kept at 50%.
 
+  extra    on top of the CatBoost blend (now prod): two more seeds of the
+           matched LightGBM regressor, averaged; and a CatBoost orphan
+           normal-taxi regressor, scored at several blend weights
+
+           -> seeds: -0.2s (95% CI -0.3s to -0.2s); orphan CatBoost at 50%:
+              -2.2s (95% CI -3.7s to -0.9s), 30%: -1.7s, 70%: -2.2s, alone:
+              -1.4s. Both kept; together 319.4s.
+
 Recalibrating the at-schedule probability (isotonic, per group) was ruled
 out before fitting: even calibrated in-sample on validation itself, by
 probability bin, it moved prod by at most -0.5s, because the LIRF rules
@@ -97,6 +105,44 @@ def fit_catboost() -> None:
     print("catboost: saved", flush=True)
 
 
+SEEDS = (1, 2)
+
+
+def fit_extra() -> None:
+    """More matched LightGBM seeds, and a CatBoost orphan regressor; saves their validation r."""
+    from catboost import CatBoostRegressor
+
+    training = data.load_training()
+    around = features.surroundings(training)
+    fitted, held_out = data.train_validation_split(data.departures(training))
+    unimpeded = features.unimpeded_taxi_reference(fitted).collect()
+    rows = features.build(fitted, unimpeded.lazy(), around).collect()
+    rows = rows.filter(~train.off_block_at_schedule().fill_null(False))
+    valid = features.build(held_out, unimpeded.lazy(), around).collect()
+    matched_rows, orphan_rows = rows.filter(train.has_flight_record()), rows.filter(~train.has_flight_record())
+    matched_valid, orphan_valid = valid.filter(train.has_flight_record()), valid.filter(~train.has_flight_record())
+    columns, categoricals = list(features.FEATURE_COLUMNS), list(features.CATEGORICAL_COLUMNS)
+
+    out = matched_valid.select(schema.MVT_ID)
+    for seed in SEEDS:
+        booster = train._fit(
+            matched_rows, columns, categoricals, {**train.PARAMS, "seed": seed}, train.JOINED_ROUNDS, anchored=True
+        )
+        r = booster.predict(train._to_frame(matched_valid, columns, categoricals)) + train._anchor(matched_valid)
+        out = out.with_columns(pl.Series(f"r_s{seed}", r))
+        print(f"seed {seed} done", flush=True)
+    OUT.mkdir(exist_ok=True)
+    out.write_parquet(OUT / "seeds_r.parquet")
+
+    orphan_columns = train.orphan_columns()
+    orphan_rows = orphan_rows.filter(pl.col(schema.TARGET) < (train.ORPHAN_NORMAL_MAX_SEC or float("inf")))
+    twin = CatBoostRegressor(**{**train.CATBOOST_PARAMS, "iterations": 1000, "learning_rate": 0.05, "depth": 6})
+    twin.fit(train._catboost_pool(orphan_rows, orphan_columns, train.ORPHAN_CATEGORICALS, label=True))
+    r_cb = twin.predict(train._catboost_pool(orphan_valid, orphan_columns, train.ORPHAN_CATEGORICALS))
+    orphan_valid.select(schema.MVT_ID).with_columns(pl.Series("r_cb_orphan", r_cb)).write_parquet(OUT / "orphan_cb_r.parquet")
+    print("orphan catboost done", flush=True)
+
+
 def prod_components() -> pl.DataFrame:
     matched = pl.read_parquet(ROUND3 / "anchor.parquet").filter(pl.col("matched"))
     orphans = pl.read_parquet(ROUND3 / "base.parquet").filter(~pl.col("matched"))
@@ -138,22 +184,39 @@ def rmse(p, t):
 
 def score() -> None:
     taxi, rates = fitted_constants()
-    prod = prod_components()
-    variants = {"prod": predictions(prod, taxi, rates)}
-    cb_path = OUT / "catboost_r.parquet"
-    if cb_path.exists():
-        cb = prod.join(pl.read_parquet(cb_path), on=schema.MVT_ID, how="left")
-        for w in (0.3, 0.5, 0.7):
-            blended = cb.with_columns(
-                pl.when(pl.col("matched")).then(w * pl.col("r_cb") + (1 - w) * pl.col("r")).otherwise(pl.col("r")).alias("r")
+    before = prod_components()
+    variants = {"before_cb": predictions(before, taxi, rates)}
+    cb = before.join(pl.read_parquet(OUT / "catboost_r.parquet"), on=schema.MVT_ID, how="left")
+    for w in (0.3, 0.5, 0.7):
+        blended = cb.with_columns(
+            pl.when(pl.col("matched")).then(w * pl.col("r_cb") + (1 - w) * pl.col("r")).otherwise(pl.col("r")).alias("r")
+        )
+        variants[f"catboost{w}"] = predictions(blended, taxi, rates)
+    # The CatBoost blend is in production now; later arms are measured from it.
+    variants["prod"] = variants.pop("catboost0.5")
+    prod = cb.with_columns(
+        pl.when(pl.col("matched")).then(0.5 * pl.col("r_cb") + 0.5 * pl.col("r")).otherwise(pl.col("r")).alias("r")
+    )
+    if (OUT / "seeds_r.parquet").exists():
+        seeds = cb.join(pl.read_parquet(OUT / "seeds_r.parquet"), on=schema.MVT_ID, how="left")
+        lgb_mean = (pl.col("r") + sum(pl.col(f"r_s{k}") for k in SEEDS)) / (1 + len(SEEDS))
+        seeds = seeds.with_columns(
+            pl.when(pl.col("matched")).then(0.5 * pl.col("r_cb") + 0.5 * lgb_mean).otherwise(pl.col("r")).alias("r")
+        )
+        variants["seeds"] = predictions(seeds, taxi, rates)
+    if (OUT / "orphan_cb_r.parquet").exists():
+        ocb = prod.join(pl.read_parquet(OUT / "orphan_cb_r.parquet"), on=schema.MVT_ID, how="left")
+        for w in (0.3, 0.5, 0.7, 1.0):
+            blended = ocb.with_columns(
+                pl.when(~pl.col("matched")).then(w * pl.col("r_cb_orphan") + (1 - w) * pl.col("r")).otherwise(pl.col("r")).alias("r")
             )
-            variants[f"catboost{w}"] = predictions(blended, taxi, rates)
+            variants[f"orphan_cb{w}"] = predictions(blended, taxi, rates)
     for path in sorted(OUT.glob("*.parquet")):
-        if path == cb_path:
+        if path.stem.endswith("_r"):
             continue
         frame = pl.read_parquet(path)
-        # Matched-group arms keep prod's orphans, so only the change differs.
-        frame = pl.concat([frame.filter(pl.col("matched")), prod.filter(~pl.col("matched"))]).sort(schema.MVT_ID)
+        # Matched-group arms predating the blend: compare them with before_cb.
+        frame = pl.concat([frame.filter(pl.col("matched")), before.filter(~pl.col("matched"))]).sort(schema.MVT_ID)
         variants[path.stem] = predictions(frame, taxi, rates)
     truth = prod[schema.TARGET].to_numpy().astype(float)
     matched = prod["matched"].to_numpy()
@@ -177,4 +240,4 @@ if __name__ == "__main__":
         score()
     else:
         for arm in sys.argv[1:]:
-            fit_catboost() if arm == "catboost" else fit(arm)
+            {"catboost": fit_catboost, "extra": fit_extra}.get(arm, lambda: fit(arm))()

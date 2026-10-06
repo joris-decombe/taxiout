@@ -97,8 +97,12 @@ the rare regimes matter more than the bulk.
 | 2 | Calibrated mixture weights: cross-fitted isotonic calibration of `p` | Niculescu-Mizil and Caruana; the LIRF result | ruled out: an in-sample oracle gains at most 0.5s once the LIRF rules apply |
 | 3 | CatBoost blended with LightGBM | Ordered target statistics avoid prediction shift (Prokhorenkova et al., 2018, [arXiv:1706.09516](https://arxiv.org/abs/1706.09516)); EUROCONTROL's benchmark | **in: -2.7s** (95% CI -3.4s to -2.2s) at 50/50, both months better; `train.JOINED_CATBOOST_WEIGHT` |
 | 4 | Stacking on out-of-fold predictions | Wolpert (1992); cross-fitting (Chernozhukov et al., 2018, [arXiv:1608.00060](https://arxiv.org/abs/1608.00060)) | if time |
-| 5 | Seed averaging | Variance reduction | cheap |
-| 6 | Monotone constraints on queue counts | The convex, non-decreasing relation above | with 1 |
+| 5 | Seed averaging | Variance reduction | **in: -0.2s** (95% CI -0.3s to -0.2s), three seeds |
+| 6 | Monotone constraints on queue counts | The convex, non-decreasing relation above | dropped with 1 |
+| 7 | CatBoost for the no-record group | Ordered boosting suits small, noisy groups | **in: -2.2s** (95% CI -3.7s to -0.9s) at 50/50 |
+| 8 | Per-airport LightGBM beside the global one; deeper CatBoost | Local structure; capacity | **in: -0.9s** together (95% CI -1.2s to -0.6s) |
+| 9 | CatBoost classifier beside LightGBM's | Ensemble of classifiers ranks records better | **in for matched: -0.6s**; orphans +1.5s, not used |
+| 10 | LightGBM tuning: learning rate 0.03, 511 leaves, stronger L2 | Standard tuning | no effect (+0.5s to -0.1s) |
 | – | Neural nets, TabPFN, distributional boosting (NGBoost) | Wrong scale, or they model a full distribution when RMSE needs the mean | not pursued |
 
 ## Tried and rejected

@@ -28,7 +28,8 @@ OUT = Path("report/findings.json")
 PAGE = Path("report/taxi-out-measured.html")
 CLIP_CAPS = [1800, 2700, 3600, 5400, 7200, 10800, 14400, 21600, 43200, 86400]
 HIST_BIN_SEC, HIST_BINS = 120, 40
-S2T_BINS_H = [1, 2, 3, 4, 6, 8, 12, 18, 24]
+# Aligned with train.py's LIRF bands: late-orphan shares, then the day-shift band.
+S2T_BINS_H = [1, 2, 3, 4, 6, 8, 14, 20, 26]
 
 LADDER = [
     {"name": "One model for every flight", "rmse": 475.5},
@@ -42,12 +43,27 @@ LADDER = [
     {"name": "Hedge for flights with a record too", "rmse": 352.4},
     {"name": "Weather, and keep the small model's inputs small", "rmse": 346.1},
     {"name": "Read how far the airport's other departures run over their reference, live", "rmse": 344.3},
+    {"name": "Borrow a reference from neighbouring stands for stands new in 2026", "rmse": 343.6},
+    {"name": "Learn only the deviation from the Network Manager's own taxi time", "rmse": 342.5},
+    {"name": "Keep the off-block inside the flight plan's two-hour window", "rmse": 339.1},
+    {"name": "Rome, 14 to 26 hours late: at schedule, or a day plus a normal taxi", "rmse": 329.8},
+    {"name": "Rome, past six hours late: trust the at-schedule share", "rmse": 324.6},
+    {"name": "Blend in a CatBoost model of the normal taxi", "rmse": 321.8},
+    {"name": "A CatBoost model for the no-record flights too", "rmse": 319.6},
+    {"name": "Average three seeds of the LightGBM model", "rmse": 319.4},
+    {"name": "A LightGBM per airport beside the global one, and a deeper CatBoost", "rmse": 318.5},
+    {"name": "A CatBoost classifier beside LightGBM's, for flights with a record", "rmse": 317.9},
 ]
 REJECTED = [
     {"name": "Weight the schedule-copy classifier by what a mistake costs", "rmse": 344.4, "against": 344.3},
     {"name": "Guess the group average for no-record flights", "rmse": 573.8, "against": 442.5},
     {"name": "Tell one model which fields are blank", "rmse": 474.8, "against": 471.7},
     {"name": "Give the no-record model the airline", "rmse": 419.3, "against": 409.4},
+    {"name": "Linear leaves in the trees", "rmse": 951.2, "against": 343.6},
+    {"name": "Drop day-late flights from the no-record model's training", "rmse": 391.8, "against": 343.6},
+    {"name": "Count the queue as queueing theory does (adjusted traffic, busy periods)", "rmse": 324.5, "against": 324.6},
+    {"name": "A CatBoost classifier for the no-record flights too", "rmse": 320.9, "against": 319.4},
+    {"name": "Stronger regularisation, for a shifted 2026", "rmse": 319.8, "against": 319.4},
 ]
 UPLOADS = [
     {"v": "v1", "validation": 383.6, "test": 370.9},
@@ -55,9 +71,10 @@ UPLOADS = [
     {"v": "v3", "validation": 346.6, "test": 361.5},
     {"v": "v4", "validation": 344.3, "test": 360.6},
     {"v": "v5", "validation": 343.6, "test": 359.0},
+    {"v": "v6", "validation": 321.8, "test": 311.3},
 ]
-LEADERBOARD = {"date": "29 September 2026", "teams": 201, "leader": 220.7, "tenth": 237.0,
-               "quartile": 277.9, "median": 299.3, "ours": 359.0, "rank": 137}
+LEADERBOARD = {"date": "6 October 2026", "teams": 231, "leader": 213.9, "tenth": 225.8,
+               "quartile": 271.3, "median": 298.9, "ours": 311.3, "rank": 130}
 # Iowa Environmental Mesonet METAR archive.
 METAR = {"station": "EHAM", "time": "2026-01-05 08:25 UTC",
          "raw": "EHAM 050825Z 20009KT 0700 R18C/1200N R27/1200U R18R/0700N R06/1400U SHSN VV005 00/M00 Q1008 TEMPO 2000"}
@@ -157,9 +174,11 @@ bins = []
 for lo, hi in zip(edges[:-1], edges[1:]):
     b = lirf.filter((pl.col("gap_h") > lo) & (pl.col("gap_h") <= hi))
     if b.height:
+        day = (b["y"] > 80_000) & ~b["at"]
         bins.append({"lo_h": None if lo == -np.inf else lo, "hi_h": None if hi == np.inf else hi,
                      "n": b.height, "at_share": round(float(b["at"].mean()), 3),
-                     "day_shift": int((b["y"] > 80_000).sum()),
+                     "at_n": int(b["at"].sum()), "day_shift": int(day.sum()),
+                     "normal_n": int((~b["at"] & ~day).sum()),
                      "y_over_gap": round(float((b["y"] / (b["gap_h"] * 3600)).mean()), 2)})
 long6 = departures.filter(pl.col(schema.TARGET) > 6 * 3600).with_columns(
     at=train.off_block_at_schedule().fill_null(False), orphan=~train.has_flight_record(),
@@ -181,6 +200,16 @@ out["artifact"] = {
                 "at_schedule": int(long6["at"].sum()), "day_shift": int(long6["day"].sum()),
                 "unexplained": int((~long6["at"] & ~long6["day"]).sum())},
 }
+
+# The flight plan's window: BLOCK_TIME against LOBT on every matched departure.
+lobt = departures.filter(train.has_flight_record()).select(
+    pl.len().alias("n"),
+    (pl.col(schema.BLOCK_TIME) - pl.col(schema.LOBT)).dt.total_seconds().abs().max().alias("max_abs"),
+    ((pl.col(schema.BLOCK_TIME) - pl.col(schema.LOBT)).dt.total_seconds().abs() <= train.LOBT_WINDOW_SEC).mean().alias("within"),
+    ((pl.col(schema.SCHED_TIME) - pl.col(schema.LOBT)).dt.total_seconds().abs() > train.LOBT_WINDOW_SEC).sum().alias("sched_outside"),
+).collect()
+out["lobt"] = {"n": int(lobt["n"][0]), "max_abs": int(lobt["max_abs"][0]),
+               "within": round(float(lobt["within"][0]), 6), "sched_outside": int(lobt["sched_outside"][0])}
 
 # --- The airports, and what changed between 2025 and 2026 -------------------
 

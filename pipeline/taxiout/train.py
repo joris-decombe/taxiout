@@ -47,7 +47,9 @@ explicit EOBT == SCHED flag and a stand-area categorical, measured +0.1s
 
 Current validation, with the anchored matched regressor,
 the LOBT window, LIRF's day-shift and late-orphan rules, and a CatBoost
-twin of the matched regressor (constants below): 321.8s. All on top of the
+twin of each regressor, three seeds of the matched LightGBM one and a
+LightGBM per airport beside them, and a CatBoost twin of the matched
+classifier (constants below): 317.9s. All on top of the
 live excess features and the reference fallback in features.py (343.6s).
 
 The simulator only earns its place if adding its queue-delay estimate as a
@@ -56,7 +58,7 @@ feature beats this number.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import lightgbm as lgb
 import numpy as np
@@ -155,6 +157,31 @@ CATBOOST_PARAMS = {
     "loss_function": "RMSE", "iterations": 2000, "learning_rate": 0.1, "depth": 8,
     "thread_count": -1, "verbose": 0, "allow_writing_files": False,
 }
+# The matched twin goes deeper: depth 10, 3,000 rounds at 0.06 measured
+# -0.4s against depth 8 (95% CI -0.6s to -0.3s), `experiments_round5.py`.
+JOINED_CATBOOST_PARAMS = {**CATBOOST_PARAMS, "depth": 10, "iterations": 3000, "learning_rate": 0.06}
+
+# One LightGBM regressor per airport, averaged 50/50 with the global ones:
+# -0.5s (95% CI -0.7s to -0.4s); with the deeper twin, -0.9s together.
+JOINED_AIRPORT_MODELS = True
+AIRPORT_PARAMS = {**PARAMS, "num_leaves": 127, "min_data_in_leaf": 50}
+
+# A CatBoost at-schedule classifier for the matched group, averaged with the
+# LightGBM one: -0.6s (95% CI -0.9s to -0.3s). For the orphans it cost
+# +1.5s, so they keep LightGBM's alone. With the two above: 317.9s.
+JOINED_CATBOOST_CLASSIFIER_PARAMS = {
+    **CATBOOST_PARAMS, "loss_function": "Logloss", "depth": 8, "iterations": 1500, "learning_rate": 0.1,
+}
+
+# The orphan group gets a CatBoost twin too, smaller to suit its ~27,000
+# rows: 50/50 took validation from 321.8s to 319.6s (95% CI -3.7s to -0.9s;
+# January and July both better). Alone it was worse than the blend.
+ORPHAN_CATBOOST_WEIGHT = 0.5
+ORPHAN_CATBOOST_PARAMS = {**CATBOOST_PARAMS, "iterations": 1000, "learning_rate": 0.05, "depth": 6}
+
+# Extra seeds for the matched LightGBM regressor, averaged with the first:
+# -0.2s on validation (95% CI -0.3s to -0.2s).
+JOINED_EXTRA_SEEDS = (1, 2)
 
 
 def has_flight_record() -> pl.Expr:
@@ -191,12 +218,31 @@ class Mixture:
     # A CatBoost twin of `normal`, blended in at `catboost_weight`.
     catboost: object | None = None
     catboost_weight: float = 0.0
+    # More LightGBM regressors like `normal`, other seeds, averaged with it.
+    seeds: list = field(default_factory=list)
+    # One more LightGBM regressor per airport, averaged 50/50 with the above.
+    per_airport: dict = field(default_factory=dict)
+    # A CatBoost twin of `at_schedule`, averaged with it.
+    at_schedule_twin: object | None = None
 
     def components(self, frame: pl.DataFrame) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """The at-schedule probability, the normal-taxi prediction, and the gap they mix."""
         matrix = _to_frame(frame, self.columns, self.categoricals)
         p = self.at_schedule.predict(matrix)
-        r = self.normal.predict(matrix) + (_anchor(frame) if self.anchored else 0.0)
+        if self.at_schedule_twin is not None:
+            pool = _catboost_pool(frame, self.columns, self.categoricals)
+            p = 0.5 * p + 0.5 * self.at_schedule_twin.predict_proba(pool)[:, 1]
+        boosters = [self.normal, *self.seeds]
+        r = np.mean([b.predict(matrix) for b in boosters], axis=0)
+        if self.per_airport:
+            local = r.copy()
+            airports = frame[schema.ADEP].to_numpy()
+            for airport, booster in self.per_airport.items():
+                rows = airports == airport
+                if rows.any():
+                    local[rows] = booster.predict(matrix[rows])
+            r = 0.5 * r + 0.5 * local
+        r = r + (_anchor(frame) if self.anchored else 0.0)
         if self.catboost is not None:
             twin = self.catboost.predict(_catboost_pool(frame, self.columns, self.categoricals))
             twin = twin + (_anchor(frame) if self.anchored else 0.0)
@@ -406,6 +452,10 @@ def _fit_mixture(
     normal_max_sec: float | None = None,
     anchored: bool = False,
     catboost_weight: float = 0.0,
+    catboost_params: dict | None = None,
+    extra_seeds: tuple[int, ...] = (),
+    airport_params: dict | None = None,
+    classifier_twin_params: dict | None = None,
 ) -> Mixture:
     label = rows.select(off_block_at_schedule().fill_null(False).cast(pl.Int8)).to_numpy().ravel()
     at_schedule = lgb.train(
@@ -413,19 +463,39 @@ def _fit_mixture(
         lgb.Dataset(_to_frame(rows, columns, categoricals), label=label, categorical_feature=categoricals),
         num_boost_round=classifier_rounds,
     )
+    at_schedule_twin = None
+    if classifier_twin_params is not None:
+        from catboost import CatBoostClassifier
+
+        at_schedule_twin = CatBoostClassifier(**classifier_twin_params)
+        # The label rides in the target column; no anchor, so no baseline.
+        labelled = rows.with_columns(pl.Series(schema.TARGET, label))
+        at_schedule_twin.fit(_catboost_pool(labelled, columns, categoricals, label=True))
     normal_rows = rows.filter(label == 0)
     if normal_max_sec is not None:
         normal_rows = normal_rows.filter(pl.col(schema.TARGET) < normal_max_sec)
     normal = _fit(normal_rows, columns, categoricals, params, num_rounds, anchored)
+    seeds = [
+        _fit(normal_rows, columns, categoricals, {**params, "seed": seed}, num_rounds, anchored)
+        for seed in extra_seeds
+    ]
+    per_airport = {}
+    if airport_params is not None:
+        for airport in normal_rows[schema.ADEP].unique().to_list():
+            per_airport[airport] = _fit(
+                normal_rows.filter(pl.col(schema.ADEP) == airport), columns, categoricals, airport_params,
+                num_rounds, anchored,
+            )
     twin = None
     if catboost_weight > 0:
         from catboost import CatBoostRegressor
 
-        twin = CatBoostRegressor(**CATBOOST_PARAMS)
+        twin = CatBoostRegressor(**(catboost_params or CATBOOST_PARAMS))
         twin.fit(_catboost_pool(normal_rows, columns, categoricals, label=True, anchored=anchored))
     return Mixture(
         at_schedule=at_schedule, normal=normal, columns=list(columns), categoricals=list(categoricals),
-        anchored=anchored, catboost=twin, catboost_weight=catboost_weight,
+        anchored=anchored, catboost=twin, catboost_weight=catboost_weight, seeds=seeds,
+        per_airport=per_airport, at_schedule_twin=at_schedule_twin,
     )
 
 
@@ -444,13 +514,16 @@ def fit(departures: pl.LazyFrame, around: pl.DataFrame) -> TrainedModel:
     joined = _fit_mixture(
         joined_rows, list(features.FEATURE_COLUMNS), list(features.CATEGORICAL_COLUMNS),
         PARAMS, JOINED_ROUNDS, JOINED_CLASSIFIER_PARAMS, JOINED_CLASSIFIER_ROUNDS,
-        anchored=JOINED_ANCHORED, catboost_weight=JOINED_CATBOOST_WEIGHT,
+        anchored=JOINED_ANCHORED, catboost_weight=JOINED_CATBOOST_WEIGHT, extra_seeds=JOINED_EXTRA_SEEDS,
+        catboost_params=JOINED_CATBOOST_PARAMS, airport_params=AIRPORT_PARAMS if JOINED_AIRPORT_MODELS else None,
+        classifier_twin_params=JOINED_CATBOOST_CLASSIFIER_PARAMS,
     )
     orphan = (
         _fit_mixture(
             orphan_rows, orphan_columns(), ORPHAN_CATEGORICALS,
             SPARSE_PARAMS, ORPHAN_ROUNDS, CLASSIFIER_PARAMS, CLASSIFIER_ROUNDS,
             ORPHAN_NORMAL_MAX_SEC,
+            catboost_weight=ORPHAN_CATBOOST_WEIGHT, catboost_params=ORPHAN_CATBOOST_PARAMS,
         )
         if len(orphan_rows) >= MIN_SPARSE_ROWS
         else None
