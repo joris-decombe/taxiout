@@ -18,6 +18,13 @@ Round 4 (`pipeline/experiments_round4.py`, from [RESEARCH.md](RESEARCH.md))
 blends a CatBoost twin into the matched regressor: **321.8s validation**
 (-2.7s, 95% CI -3.4s to -2.2s), built as `submission_v8.parquet`. Queueing
 features and recalibrating p did nothing.
+Round 4 also added a CatBoost orphan twin and three LightGBM seeds (319.4s);
+round 5 a LightGBM per airport, a deeper CatBoost and a CatBoost classifier
+for the matched group (317.9s); and a 3,600s cap on orphans outside LIRF
+(**317.2s validation**, -0.8s, 95% CI -1.5s to -0.2s). Stacking (round 6)
+gave -0.4s, all in July, and is not used. Built as
+`data/submission_v10.parquet` from `data/model_v9.pkl` (v9 is the same
+fit without the cap).
 
 | Upload | Validation | Test | What changed |
 |---|---|---|---|

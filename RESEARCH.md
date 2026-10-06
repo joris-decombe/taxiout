@@ -103,6 +103,7 @@ the rare regimes matter more than the bulk.
 | 8 | Per-airport LightGBM beside the global one; deeper CatBoost | Local structure; capacity | **in: -0.9s** together (95% CI -1.2s to -0.6s) |
 | 9 | CatBoost classifier beside LightGBM's | Ensemble of classifiers ranks records better | **in for matched: -0.6s**; orphans +1.5s, not used |
 | 10 | LightGBM tuning: learning rate 0.03, 511 leaves, stronger L2 | Standard tuning | no effect (+0.5s to -0.1s) |
+| 11 | Cap orphan predictions outside LIRF at 3,600s | 2025 structure: no lateness band there averaged over 1,360s | **in: -0.8s** (95% CI -1.5s to -0.2s) |
 | – | Neural nets, TabPFN, distributional boosting (NGBoost) | Wrong scale, or they model a full distribution when RMSE needs the mean | not pursued |
 
 ## Tried and rejected

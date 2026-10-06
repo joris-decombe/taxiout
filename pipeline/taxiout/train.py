@@ -49,7 +49,8 @@ Current validation, with the anchored matched regressor,
 the LOBT window, LIRF's day-shift and late-orphan rules, and a CatBoost
 twin of each regressor, three seeds of the matched LightGBM one and a
 LightGBM per airport beside them, and a CatBoost twin of the matched
-classifier (constants below): 317.9s. All on top of the
+classifier, and a cap on orphans outside LIRF (constants below): 317.2s.
+All on top of the
 live excess features and the reference fallback in features.py (343.6s).
 
 The simulator only earns its place if adding its queue-delay estimate as a
@@ -147,6 +148,14 @@ DAY_SHIFT_AIRPORTS = ("LIRF",)
 LIRF_ORPHAN_RULE = True
 LIRF_ORPHAN_BANDS_H = (1, 2, 3, 4, 6, 8, 14)
 LIRF_ORPHAN_FULL_ABOVE_H = 6
+
+# Orphans elsewhere are normal taxis however late they leave: of 20,982 in
+# 2025 outside LIRF, 342 took over an hour and 6 over three (two of them
+# day-early off-blocks nothing flags), and no lateness band averaged over
+# 1,360s. The orphan regressors still reach 15,000s to 30,000s on a few 2026
+# rows, so those predictions are capped. -0.8s on validation (95% CI -1.5s
+# to -0.2s; January and July both better).
+ORPHAN_CAP_SEC = 3600
 
 # The matched normal-taxi prediction is a blend of the LightGBM regressor and
 # a CatBoost one boosted from the same anchor, at this weight on CatBoost.
@@ -296,7 +305,11 @@ class TrainedModel:
                 r = np.where(late, self.day_shift_taxi, r)
             if DAY_SHIFT:
                 r = np.where(_day_shift_band(rows, gap), DAY_SEC + self.day_shift_taxi, r)
-            out[~mask] = p * gap + (1 - p) * r
+            pred = p * gap + (1 - p) * r
+            if ORPHAN_CAP_SEC is not None:
+                elsewhere = ~rows[schema.ADEP].is_in(DAY_SHIFT_AIRPORTS).to_numpy()
+                pred = np.where(elsewhere, np.minimum(pred, ORPHAN_CAP_SEC), pred)
+            out[~mask] = pred
         return out
 
 

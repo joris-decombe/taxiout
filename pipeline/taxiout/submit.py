@@ -17,10 +17,12 @@ import polars as pl
 
 from . import data, features, schema, train
 
-# A full day. The longest taxi-out in the 2025 training data is 131,167s,
+# Two days. The longest taxi-out in the 2025 training data is 131,167s,
 # which is a data artifact rather than an aircraft, but the honest values run
-# well past two hours and must not be flattened.
-MAX_PLAUSIBLE_TAXI_SEC = 86_400.0
+# well past two hours and must not be flattened, and LIRF's day-shifted
+# orphans (train.DAY_SHIFT) are predicted at a day plus a normal taxi, which
+# a one-day guard used to cut by about 1,000s.
+MAX_PLAUSIBLE_TAXI_SEC = 172_800.0
 
 # How far the submission's median may drift from the training target's
 # before verification refuses it. Loose on purpose: January and July differ

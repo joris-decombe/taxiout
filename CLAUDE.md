@@ -44,7 +44,8 @@ once in this repo's history:
   were checked and do not encode off-block times.
 - **Do not clip predictions tightly.** Real taxi-out exceeds two hours often
   enough that clipping there cost 92s of RMSE in a measured run. `submit.py`
-  caps at 86,400s purely as a runaway guard.
+  caps at 172,800s purely as a runaway guard (a day plus a
+  normal taxi is a legitimate LIRF prediction).
 - Fit anything derived from the target (`unimpeded_taxi_reference` is a low
   quantile of it) on the training half only, never on all of `training`.
 
