@@ -1,210 +1,105 @@
 # TODO
 
 Submissions close **11 October 2026, 23:59:59 CET**. Ranking takes each
-team's **best** score, at up to 5 uploads a day, so an upload never costs
-anything but a slot.
+team's **best** score, at up to 5 uploads a day.
 
-Current model: **329.8s validation RMSE** on January + July 2025, against a
-686s standard deviation for those months (v5 was 343.6s). Round 3
-(`pipeline/experiments_round3.py`, 6 October 2026) added three things:
-the matched regressor learns the deviation from take-off minus AOBT
-(-1.1s), predictions respect the LOBT window (-3.8s), and LIRF orphans 14h
-to 26h late are either at schedule or a day plus a normal taxi (about -9s).
-Built as `data/submission_v6.parquet`; `submission_v6_nolobt.parquet` is
-the same fit without the LOBT window. `submission_v7.parquet` adds the
-LIRF late-orphan rule (`train.LIRF_ORPHAN_RULE`, -5.2s, 95% CI
--10.2s to -1.4s): 324.6s validation.
-Round 4 (`pipeline/experiments_round4.py`, from [RESEARCH.md](RESEARCH.md))
-blends a CatBoost twin into the matched regressor: **321.8s validation**
-(-2.7s, 95% CI -3.4s to -2.2s), built as `submission_v8.parquet`. Queueing
-features and recalibrating p did nothing.
-Round 4 also added a CatBoost orphan twin and three LightGBM seeds (319.4s);
-round 5 a LightGBM per airport, a deeper CatBoost and a CatBoost classifier
-for the matched group (317.9s); and a 3,600s cap on orphans outside LIRF
-(317.2s validation, -0.8s, 95% CI -1.5s to -0.2s), then a quarter-way
-shrinkage of those orphans towards their airport and lateness band's mean
-(316.7s validation, -0.5s, 95% CI -0.7s to -0.3s; `submission_v11`).
-Round 7: ADS-B push-back observations from adsb.lol through a corrector
-fitted on the validation days, -7.3s cross-validated by day (95% CI -9.7s
-to -5.6s). `submission_v12` is v11 corrected; `pipeline/build_final.py`
-rebuilds the whole chain reproducibly. Stacking (round 6)
-gave -0.4s, all in July, and is not used. Built as
-`data/submission_v10.parquet` from `data/model_v9.pkl` (v9 is the same
-fit without the cap).
+**Best upload: v9, 275.0s on the test set, rank 68 of 233** (8 October 2026;
+leader 213.5s, 10th 223.7s, median 295.9s). Its model scores **308.8s** on
+the January and July 2025 validation days (316.7s before the ADS-B
+correction), against a 686s standard deviation for those months.
 
-| Upload | Validation | Test | What changed |
-|---|---|---|---|
-| v1 | 384s | **370.9s** | first submission |
-| v2 | 346.1s | **363.1s** | surroundings, weather, flight fields, matched mixture |
-| v3 | 346.6s | **361.5s** | v2's matched predictions, v1's orphan predictions exactly |
-| v4 | 344.3s | **360.6s** | v3 + live excess features (orphan predictions = v3's) |
-| v5 | 343.6s | **359.0s** | v4 + stand-group/runway reference fallback |
-| v6 | 321.8s | **311.3s** | anchor, LOBT window, LIRF day-shift and late-orphan rules, CatBoost blend (`data/submission_v8.parquet`) |
-| v7 | 317.2s | **287.2s** | + CatBoost orphan twin, seeds, per-airport models, deeper CatBoost, CatBoost classifier, orphan cap outside LIRF, two-day guard (`data/submission_v10.parquet`) |
-| v8 | 316.7s | **287.0s** | v7 + orphans outside LIRF shrunk a quarter of the way to their band's mean (`data/submission_v11.parquet`) |
-| v9 | 308.8s | **275.0s** | v8 corrected from adsb.lol ground observations (`data/submission_v12.parquet`) |
+## Uploads
 
-v9 is the best: 275.0s, rank 68 of 233 on 8 October 2026 (leader 213.5s, 10th
-223.7s, median 295.9s). v8 was 287.04s (v7 287.23s), rank 95 of 232 on 7 October 2026 (leader 213.5s,
-10th 224.5s, median 295.9s), the first upload above the median. v6 was 311.3s, rank 130 of 231 on 6 October 2026 (leader 213.9s,
-10th 225.8s, median 298.9s). v5 was rank 137 of 201 on 29 September. v6 is
-the first upload to score better on test than on validation. The fallback was
-worth 1.6s on the test set while validation, which has almost no unseen
-stands, measured it at +0.4s.
+Bucket names (`gentle-octopus_v<N>`) and local file names differ from v6 on;
+the last column maps them.
 
-v3 splits the two cleanly. The Nice predictions in v2's orphan model (see
-`train.ORPHAN_CATEGORICALS`) cost 1.6s on the test set. **The matched-group
-changes are worth 9.4s on the test set (v1 to v3), against about 37s on
-validation.** Validation over-promised them by a factor of four, so the next
-question is which of them fail to transfer to 2026: the matched mixture (if
-LIRF's at-schedule rate changed), the surroundings, or the weather.
+| Upload | Validation | Test | What changed | Local file |
+|---|---|---|---|---|
+| v1 | 384s | 370.9s | first submission | `submission_v1` |
+| v2 | 346.1s | 363.1s | surroundings, weather, flight fields, matched mixture | `submission_v2` |
+| v3 | 346.6s | 361.5s | v2's matched predictions, v1's orphan predictions | `submission_v3` |
+| v4 | 344.3s | 360.6s | live excess features | `submission_v4_nofallback` |
+| v5 | 343.6s | 359.0s | stand-group/runway reference fallback | `submission_v4` |
+| v6 | 321.8s | 311.3s | anchored regressor, LOBT window, LIRF day-shift and late-orphan rules, CatBoost blend | `submission_v8` |
+| v7 | 317.2s | 287.2s | CatBoost orphan twin, three seeds, per-airport models, deeper CatBoost, CatBoost classifier, orphan cap outside LIRF, two-day guard | `submission_v10` |
+| v8 | 316.7s | 287.0s | orphans outside LIRF shrunk towards their lateness band's mean | `submission_v11` |
+| v9 | 308.8s | **275.0s** | ADS-B corrector from adsb.lol ground observations | `submission_v12` |
 
-A lead on the transfer gap: **runway use shifted between the 2025 validation
-months and the 2026 test months.** EGLL 09R departures went from 11% to 38%
-in July, LFPG 27R from 16% to 0.1% (it was used for departures in July 2025,
-which looks like works on the north doublet), EHAM's long-taxi 36L from 30%
-to 41%. Features and stand-runway references learnt from 2025's mix may not
-carry over. `.claude/skills/air-traffic-controller/scripts/airport_profile.py`
-prints the full comparison.
+From v6 on, every upload scored better on the test set than on
+validation, and by more than validation predicted. Most of the gap came
+from orphans (no Network Manager record) in 2026 that the free-form orphan
+model put at many hours, which the structural rules removed.
 
-**Before each upload, diff the new predictions against the last scored file**
-by group and airport, and read the largest changes: validation alone missed
-the Nice predictions.
+**Before each upload:**
 
-Leaderboard on 29 September 2026: leader 220.7s, 10th 237.0s, median team
-299.2s.
+- Diff the new predictions against the last scored file by group and
+  airport, and read the largest changes (validation alone missed the Nice
+  predictions in v2).
+- Upload only genuine candidates for best model. The ranking page monitors
+  submissions for "attempts to learn from or exploit the ranking process";
+  variants built to measure one change or one slice on the test set are
+  out.
 
-## Model, in priority order
+## Open work, in priority order
 
-**Measure improvements with a paired bootstrap, not a single RMSE.** The
-unmatched group has ~5,400 validation rows and a target sd near 4,000s, and
-one row carries 22% of its squared error, five rows carry 52%. An
-independent 95% CI on its RMSE is 1,276s wide, so a lone score from that
-group means almost nothing. Resampling the validation set once and scoring
-both models on the same resample cancels most of that and can resolve
-differences under 10s. `pipeline/experiments_paired_bootstrap.py` is the
-harness.
+- [ ] **Reproducible final submission.** `pipeline/build_final.py` rebuilds
+      v9's chain from the challenge data and the adsb.lol archive, saving
+      each fitted stage under `data/build_final/`. Run it, check its output
+      against `submission_v12`, and make its file the final upload if it
+      matches (a fresh fit differs slightly from v12, which was assembled
+      from experiment components).
+- [ ] **Regenerate the report** with `pipeline/report_findings.py` once the
+      build is done: its scores, leaderboard, ladder and ADS-B section are
+      current, its model-derived charts still come from the 317.9s model.
+- [ ] **ADS-B inside the model** rather than as a corrector. The corrector
+      is fitted on 62 validation days; training the main model on ADS-B
+      would need all twelve 2025 months streamed (about 1.2 TB, 8 hours).
+      Not worth it this late.
+- [ ] **Winter check of the live excess signal** on a February + December
+      2025 holdout: January 2025 was mild, January 2026 was not.
+- [ ] **Two LFPG easyJet orphans** with an off-block logged a day early
+      (84,240s and 58,206s against a 30-minute schedule gap) carry about a
+      quarter of all validation squared error. Nothing recorded flags them.
 
-- [x] **LIRF's at-schedule artifact.** Half of LIRF's unmatched departures
-      record off-block at the scheduled time to the second, so the target
-      is `MVT - SCHED`. A mixture model for the orphan group (classifier for
-      the artifact, regressor for a normal taxi) took validation from 409.4s
-      to 383.6s, 95% CI -45.9s to -10.5s. `experiments_unmatched.py`.
-- [ ] **The unmatched group, what is left.** Still 45% of squared error.
-      Two LFPG easyJet rows with a day-early off-block (84,240s and 58,206s
-      against a 30-minute schedule gap) carry 20% of *all* validation squared
-      error on their own; nothing observable flags them. LIRF day-shift rows
-      (target ~86,400s + a normal taxi) are the rest of the tail.
-      Measured and rejected against the mixture: the airline as a raw
-      categorical (+10s worse), a smoothed per-airline at-schedule rate in
-      the classifier (-1.0s, CI -4.3s to +2.4s: nothing), and dropping the
-      February 2025 days from training (+1.9s, CI +0.3s to +3.9s: worse).
-      What remains looks like irreducible recording noise; the next gains
-      are more likely in the matched 55% of the error.
-- [x] **The surroundings, arrivals included.** The ranking set carries every
-      arrival with its in-block time, which the pipeline used to drop.
-      `context.py` builds stand, queue and runway-configuration features
-      from all movements; `weather.py` adds METARs. With the flight-table
-      fields the model had never used (operator, market segment, flight
-      type, wake category, destination, EOBT and IOBT against takeoff), the
-      matched group went from 292.3s to 273.4s before the mixture below.
-      After it, context is worth 4.1s and weather 1.0s on the matched group.
-      Both made the orphan group worse (2,005s to ~2,080s), so it keeps the
-      smaller feature set. `experiments_context.py`.
-- [x] **The at-schedule artifact in the matched group.** LIRF was 7.6% of
-      matched departures and 42.5% of their squared error: 18% of them
-      record off-block at the schedule. The mixture now covers both groups:
-      matched 273.4s to 249.2s, LIRF matched 642s to 499s.
-- [ ] **LIRF is still the worst airport** by a factor of two. Weighting the
-      at-schedule classifier by what a mistake costs, with an
-      `EOBT_1 == SCHED` flag and a stand-area categorical, measured +0.1s
-      (CI −0.9s to +0.9s): no effect. `experiments_round2.py`.
-- [x] **A live de-icing and congestion signal** (`features.add_live_excess`):
-      the mean over the airport's (and runway's) other departures within
-      ±30/60 min of `(MVT − AOBT_3)` minus their reference. −2.3s on
-      validation (CI −6.5s to −0.3s), mostly at LIRF. January 2025 was mild,
-      so its de-icing side is untested: score it on a Feb + Dec 2025 winter
-      holdout (January 2026 had far more snow: LSZH 4.6% → 13.4% of
-      departures, EDDF 0.7% → 7.5%, LTFM 0% → 8.5%).
-- [x] **Unseen 2026 stands** now fall back to a stand-group, then runway
-      reference (`features.join_unimpeded`). Validation cannot judge it
-      (+0.4s, CI −0.7s to +1.7s). v4 vs v4_nofallback on the leaderboard can.
-- [x] ~~Measure slices of the gain with hybrid uploads.~~ Dropped: the
-      ranking page says submissions are monitored for "attempts to learn
-      from or exploit the ranking process". Upload genuine candidates only.
-- [ ] **Two LFPG rows** (the day-early easyJet off-blocks) keep LFPG's
-      validation RMSE near 580s. Nothing observable flags them yet.
-- [ ] **Tuning.** Parameters are unchanged since the first baseline apart from
-      the round counts. `num_leaves`, `min_data_in_leaf` and the learning
-      rate have not been searched, nor an ensemble of seeds.
-## Submitting
-
-- [x] **Pre-upload verification.** `submit.verify_submission` re-reads the
-      written file and checks schema and dtypes against the template, a 1:1
-      keyed join on every template ID, no null, non-finite or negative value,
-      each written value equal to the prediction for that ID, and the median
-      against the training target. A positionally scrambled copy of a good
-      file fails it; the good file passes.
-- [x] **End-to-end run on `ranking.parquet`.** `submit.build_submission`
-      fits on all twelve months (`train.train_final`), predicts the 344,841
-      departures and writes `data/submission_local.parquet`, which passes
-      verification. About a minute to fit. None of the feared breakages
-      happened. The target column is written as Int32 to match the template.
-      Predictions: median 960s, 94 over 2h (97 expected at the training
-      rate), max 72,502s. The largest are LIRF departures with no Network
-      Manager record that took off 15-17h after schedule; the model reads that
-      gap as taxi-out. Whether it is right to is the unmatched-group question.
-- [x] **Submit v1.** `gentle-octopus_v1.parquet`, uploaded 29 September
-      2026 from the 384s-validation model. The result file,
-      `<name>_result.json` in the team bucket, reads `"status": "Succeeded"`,
-      `"used_pairs": 344841`, `"score": 370.8992`. A `_persist.json` appears
-      beside it. The scorer took the file in the template's row order.
+What was tried, and why the current model is built the way it is, is in
+[RESEARCH.md](RESEARCH.md) and the `pipeline/experiments_round*.py`
+docstrings (rounds 3 to 7 cover 6 to 8 October 2026).
 
 ## Data quality, unexplained
 
-- [ ] **289 training departures have a negative taxi-out**, 241 of them at LSZH,
-      minimum -12s. Not a model defect: the model reproduces them faithfully and
-      the truth on those rows has a median of 8s. But the two timestamps
+- [ ] **289 training departures have a negative taxi-out**, 241 of them at
+      LSZH, minimum -12s. The model reproduces them; the two timestamps
       disagree there and nothing explains why.
-- [ ] **69 departures exceed six hours**, up to 131,167s. Day-boundary clock
-      errors were the obvious candidate and were tested: subtracting 24h lands
-      only 20% of them anywhere plausible, so that is not what they are.
+- [ ] **69 departures exceed six hours**, up to 131,167s. 52 are at-schedule
+      copies and 14 day-shifted off-blocks; 4 remain unexplained.
 
 ## Simulator
 
-`surface.py` bridges it to the parquet data: AOBT as the off-block clock,
-one run per aerodrome-day, `queue_delay_sec` joined back by `MVT_ID`.
-Measured over March 2025, 163,367 departures:
+Not used by the submitted model. `surface.py` bridges it to the parquet
+data; over March 2025 its queue delay correlates +0.21 with the real excess
+over geometry and reconstructs 17% of it. Queueing features computed
+directly from take-off times (round 4) added nothing either, because take-off
+minus the Network Manager's off-block already contains the queue.
 
-- Correlation with the real excess over geometry: **pearson +0.21**.
-- It reconstructs **17% of the real excess** (41s simulated against 241s
-  real). Departures it flags as queued averaged 292s of real excess against
-  205s for the rest, so the signal is real but weak.
-- EGLL is the exception: 195s simulated against 384s real, pearson +0.23.
-  The model bites hardest where the airfield is genuinely at capacity.
+- [ ] Decide whether to keep `sim/` in the final repo as documented
+      exploration or remove it.
 
-- [ ] **Decide whether +0.21 earns a feature slot.** Add
-      `sim_queue_delay_sec` to `FEATURE_COLUMNS` and measure the RMSE
-      change. It is behind the unmatched group in priority.
-- [ ] **If it stays, calibrate the separation matrix per airport.** The
-      current values are ICAO defaults converted to time, and generating a
-      sixth of the real delay suggests they are too permissive.
 ## Compliance and housekeeping
 
 - [x] **GPLv3 licence.** `LICENSE` holds the canonical text.
-- [x] **Make the repo public.** Done 6 October 2026, after auditing the
-      history again: 48 paths ever added, no parquet, no credential.
-- [ ] **Reproducible documentation.** An eligibility requirement in its own
-      right, not just good practice. *Taxi-Out, Measured* is now covered:
-      `pipeline/report_findings.py` rebuilds its data and page source in
-      `report/`. The surface replay page and `synthetic_run.json` are not.
-- [ ] **`experiments_paired_bootstrap.py` and `experiments_unmatched.py`
-      call `features.build` and `train.fit` with their pre-surroundings
-      signatures**, so they no longer run. They record measurements of an
-      older model; port them or mark them historical.
-- [ ] **Delete `pipeline/taxiout/fixtures.py`.** Scaffolding from before the
+- [x] **Public repo** since 6 October 2026, history audited first.
+- [x] **External data openly licensed:** METARs (Iowa Environmental
+      Mesonet) and adsb.lol (ODbL, attribution in the README; derived tables
+      stay uncommitted under `data/external/`). OPDI and OpenSky's
+      historical database were not used: no open licence.
+- [x] **Ideas from other teams credited** in the README's prior-work section.
+- [ ] **Reproducible documentation.** `build_final.py` covers the
+      submission, `report_findings.py` the report. The surface replay page
+      and `synthetic_run.json` are not reproducible from the repo.
+- [ ] **`experiments_paired_bootstrap.py` and `experiments_unmatched.py`**
+      call `features.build` and `train.fit` with old signatures and no
+      longer run. Port them or mark them historical.
+- [ ] **Delete `pipeline/taxiout/fixtures.py`**, scaffolding from before the
       real data arrived.
-- [ ] **Confirm the "Run the simulator on synthetic movements" README section.**
-      The two commands were verified once end to end; the section predates that.
 - [ ] Optional: the open-access paper in the Journal of Open Aviation Science
-      that the rules encourage. `Taxi-Out, Measured` is the draft material.
+      that the rules encourage. *Taxi-Out, Measured* is the draft material.

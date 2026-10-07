@@ -3,13 +3,16 @@
 PRC Data Challenge 2026: predicting taxi-out time at 10 major European
 airports: EDDF, EDDM, EGLL, EHAM, LEBL, LEMD, LFPG, LIRF, LSZH, LTFM.
 
-Two tracks that meet in the middle:
+Two tracks:
 
-- **`pipeline/`**. Python. Loads the challenge parquet files, builds features,
-  trains a LightGBM baseline, writes `submitting.parquet`. This is the yardstick.
+- **`pipeline/`**. Python. The submitted model: loads the challenge parquet
+  files and the open data (METARs, adsb.lol ADS-B), builds features, fits
+  LightGBM and CatBoost mixtures, corrects them from ADS-B ground
+  observations, and writes a verified submission (`pipeline/build_final.py`).
 - **`sim/`**. C++20. An event-driven model of the departure surface: pushback,
-  apron transit, runway queue with wake separation, arrival preemption. This is
-  the part that was meant to beat the yardstick.
+  apron transit, runway queue with wake separation, arrival preemption. It
+  was meant to supply queueing estimates; the queue turned out to be
+  readable directly from the data, and the submitted model does not use it.
 
 ## What the competition is
 
@@ -83,53 +86,50 @@ deviation: a real edge, but a modest one.
 The structure that matters more is in Status.
 ## Status
 
-Full 2025 dataset local: 12 monthly training files, `ranking.parquet`,
-`submitting.parquet`.
-
 | | |
 |---|---|
-| Python model | **346.1s validation RMSE** (Jan + Jul 2025) |
-| Test set, v1 | **370.9s** from the 384s-validation model, rank 139 of 200 (29 September 2026; leader 220.7s) |
+| Best upload | **v9: 275.0s** on the test set, rank 68 of 233 (8 October 2026; leader 213.5s, median 295.9s) |
+| Validation (Jan + Jul 2025) | **308.8s**, 316.7s before the ADS-B correction |
 | Target sd, those months | 686s, the two hardest months of the year |
-| Target sd, full year | 546s |
-| C++ simulator | builds, 11/11 tests pass, premise needs the rethink above |
+| Uploads | v1 370.9s, v5 359.0s, v6 311.3s, v7 287.2s, v8 287.0s, v9 275.0s; see [TODO.md](TODO.md) |
 
-### The thing that dominates everything
+### How the model works
 
-About 1.5% of departures fail to join to a Network Manager flight record:
-no AOBT, and with it no callsign, no market segment, no flight rule. It is
-one join failing, not four independent gaps.
+Take-off time survives in the scored data and off-block time does not, so
+predicting taxi-out means reconstructing when the aircraft left its stand.
+Three other clocks bear on that, and the model is built around them:
 
-Those rows carry **62% of the squared error**. Their RMSE is ~2,970s against
-~293s for everything else. Their target distribution is a different
-animal: sd ~3,960s against ~476s, and 98.6% of all departures over six
-hours live there. Fitting them as a separate, much smaller model is worth
-55s of RMSE on its own (471s → 416s).
+- **The Network Manager's off-block (AOBT).** The matched regressor starts
+  from take-off minus AOBT and learns only the deviation from it.
+- **The flight plan's last off-block (LOBT).** The airport's off-block lies
+  within ±3,606s of it on every 2025 departure that has one, so
+  predictions are projected into that window.
+- **The schedule.** Some airports, Rome above all, record the scheduled
+  time as the off-block. Each group is a mixture: `p × (take-off −
+  schedule) + (1 − p) × normal taxi`. At Rome, departures with no flight
+  record follow two clean rules from the 2025 records: past six hours late
+  the at-schedule share is used directly, and 14 to 26 hours late the
+  alternative to the schedule is a day plus a normal taxi.
 
-Two plausible alternatives were measured and rejected: substituting the
-group's mean instead of modelling it (574s), and explicit missingness flags
-in a single model (475s).
+About 1.5% of departures have no Network Manager record at all and carry
+about half of the squared error. They get their own smaller model; outside
+Rome their predictions are capped at an hour and pulled towards their
+airport and lateness band's mean, because in 2025 they taxied normally
+however late they left.
 
-Within the group there is a recording artifact. About half of LIRF's
-unmatched departures have an off-block time equal to the scheduled time to
-the second, so their taxi-out is exactly takeoff minus schedule, routinely
-several hours. The orphan model is a mixture: a classifier for that
-artifact, a regressor for a normal taxi, combined as
-`p × (takeoff − schedule) + (1 − p) × normal`. That takes validation RMSE
-from 409s to 384s (paired-bootstrap 95% CI −46s to −11s).
+The regressors are LightGBM and CatBoost blends (three LightGBM seeds, a
+LightGBM per airport, a CatBoost twin for each group, and a CatBoost
+classifier beside LightGBM's for the matched group). Finally, a small
+corrector learns the model's error from what adsb.lol's ADS-B receivers saw
+on the ground, the push-back itself for about one 2026 departure in five,
+fitted on the validation days only.
 
-**[Taxi-Out, Measured](https://joris-decombe.github.io/taxiout/)** is the
-long-form account: what taxi-out is and why it is worth predicting,
-why a squared metric changes the question, which timestamps the scored data
-keeps, the error decomposition, the at-schedule recording artifact, and the
-eight strategies tried.
-Written to be read with no prior knowledge of the dataset or of aviation,
-and intended as the basis for the open-access write-up the rules encourage.
+[RESEARCH.md](RESEARCH.md) explains why each of these works and records what
+was tried and rejected. **[Taxi-Out, Measured](https://joris-decombe.github.io/taxiout/)**
+is the long-form account for readers with no prior knowledge of the dataset
+or of aviation, and the basis for the open-access write-up the rules
+encourage. Open work is in [TODO.md](TODO.md).
 
-Open work is tracked in [TODO.md](TODO.md). The short version: the leaders
-score better overall than this model does on its easy rows, so the next gains
-are in the main model, and the simulator's `queue_delay_sec` is not yet wired
-into `features.py`, so the two tracks do not actually meet.
 ## Getting the data
 
 The console login is interactive SSO, so the first credential is a manual step:
