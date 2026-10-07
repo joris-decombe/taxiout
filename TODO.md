@@ -37,8 +37,9 @@ fit without the cap).
 | v5 | 343.6s | **359.0s** | v4 + stand-group/runway reference fallback |
 | v6 | 321.8s | **311.3s** | anchor, LOBT window, LIRF day-shift and late-orphan rules, CatBoost blend (`data/submission_v8.parquet`) |
 | v7 | 317.2s | **287.2s** | + CatBoost orphan twin, seeds, per-airport models, deeper CatBoost, CatBoost classifier, orphan cap outside LIRF, two-day guard (`data/submission_v10.parquet`) |
+| v8 | 316.7s | **287.0s** | v7 + orphans outside LIRF shrunk a quarter of the way to their band's mean (`data/submission_v11.parquet`) |
 
-v7 is the best: 287.2s, rank 95 of 232 on 7 October 2026 (leader 213.5s,
+v8 is the best: 287.04s (v7 287.23s), rank 95 of 232 on 7 October 2026 (leader 213.5s,
 10th 224.5s, median 295.9s), the first upload above the median. v6 was 311.3s, rank 130 of 231 on 6 October 2026 (leader 213.9s,
 10th 225.8s, median 298.9s). v5 was rank 137 of 201 on 29 September. v6 is
 the first upload to score better on test than on validation. The fallback was
