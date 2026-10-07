@@ -10,7 +10,9 @@
    corrected, written to `data/submission_final.parquet` and verified.
 
 About four hours on a 20-thread machine with 32 GB, plus about two hours
-of streaming (390 GB read, 3 GB kept) the first time.
+of streaming (390 GB read, 3 GB kept) the first time. Each fitted stage is
+saved under `data/build_final/` and reused on a rerun, so an interrupted
+build resumes; delete that folder to start over.
 
 Usage: python pipeline/build_final.py [--skip-fetch]
 """
@@ -29,6 +31,19 @@ from taxiout import adsb, correct, data, features, schema, submit, train  # noqa
 
 DAYS = [dt.date(y, m, d) for y in (2025, 2026) for m in (1, 7) for d in range(1, 32)]
 OUTPUT = Path("data/submission_final.parquet")
+STAGES = Path("data/build_final")
+
+
+def stage(name: str, make):
+    """`make()`'s result, saved the first time and read back on later runs."""
+    path = STAGES / f"{name}.pkl"
+    if path.exists():
+        log(f"reusing {path}")
+        return pickle.load(open(path, "rb"))
+    value = make()
+    STAGES.mkdir(parents=True, exist_ok=True)
+    pickle.dump(value, open(path, "wb"))
+    return value
 
 
 def log(message: str) -> None:
@@ -48,17 +63,20 @@ def main() -> None:
     log(f"ADS-B observations for {observations.height} departures")
 
     training = data.load_training()
-    model, held_out, _ = train.validate(training)
-    log(f"validation RMSE before the correction: {model.validation_rmse:.1f}s")
-    rows = correct.inputs(model, held_out)
-    corrector = correct.fit(rows, observations)
+
+    def validation_rows():
+        model, held_out, _ = train.validate(training)
+        log(f"validation RMSE before the correction: {model.validation_rmse:.1f}s")
+        return correct.inputs(model, held_out)
+
+    rows = stage("validation_rows", validation_rows)
+    corrector = stage("corrector", lambda: correct.fit(rows, observations))
     corrected = correct.apply(corrector, rows, observations)
     truth = corrected[schema.TARGET].to_numpy().astype(float)
     log(f"validation RMSE after it, in sample: {np.sqrt(np.mean((corrected['pred'].to_numpy() - truth) ** 2)):.1f}s "
         "(cross-validated by day in experiments_round7.py)")
 
-    final = train.train_final(training)
-    pickle.dump({"model": final, "corrector": corrector}, open("data/model_final.pkl", "wb"))
+    final = stage("final_model", lambda: train.train_final(training))
     ranking = data.load_ranking()
     frame = features.build(data.departures(ranking), final.unimpeded.lazy(), features.surroundings(ranking)).collect()
     out = correct.apply(corrector, correct.inputs(final, frame), observations)
