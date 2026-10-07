@@ -151,6 +151,37 @@ The S3 API is at `https://s3.opensky-network.org`. The console URL below is a
 web UI, not an endpoint. The store is MinIO, so path-style addressing is
 required.
 
+### External data
+
+- **METARs** from the Iowa Environmental Mesonet ASOS archive
+  (<https://mesonet.agron.iastate.edu/request/download.phtml>), fetched once
+  by `weather.fetch()` into `data/weather/`.
+- **ADS-B traces** from the adsb.lol global history archive
+  (<https://github.com/adsblol/globe_history_2025>,
+  <https://github.com/adsblol/globe_history_2026>), available under the
+  [Open Database License 1.0](https://opendatacommons.org/licenses/odbl/1-0/),
+  with feeder data under CC0. `taxiout.adsb` streams each day of January and
+  July 2025 and 2026 (about 390 GB read in all, nothing kept whole) and keeps
+  only the points near the ten airports (about 3 GB) in
+  `data/external/adsblol/`. Those derived tables are not committed: anything
+  derived from adsb.lol that is published must carry the ODbL, and they are
+  keyed to challenge rows. The code in this repo is the method that rebuilds
+  them. Contains information from adsb.lol, which is made available under
+  the ODbL.
+
+### The final submission, end to end
+
+```
+PYTHONIOENCODING=utf-8 POLARS_UNKNOWN_EXTENSION_TYPE_BEHAVIOR=load_as_storage \
+  .venv/Scripts/python.exe pipeline/build_final.py
+```
+
+streams and observes the ADS-B days, fits the model on ten months for
+honest January and July 2025 predictions, fits the ADS-B corrector
+(`taxiout.correct`) on them, refits on all twelve months, and writes and
+verifies `data/submission_final.parquet`. About four hours of compute plus
+two of streaming the first time.
+
 ## Build
 
 ```
@@ -251,6 +282,10 @@ their source), each idea verified on our data before use:
   [radekacar/joyous-rainbow](https://github.com/radekacar/joyous-rainbow).
   Tried and rejected: on this model a few rows extrapolate to ±300,000s
   (`experiments_round3.py`).
+- **ADS-B ground tracks from adsb.lol** as a source of off-block times, from
+  the same EnioAguiar README, which reports a large gain from them. The
+  extraction and the corrector here (`taxiout.adsb`, `taxiout.correct`)
+  were written from scratch and measured on our own validation days.
 - **LIRF's day-shifted orphans** were found here in the 2025 data
   (`train.DAY_SHIFT`). The README of
   [skylinkapi/prc-data-challenge-2026-kind-mango](https://github.com/skylinkapi/prc-data-challenge-2026-kind-mango)

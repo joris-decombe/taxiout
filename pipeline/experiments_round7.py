@@ -13,7 +13,14 @@ rebuilds them from rounds 3 to 5 with every production rule). The
 corrector is scored by cross-validation over whole days, so a day's
 correction never comes from a model that saw that day.
 
-Usage: python pipeline/experiments_round7.py observe | prod | --score
+After the correction the production rules apply again: matched predictions
+are projected into the LOBT window, orphans outside LIRF capped at an hour.
+
+`build` fits the corrector on every validation day and applies it to the
+2026 predictions of `data/model_v11.pkl`, writing
+`data/submission_v12.parquet`.
+
+Usage: python pipeline/experiments_round7.py observe | prod | --score | build
 """
 
 import datetime as dt
@@ -25,9 +32,11 @@ import numpy as np
 import polars as pl
 
 sys.path.insert(0, "pipeline")
+import pickle  # noqa: E402
+
 import experiments_round4 as round4  # noqa: E402
 import experiments_round5 as round5  # noqa: E402
-from taxiout import adsb, data, schema, train  # noqa: E402
+from taxiout import adsb, data, features, schema, submit, train  # noqa: E402
 
 OUT = Path("data/round7")
 VALIDATION_DAYS = [dt.date(2025, m, d) for m in (1, 7) for d in range(1, 32)]
@@ -70,7 +79,7 @@ def prod() -> None:
     pred = np.where(elsewhere & ~np.isnan(prior), (1 - train.ORPHAN_SHRINK) * pred + train.ORPHAN_SHRINK * prior, pred)
     nm = data.departures(data.load_training()).select(
         schema.MVT_ID, (pl.col(schema.MVT_TIME) - pl.col(schema.AOBT)).dt.total_seconds().alias("nm_taxi")).collect()
-    out = h.select(schema.MVT_ID, schema.ADEP, schema.TARGET, schema.MVT_TIME, "matched", "p", "gap").with_columns(
+    out = h.select(schema.MVT_ID, schema.ADEP, schema.TARGET, schema.MVT_TIME, schema.LOBT, "matched", "p", "gap").with_columns(
         pl.Series("pred", pred)).join(nm, on=schema.MVT_ID, how="left")
     OUT.mkdir(exist_ok=True)
     out.write_parquet(OUT / "prod_valid.parquet")
@@ -91,6 +100,63 @@ def matrix(frame: pl.DataFrame):
 
 def rmse(p, t):
     return float(np.sqrt(np.mean((p - t) ** 2)))
+
+
+def rules(frame: pl.DataFrame, pred: np.ndarray) -> np.ndarray:
+    """The production rules that bound a prediction, applied again after the correction."""
+    matched = frame["matched"].to_numpy()
+    low, high = train._lobt_window(frame)
+    pred = np.where(matched, np.clip(pred, low, high), pred)
+    elsewhere = ~matched & (frame[schema.ADEP].to_numpy() != "LIRF")
+    pred = np.where(elsewhere, np.minimum(pred, train.ORPHAN_CAP_SEC), pred)
+    return np.clip(pred, 0.0, submit.MAX_PLAUSIBLE_TAXI_SEC)
+
+
+def fit_corrector(frame: pl.DataFrame) -> lgb.Booster:
+    rows = frame.filter(pl.col("adsb_matched"))
+    residual = (rows[schema.TARGET].cast(pl.Float64) - rows["pred"]).to_numpy()
+    return lgb.train(PARAMS, lgb.Dataset(matrix(rows), label=residual, categorical_feature=["ADEP"]),
+                     num_boost_round=ROUNDS)
+
+
+def build() -> None:
+    frame = table()
+    booster = fit_corrector(frame)
+    print(f"corrector fitted on {frame['day'].n_unique()} days, {int(frame['adsb_matched'].sum())} ADS-B rows", flush=True)
+    model = pickle.load(open("data/model_v11.pkl", "rb"))
+    ranking = data.load_ranking()
+    around = features.surroundings(ranking)
+    rows = features.build(data.departures(ranking), model.unimpeded.lazy(), around).collect()
+    pred = model.predict(rows)
+    matched = rows.select(train.has_flight_record()).to_numpy().ravel()
+    p = np.empty(len(rows))
+    p[matched] = model.joined.components(rows.filter(pl.Series(matched)))[0]
+    p[~matched] = model.orphan.components(rows.filter(pl.Series(~matched)))[0]
+    base = rows.select(
+        schema.MVT_ID, schema.ADEP, schema.MVT_TIME, schema.LOBT,
+        pl.Series("matched", matched), pl.Series("p", p), pl.Series("pred", pred),
+        pl.col("sched_to_takeoff_sec").alias("gap"), pl.col("aobt_to_takeoff_sec").alias("nm_taxi"),
+    )
+    days = [dt.date(2026, m, d) for m in (1, 7) for d in range(1, 32)]
+    obs = adsb.load_observations(days)
+    print(f"2026: {obs.height} departures observed of {base.height}; ADS-B matched {obs['adsb_matched'].mean():.1%}, "
+          f"push-back seen {obs['adsb_pushback_seen'].mean():.1%}", flush=True)
+    joined = base.join(obs, on=schema.MVT_ID, how="left").with_columns(pl.col("adsb_matched").fill_null(False))
+    correction = np.zeros(joined.height)
+    seen = joined["adsb_matched"].to_numpy()
+    correction[seen] = booster.predict(matrix(joined.filter(pl.Series(seen))))
+    final = rules(joined, joined["pred"].to_numpy() + correction)
+    predictions = dict(zip(joined[schema.MVT_ID].to_list(), final.tolist()))
+    path = Path("data/submission_v12.parquet")
+    submit.write_submission(predictions, path)
+    print(path, "problems:", submit.verify_submission(path, predictions), flush=True)
+    old = pl.read_parquet("data/submission_v11.parquet").select(schema.MVT_ID, pl.col(schema.TARGET).alias("v11"))
+    new = pl.read_parquet(path).select(schema.MVT_ID, pl.col(schema.TARGET).alias("v12"))
+    d = joined.select(schema.MVT_ID, schema.ADEP, "adsb_matched").join(old, on=schema.MVT_ID).join(new, on=schema.MVT_ID)
+    print(d.group_by(schema.ADEP).agg(pl.len(), pl.col("adsb_matched").mean().alias("adsb"),
+                                      ((pl.col("v12") - pl.col("v11")) ** 2).mean().sqrt().alias("rms_change"),
+                                      pl.col("v11").mean(), pl.col("v12").mean()).sort(schema.ADEP))
+    print(d.with_columns((pl.col("v12") - pl.col("v11")).abs().alias("c")).sort("c", descending=True).head(8))
 
 
 def score() -> None:
@@ -119,7 +185,7 @@ def score() -> None:
     pushed = frame["adsb_pushback_seen"].to_numpy()
     for name, mask in (("all ADS-B rows", seen), ("push-back seen only", pushed)):
         for shrink in (0.5, 1.0):
-            corrected = pred + shrink * np.where(mask, correction, 0.0)
+            corrected = rules(frame, pred + shrink * np.where(mask, correction, 0.0))
             diffs = [rmse(corrected[i], truth[i]) - rmse(pred[i], truth[i]) for i in draws]
             lo, hi = np.percentile(diffs, [2.5, 97.5])
             jan = rmse(corrected[month == 1], truth[month == 1]) - rmse(pred[month == 1], truth[month == 1])
@@ -132,4 +198,4 @@ def score() -> None:
 
 if __name__ == "__main__":
     for step in sys.argv[1:]:
-        {"observe": observe, "prod": prod, "--score": score}[step]()
+        {"observe": observe, "prod": prod, "--score": score, "build": build}[step]()

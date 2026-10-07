@@ -106,7 +106,31 @@ the rare regimes matter more than the bulk.
 | 11 | Cap orphan predictions outside LIRF at 3,600s | 2025 structure: no lateness band there averaged over 1,360s | **in: -0.8s** (95% CI -1.5s to -0.2s) |
 | 12 | Shrink orphan predictions outside LIRF a quarter of the way to their airport and lateness band's mean | Empirical Bayes; a plausibility audit of 2026 predictions against 2025 outcomes | **in: -0.5s** (95% CI -0.7s to -0.3s) |
 | – | Clip matched predictions to 2025's range around the NM taxi time | The same audit | rejected: +3s to +13s; the extremes are real (at-schedule copies) |
+| 13 | ADS-B ground observations (adsb.lol) through a corrector fitted on validation days | Direct observation of the push-back; idea credited in the README | **in: -7.3s** on 57 validation days (95% CI -9.7s to -5.6s; January -5.5s, July -9.2s), cross-validated by day (`experiments_round7.py`) |
 | – | Neural nets, TabPFN, distributional boosting (NGBoost) | Wrong scale, or they model a full distribution when RMSE needs the mean | not pursued |
+
+## Observing the push-back: ADS-B
+
+The strongest model input is a different clock, and ADS-B can be one.
+Surveyed sources (round 7 notes in `experiments_round7.py`):
+
+- **adsb.lol** (ODbL, open download, every day of 2025 and 2026): the
+  aircraft is seen parked and then moving for 12% of 2025 departures and
+  18% to 20% of 2026's (half of Munich's, up to 45% of Amsterdam's and
+  Heathrow's, none at Istanbul, Paris, Rome). Where seen, the push-back
+  lands a median 35 s from BLOCK_TIME, 67% within a minute, against 180 s
+  for the Network Manager's AOBT. Most other departures are first seen
+  already taxiing, which still bounds the taxi-out.
+- **OPDI** (PRC and OpenSky flight events): ground coverage only at Zurich
+  and Frankfurt, nine days of January 2026 missing, and no stated open
+  licence. Not used.
+- **OpenSky's historical database**: an account and a research licence,
+  not openly reusable. Not used.
+
+A corrector (LightGBM on the model's error, from the observations, the
+prediction, the at-schedule probability, the NM taxi time and the
+schedule gap) fitted on held-out validation predictions turns this into
+-7.3s; on the departures whose push-back was seen, 200 s to 164 s.
 
 ## Tried and rejected
 

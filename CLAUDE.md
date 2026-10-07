@@ -144,6 +144,14 @@ Weather comes from the Iowa Environmental Mesonet METAR archive into
 `data/weather/`, once: `weather.fetch()`. The archive rate-limits with HTTP
 429, which `fetch` retries.
 
+ADS-B comes from the adsb.lol archive (ODbL): `adsb.fetch_day` streams a
+day's GitHub release (3 to 4 GB) and keeps the points near the airports,
+`adsb.observe_day` dates each departure's push-back where the aircraft is
+seen parked and then moving. `correct.py` fits a corrector of the model's
+error on those observations, on the validation days only, and
+`pipeline/build_final.py` runs the whole chain. Never commit anything under
+`data/external/`: it is derived from ODbL data and keyed to challenge rows.
+
 `bucket.py` talks to the object store: the challenge data is in the shared
 `prc-2026-datasets` bucket, submissions go to `prc-2026-gentle-octopus` under a
 filename pattern the scorer silently requires. The S3 API is at
