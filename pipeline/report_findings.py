@@ -54,6 +54,8 @@ LADDER = [
     {"name": "A LightGBM per airport beside the global one, and a deeper CatBoost", "rmse": 318.5},
     {"name": "A CatBoost classifier beside LightGBM's, for flights with a record", "rmse": 317.9},
     {"name": "No-record flights outside Rome: never more than an hour", "rmse": 317.2},
+    {"name": "Pull those towards their airport's usual taxi for that lateness", "rmse": 316.7},
+    {"name": "Correct with what ADS-B receivers saw on the ground (cross-validated by day)", "rmse": 308.8},
 ]
 REJECTED = [
     {"name": "Weight the schedule-copy classifier by what a mistake costs", "rmse": 344.4, "against": 344.3},
@@ -74,9 +76,11 @@ UPLOADS = [
     {"v": "v5", "validation": 343.6, "test": 359.0},
     {"v": "v6", "validation": 321.8, "test": 311.3},
     {"v": "v7", "validation": 317.2, "test": 287.2},
+    {"v": "v8", "validation": 316.7, "test": 287.0},
+    {"v": "v9", "validation": 308.8, "test": 275.0},
 ]
-LEADERBOARD = {"date": "7 October 2026", "teams": 232, "leader": 213.5, "tenth": 224.5,
-               "quartile": 270.4, "median": 295.9, "ours": 287.2, "rank": 95}
+LEADERBOARD = {"date": "8 October 2026", "teams": 233, "leader": 213.5, "tenth": 223.7,
+               "quartile": 270.4, "median": 295.9, "ours": 275.0, "rank": 68}
 # Iowa Environmental Mesonet METAR archive.
 METAR = {"station": "EHAM", "time": "2026-01-05 08:25 UTC",
          "raw": "EHAM 050825Z 20009KT 0700 R18C/1200N R27/1200U R18R/0700N R06/1400U SHSN VV005 00/M00 Q1008 TEMPO 2000"}
