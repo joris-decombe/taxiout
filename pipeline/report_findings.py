@@ -53,6 +53,7 @@ LADDER = [
     {"name": "Average three seeds of the LightGBM model", "rmse": 319.4},
     {"name": "A LightGBM per airport beside the global one, and a deeper CatBoost", "rmse": 318.5},
     {"name": "A CatBoost classifier beside LightGBM's, for flights with a record", "rmse": 317.9},
+    {"name": "No-record flights outside Rome: never more than an hour", "rmse": 317.2},
 ]
 REJECTED = [
     {"name": "Weight the schedule-copy classifier by what a mistake costs", "rmse": 344.4, "against": 344.3},
@@ -72,9 +73,10 @@ UPLOADS = [
     {"v": "v4", "validation": 344.3, "test": 360.6},
     {"v": "v5", "validation": 343.6, "test": 359.0},
     {"v": "v6", "validation": 321.8, "test": 311.3},
+    {"v": "v7", "validation": 317.2, "test": 287.2},
 ]
-LEADERBOARD = {"date": "6 October 2026", "teams": 231, "leader": 213.9, "tenth": 225.8,
-               "quartile": 271.3, "median": 298.9, "ours": 311.3, "rank": 130}
+LEADERBOARD = {"date": "7 October 2026", "teams": 232, "leader": 213.5, "tenth": 224.5,
+               "quartile": 270.4, "median": 295.9, "ours": 287.2, "rank": 95}
 # Iowa Environmental Mesonet METAR archive.
 METAR = {"station": "EHAM", "time": "2026-01-05 08:25 UTC",
          "raw": "EHAM 050825Z 20009KT 0700 R18C/1200N R27/1200U R18R/0700N R06/1400U SHSN VV005 00/M00 Q1008 TEMPO 2000"}
