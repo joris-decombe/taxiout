@@ -21,7 +21,9 @@ features and recalibrating p did nothing.
 Round 4 also added a CatBoost orphan twin and three LightGBM seeds (319.4s);
 round 5 a LightGBM per airport, a deeper CatBoost and a CatBoost classifier
 for the matched group (317.9s); and a 3,600s cap on orphans outside LIRF
-(**317.2s validation**, -0.8s, 95% CI -1.5s to -0.2s). Stacking (round 6)
+(317.2s validation, -0.8s, 95% CI -1.5s to -0.2s), then a quarter-way
+shrinkage of those orphans towards their airport and lateness band's mean
+(**316.7s validation**, -0.5s, 95% CI -0.7s to -0.3s; `submission_v11`). Stacking (round 6)
 gave -0.4s, all in July, and is not used. Built as
 `data/submission_v10.parquet` from `data/model_v9.pkl` (v9 is the same
 fit without the cap).

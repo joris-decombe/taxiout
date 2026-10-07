@@ -49,7 +49,8 @@ Current validation, with the anchored matched regressor,
 the LOBT window, LIRF's day-shift and late-orphan rules, and a CatBoost
 twin of each regressor, three seeds of the matched LightGBM one and a
 LightGBM per airport beside them, and a CatBoost twin of the matched
-classifier, and a cap on orphans outside LIRF (constants below): 317.2s.
+classifier, and a cap and shrinkage on orphans outside LIRF (constants
+below): 316.7s.
 All on top of the
 live excess features and the reference fallback in features.py (343.6s).
 
@@ -156,6 +157,17 @@ LIRF_ORPHAN_FULL_ABOVE_H = 6
 # rows, so those predictions are capped. -0.8s on validation (95% CI -1.5s
 # to -0.2s; January and July both better).
 ORPHAN_CAP_SEC = 3600
+
+# And they are pulled a quarter of the way towards their airport and
+# lateness band's training mean (bands below; a band of n rows is smoothed
+# towards the airport mean with weight n / (n + 30)). At Istanbul, late
+# orphans take over an hour a fifth to a third of the time, which the model
+# underpredicts; at Amsterdam it overpredicts. -0.5s on validation (95% CI
+# -0.7s to -0.3s; January and July both better). Half the way gave the same
+# on average but nothing in July.
+ORPHAN_SHRINK = 0.25
+ORPHAN_SHRINK_BANDS_H = (0.5, 1, 2, 4, 8)
+ORPHAN_SHRINK_PRIOR_ROWS = 30
 
 # The matched normal-taxi prediction is a blend of the LightGBM regressor and
 # a CatBoost one boosted from the same anchor, at this weight on CatBoost.
@@ -280,6 +292,8 @@ class TrainedModel:
     day_shift_taxi: float
     # At-schedule share per LIRF orphan gap band, keyed by the band's lower edge.
     lirf_art_rates: dict[int, float]
+    # Smoothed mean taxi-out per (airport, gap band) of orphans outside LIRF.
+    orphan_band_means: dict = field(default_factory=dict)
 
     def predict(self, frame: pl.DataFrame) -> np.ndarray:
         mask = frame.select(has_flight_record()).to_numpy().ravel()
@@ -306,9 +320,12 @@ class TrainedModel:
             if DAY_SHIFT:
                 r = np.where(_day_shift_band(rows, gap), DAY_SEC + self.day_shift_taxi, r)
             pred = p * gap + (1 - p) * r
+            elsewhere = ~rows[schema.ADEP].is_in(DAY_SHIFT_AIRPORTS).to_numpy()
             if ORPHAN_CAP_SEC is not None:
-                elsewhere = ~rows[schema.ADEP].is_in(DAY_SHIFT_AIRPORTS).to_numpy()
                 pred = np.where(elsewhere, np.minimum(pred, ORPHAN_CAP_SEC), pred)
+            if ORPHAN_SHRINK and self.orphan_band_means:
+                prior = _orphan_band_mean(rows, gap, self.orphan_band_means)
+                pred = np.where(elsewhere & ~np.isnan(prior), (1 - ORPHAN_SHRINK) * pred + ORPHAN_SHRINK * prior, pred)
             out[~mask] = pred
         return out
 
@@ -341,6 +358,36 @@ def normal_orphan_taxi(orphans: pl.DataFrame) -> float:
         & (pl.col(schema.TARGET) < DAY_SHIFT_MIN_SEC)
     )
     return float(rows[schema.TARGET].median()) if len(rows) else 0.0
+
+
+def orphan_band_means(orphans: pl.DataFrame) -> dict:
+    """Mean taxi-out per (airport, gap band) of orphans outside LIRF, smoothed to the airport mean.
+
+    Keys are (airport, band index), plus (airport, None) for the airport mean
+    that unseen bands fall back to.
+    """
+    rows = orphans.filter(~pl.col(schema.ADEP).is_in(DAY_SHIFT_AIRPORTS)).select(
+        schema.ADEP, pl.col(schema.TARGET).cast(pl.Float64),
+        (pl.col("sched_to_takeoff_sec") / 3600).alias("_gap_h"),
+    )
+    rows = rows.with_columns(pl.Series("_band", np.digitize(rows["_gap_h"].fill_null(0).to_numpy(), ORPHAN_SHRINK_BANDS_H)))
+    airport = {a: m for a, m in rows.group_by(schema.ADEP).agg(pl.col(schema.TARGET).mean()).iter_rows()}
+    means = {(a, None): m for a, m in airport.items()}
+    k = ORPHAN_SHRINK_PRIOR_ROWS
+    for a, band, n, m in rows.group_by(schema.ADEP, "_band").agg(pl.len(), pl.col(schema.TARGET).mean()).iter_rows():
+        means[(a, int(band))] = (n * m + k * airport[a]) / (n + k)
+    return means
+
+
+def _orphan_band_mean(rows: pl.DataFrame, gap: np.ndarray, means: dict) -> np.ndarray:
+    """Each row's smoothed band mean, NaN where its airport has none."""
+    bands = np.digitize(np.nan_to_num(gap / 3600), ORPHAN_SHRINK_BANDS_H)
+    out = np.full(len(rows), np.nan)
+    for i, (airport, band) in enumerate(zip(rows[schema.ADEP].to_list(), bands)):
+        value = means.get((airport, int(band)), means.get((airport, None)))
+        if value is not None:
+            out[i] = value
+    return out
 
 
 def lirf_art_rates(orphans: pl.DataFrame) -> dict[int, float]:
@@ -545,6 +592,7 @@ def fit(departures: pl.LazyFrame, around: pl.DataFrame) -> TrainedModel:
         joined=joined, orphan=orphan, unimpeded=unimpeded, validation_rmse=float("nan"),
         day_shift_taxi=normal_orphan_taxi(orphan_rows),
         lirf_art_rates=lirf_art_rates(orphan_rows),
+        orphan_band_means=orphan_band_means(orphan_rows),
     )
 
 

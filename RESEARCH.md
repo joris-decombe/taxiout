@@ -104,6 +104,8 @@ the rare regimes matter more than the bulk.
 | 9 | CatBoost classifier beside LightGBM's | Ensemble of classifiers ranks records better | **in for matched: -0.6s**; orphans +1.5s, not used |
 | 10 | LightGBM tuning: learning rate 0.03, 511 leaves, stronger L2 | Standard tuning | no effect (+0.5s to -0.1s) |
 | 11 | Cap orphan predictions outside LIRF at 3,600s | 2025 structure: no lateness band there averaged over 1,360s | **in: -0.8s** (95% CI -1.5s to -0.2s) |
+| 12 | Shrink orphan predictions outside LIRF a quarter of the way to their airport and lateness band's mean | Empirical Bayes; a plausibility audit of 2026 predictions against 2025 outcomes | **in: -0.5s** (95% CI -0.7s to -0.3s) |
+| – | Clip matched predictions to 2025's range around the NM taxi time | The same audit | rejected: +3s to +13s; the extremes are real (at-schedule copies) |
 | – | Neural nets, TabPFN, distributional boosting (NGBoost) | Wrong scale, or they model a full distribution when RMSE needs the mean | not pursued |
 
 ## Tried and rejected
