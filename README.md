@@ -88,10 +88,10 @@ The structure that matters more is in Status.
 
 | | |
 |---|---|
-| Best upload | **v9: 275.0s** on the test set, rank 68 of 233 (8 October 2026; leader 213.5s, median 295.9s) |
-| Validation (Jan + Jul 2025) | **308.8s**, 316.7s before the ADS-B correction |
+| Best upload | **v10: 274.1s** on the test set, rank 68 of 237 (8 October 2026; leader 213.5s, median 295.9s) |
+| Validation (Jan + Jul 2025) | **308.6s**, 316.7s before the ADS-B correction |
 | Target sd, those months | 686s, the two hardest months of the year |
-| Uploads | v1 370.9s, v5 359.0s, v6 311.3s, v7 287.2s, v8 287.0s, v9 275.0s; see [TODO.md](TODO.md) |
+| Uploads | v1 370.9s, v5 359.0s, v6 311.3s, v7 287.2s, v8 287.0s, v9 275.0s, v10 274.1s; see [TODO.md](TODO.md) |
 
 ### How the model works
 
@@ -115,7 +115,10 @@ About 1.5% of departures have no Network Manager record at all and carry
 about half of the squared error. They get their own smaller model; outside
 Rome their predictions are capped at an hour and pulled towards their
 airport and lateness band's mean, because in 2025 they taxied normally
-however late they left.
+however late they left. "Normally" means like the flights around them:
+when the matched departures at their airport are taking over 25 minutes,
+as on Amsterdam's de-icing days in January 2026, they are predicted at
+least 0.95 times that level.
 
 The regressors are LightGBM and CatBoost blends (three LightGBM seeds, a
 LightGBM per airport, a CatBoost twin for each group, and a CatBoost

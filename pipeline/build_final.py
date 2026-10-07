@@ -7,7 +7,8 @@
    honest held-out predictions for January and July 2025.
 3. The ADS-B corrector (`taxiout.correct`) fitted on those predictions.
 4. The final fit on all twelve months, its predictions for the ranking set,
-   corrected, written to `data/submission_final.parquet` and verified.
+   corrected, orphans floored at their airport's live taxi level
+   (`correct.rules`), written to `data/submission_final.parquet` and verified.
 
 About four hours on a 20-thread machine with 32 GB, plus about two hours
 of streaming (390 GB read, 3 GB kept) the first time. Each fitted stage is

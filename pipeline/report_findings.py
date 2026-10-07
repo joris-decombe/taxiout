@@ -56,6 +56,7 @@ LADDER = [
     {"name": "No-record flights outside Rome: never more than an hour", "rmse": 317.2},
     {"name": "Pull those towards their airport's usual taxi for that lateness", "rmse": 316.7},
     {"name": "Correct with what ADS-B receivers saw on the ground (cross-validated by day)", "rmse": 308.8},
+    {"name": "No-record flights taxi at least as long as the departures around them", "rmse": 308.6},
 ]
 REJECTED = [
     {"name": "Weight the schedule-copy classifier by what a mistake costs", "rmse": 344.4, "against": 344.3},
@@ -67,6 +68,7 @@ REJECTED = [
     {"name": "Count the queue as queueing theory does (adjusted traffic, busy periods)", "rmse": 324.5, "against": 324.6},
     {"name": "A CatBoost classifier for the no-record flights too", "rmse": 320.9, "against": 319.4},
     {"name": "Stronger regularisation, for a shifted 2026", "rmse": 319.8, "against": 319.4},
+    {"name": "Each flight number's record in the other months (all of it Rome, and lost to 2026's new callsigns)", "rmse": 303.4, "against": 307.9},
 ]
 UPLOADS = [
     {"v": "v1", "validation": 383.6, "test": 370.9},
@@ -78,9 +80,10 @@ UPLOADS = [
     {"v": "v7", "validation": 317.2, "test": 287.2},
     {"v": "v8", "validation": 316.7, "test": 287.0},
     {"v": "v9", "validation": 308.8, "test": 275.0},
+    {"v": "v10", "validation": 308.6, "test": 274.1},
 ]
-LEADERBOARD = {"date": "8 October 2026", "teams": 233, "leader": 213.5, "tenth": 223.7,
-               "quartile": 270.4, "median": 295.9, "ours": 275.0, "rank": 68}
+LEADERBOARD = {"date": "8 October 2026", "teams": 237, "leader": 213.5, "tenth": 223.7,
+               "quartile": 270.0, "median": 295.9, "ours": 274.1, "rank": 68}
 # Iowa Environmental Mesonet METAR archive.
 METAR = {"station": "EHAM", "time": "2026-01-05 08:25 UTC",
          "raw": "EHAM 050825Z 20009KT 0700 R18C/1200N R27/1200U R18R/0700N R06/1400U SHSN VV005 00/M00 Q1008 TEMPO 2000"}

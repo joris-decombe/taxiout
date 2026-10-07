@@ -8,7 +8,8 @@ model's error from those observations, the model's own prediction and
 at-schedule probability, the Network Manager's taxi time and the schedule
 gap. It is fitted on the January and July 2025 validation days, where the
 model's predictions are honest held-out ones, and applied unchanged to
-2026, after which the production rules bound the result again.
+2026, after which the production rules bound the result again and
+floor the orphans at their airport's live taxi level (`rules`).
 
 Measured by cross-validation over whole days (`experiments_round7.py`):
 -7.3s on 57 validation days (95% CI -9.7s to -5.6s), January -5.5s,
@@ -70,12 +71,20 @@ def fit(rows: pl.DataFrame, observations: pl.DataFrame) -> lgb.Booster:
 
 
 def rules(rows: pl.DataFrame, pred: np.ndarray) -> np.ndarray:
-    """The production rules that bound a prediction, applied again after the correction."""
+    """The production rules that bound a prediction, applied again after the correction.
+
+    The orphan congestion floor comes last, over both the hour cap and
+    ADS-B: on congested days adsb.lol dates push-backs late (a median
+    111s to 219s short of BLOCK_TIME when the airport's NM taxi level
+    exceeds 1,200s, against 13s to 23s when quiet), and orphans have no NM
+    anchor to hold them.
+    """
     matched = rows["matched"].to_numpy()
     low, high = train._lobt_window(rows)
     pred = np.where(matched, np.clip(pred, low, high), pred)
     elsewhere = ~matched & (rows[schema.ADEP].to_numpy() != "LIRF")
     pred = np.where(elsewhere, np.minimum(pred, train.ORPHAN_CAP_SEC), pred)
+    pred = train.orphan_congestion_floor(rows, pred)
     return np.clip(pred, 0.0, submit.MAX_PLAUSIBLE_TAXI_SEC)
 
 

@@ -169,6 +169,21 @@ ORPHAN_SHRINK = 0.25
 ORPHAN_SHRINK_BANDS_H = (0.5, 1, 2, 4, 8)
 ORPHAN_SHRINK_PRIOR_ROWS = 30
 
+# But an orphan taxis like the departures around it. Outside LTFM, 2025
+# orphans took 0.95 to 1.0 times the median take-off minus AOBT of the
+# matched departures at their airport within half an hour, at every
+# congestion level; the orphan model, which sees none of that, fell far
+# short on disruption days (neighbours at 2,000s to 3,000s: 3,991s against
+# 1,762s predicted, cross-fitted over the ten training months). So where
+# that median exceeds 1,500s, an orphan outside LIRF is predicted at least
+# 0.95 times it. Validation, two mild months, barely moves (-0.16s); the
+# test set has Amsterdam's de-icing days of 3 to 9 January 2026 and moved
+# from 275.0s to 274.1s (v10). `experiments_round8.py`.
+ORPHAN_FLOOR_RATIO = 0.95
+ORPHAN_FLOOR_ABOVE_SEC = 1500.0
+ORPHAN_FLOOR_WINDOW_SEC = 1800
+ORPHAN_FLOOR_MIN_NEIGHBOURS = 3
+
 # The matched normal-taxi prediction is a blend of the LightGBM regressor and
 # a CatBoost one boosted from the same anchor, at this weight on CatBoost.
 # 50/50 took validation from 324.6s to 321.8s (95% CI -3.4s to -2.2s;
@@ -388,6 +403,44 @@ def _orphan_band_mean(rows: pl.DataFrame, gap: np.ndarray, means: dict) -> np.nd
         if value is not None:
             out[i] = value
     return out
+
+
+def neighbour_taxi_level(airports: np.ndarray, takeoff_sec: np.ndarray, nm_taxi: np.ndarray) -> np.ndarray:
+    """Median NM taxi time (take-off minus AOBT) of the departures with one at
+    the same airport within ORPHAN_FLOOR_WINDOW_SEC of each take-off.
+
+    NaN where fewer than ORPHAN_FLOOR_MIN_NEIGHBOURS are in the window. Rows
+    without an AOBT (NaN `nm_taxi`) get a level but do not contribute to one.
+    """
+    out = np.full(len(airports), np.nan)
+    for airport in np.unique(airports):
+        rows = np.flatnonzero(airports == airport)
+        known = rows[np.isfinite(nm_taxi[rows])]
+        order = np.argsort(takeoff_sec[known])
+        times, values = takeoff_sec[known][order], nm_taxi[known][order]
+        lo = np.searchsorted(times, takeoff_sec[rows] - ORPHAN_FLOOR_WINDOW_SEC)
+        hi = np.searchsorted(times, takeoff_sec[rows] + ORPHAN_FLOOR_WINDOW_SEC, side="right")
+        for i, a, b in zip(rows, lo, hi):
+            if b - a >= ORPHAN_FLOOR_MIN_NEIGHBOURS:
+                out[i] = np.median(values[a:b])
+    return out
+
+
+def orphan_congestion_floor(rows: pl.DataFrame, pred: np.ndarray) -> np.ndarray:
+    """`pred` with orphans outside LIRF raised to ORPHAN_FLOOR_RATIO times the
+    live taxi level of their airport, where that level exceeds ORPHAN_FLOOR_ABOVE_SEC.
+
+    `rows` must hold every departure of the dataset (the level is read off
+    the others), with `matched` and `nm_taxi` as `correct.inputs` makes them.
+    """
+    level = neighbour_taxi_level(
+        rows[schema.ADEP].to_numpy(),
+        rows[schema.MVT_TIME].dt.epoch("s").to_numpy().astype(float),
+        rows["nm_taxi"].cast(pl.Float64).fill_null(np.nan).to_numpy(),
+    )
+    orphan = ~rows["matched"].to_numpy() & ~rows[schema.ADEP].is_in(DAY_SHIFT_AIRPORTS).to_numpy()
+    raise_to = ORPHAN_FLOOR_RATIO * level
+    return np.where(orphan & (level > ORPHAN_FLOOR_ABOVE_SEC), np.fmax(pred, raise_to), pred)
 
 
 def lirf_art_rates(orphans: pl.DataFrame) -> dict[int, float]:

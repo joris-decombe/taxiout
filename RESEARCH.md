@@ -12,7 +12,9 @@ carries three noisy clocks for it:
 
 - **AOBT** (Network Manager off-block). `MVT − AOBT` alone scores 385s RMSE.
 - **LOBT** (flight plan). `|BLOCK − LOBT| ≤ 3,606s` on all 2,062,577 matched
-  2025 departures, so it bounds the answer to a two-hour window.
+  2025 departures, so it bounds the answer to a two-hour window. It holds
+  because it is the join condition: a departure recorded more than an hour
+  from its LOBT loses its NM record and becomes an orphan.
 - **SCHED**, which the recording system copies into BLOCK on a sizeable
   share of LIRF's departures (the at-schedule artifact).
 
@@ -107,6 +109,9 @@ the rare regimes matter more than the bulk.
 | 12 | Shrink orphan predictions outside LIRF a quarter of the way to their airport and lateness band's mean | Empirical Bayes; a plausibility audit of 2026 predictions against 2025 outcomes | **in: -0.5s** (95% CI -0.7s to -0.3s) |
 | – | Clip matched predictions to 2025's range around the NM taxi time | The same audit | rejected: +3s to +13s; the extremes are real (at-schedule copies) |
 | 13 | ADS-B ground observations (adsb.lol) through a corrector fitted on validation days | Direct observation of the push-back; idea credited in the README | **in: -7.3s** on 57 validation days (95% CI -9.7s to -5.6s; January -5.5s, July -9.2s), cross-validated by day (`experiments_round7.py`) |
+| 14 | Floor orphans outside LIRF at 0.95x the median take-off minus AOBT of their airport's matched departures within ±30 min, where it exceeds 1,500s | An orphan taxis like its neighbours (0.95x to 1.0x at every congestion level in 2025, outside LTFM); the orphan model has no live inputs | **in: -0.16s** on validation (95% CI -0.40s to 0.00s: two mild months), **-0.96s on the test set** (v10, 431 rows, nearly all on EHAM's de-icing days of 3 to 9 January 2026); `experiments_round8.py` |
+| – | Each flight number's history in the other ten months (copy rate, long-taxi rate, residual against the NM taxi), as corrector inputs | Target encoding of a stable identity | rejected: -4.5s on validation, but all of it LIRF orphans and 59% from 20 rows, matched rows +0.6s; LIRF's July 2026 flight numbers match 2025 for only half the departures |
+| – | Neighbours' ADS-B-observed residuals; a route and scheduled-time key; flight-number string patterns | Residuals are shared within an airport-runway-hour | rejected: +0.4s, +0.2s, worse than the history alone |
 | – | Neural nets, TabPFN, distributional boosting (NGBoost) | Wrong scale, or they model a full distribution when RMSE needs the mean | not pursued |
 
 ## Observing the push-back: ADS-B
@@ -131,6 +136,27 @@ A corrector (LightGBM on the model's error, from the observations, the
 prediction, the at-schedule probability, the NM taxi time and the
 schedule gap) fitted on held-out validation predictions turns this into
 -7.3s; on the departures whose push-back was seen, 200 s to 164 s.
+
+The dwell detector reads late on congested days: BLOCK minus the observed
+push-back has a median of 13s to 23s where the airport's NM taxi level is
+under 1,200s and 111s to 219s above it, presumably de-icing pads and
+queues taken for stands. Matched predictions keep the NM anchor; orphans
+are protected by the congestion floor (candidate 14).
+
+## Orphans on congested days
+
+An orphan's taxi-out tracks the live taxi level of the matched departures
+around it: the median `MVT − AOBT` at its airport within ±30 min. Outside
+LTFM, 2025 orphans took 0.95x to 1.0x that level in every band from under
+900s to over 3,000s (LTFM's February 2025 snowstorm ran at about 2x). The
+orphan model, built on the smaller feature set, sees none of it, and
+cross-fitted over the ten training months it under-predicts most where it
+matters: neighbours at 2,000s to 3,000s, orphans 3,991s, predicted 1,762s.
+Matched predictions show no such bias (the NM anchor carries the level).
+January 2026 had what the validation months lacked: EHAM's de-icing days
+of 3 to 9 January put 223 orphans at levels of 2,800s to 3,700s, predicted
+at about 1,240s. Floored at 0.95x the level above 1,500s they scored 274.1s
+against 275.0s.
 
 ## Tried and rejected
 

@@ -25,6 +25,19 @@ hours. About half of LIRF's departures with no flight record (null AOBT) and
 those flights leave near schedule. A smaller set, spread across airports, has
 an off-block a day early (target ~86,400s plus a normal taxi). train.py
 models the first in both groups; nothing observable flags the second.
+
+WHY SOME DEPARTURES HAVE NO FLIGHT RECORD: the movement and flight tables
+are joined on |BLOCK_TIME - LOBT| <= 3606s, so a flight whose off-block was
+recorded more than an hour from its LOBT loses its NM record (that is also
+why every matched row satisfies the window). When it flew to another of the
+ten airports, the ARR row there carries the same NM record; its AOBT sits
+within the hour of BLOCK_TIME for 832 of 902 such 2025 orphans.
+
+TIMESTAMP RESOLUTION: at seven airports (all but EDDF, EHAM and LSZH)
+BLOCK_TIME is minute resolution plus about +-6s of jitter, so a schedule
+copy shows as |BLOCK_TIME - SCHED_TIME| <= 6s rather than equality.
+SCHED_TIME and IOBT are always whole minutes, LOBT and EOBT 99.7% of the
+time, AOBT 97.7%.
 """
 
 from __future__ import annotations
