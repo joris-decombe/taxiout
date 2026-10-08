@@ -178,7 +178,11 @@ ORPHAN_SHRINK_PRIOR_ROWS = 30
 # that median exceeds 1,500s, an orphan outside LIRF is predicted at least
 # 0.95 times it. Validation, two mild months, barely moves (-0.16s); the
 # test set has Amsterdam's de-icing days of 3 to 9 January 2026 and moved
-# from 275.0s to 274.1s (v10). `experiments_round8.py`.
+# from 275.0s to 274.1s (v10). `experiments_round8.py`. On the February and
+# December 2025 fold it is -3.98s over 251 rows, mostly LTFM's February
+# storm (`experiments_round9.py`). 0.95 and 1,500s were read from all ten
+# 2025 training months, February included, so that fold checks the
+# structure, not untouched parameters.
 ORPHAN_FLOOR_RATIO = 0.95
 ORPHAN_FLOOR_ABOVE_SEC = 1500.0
 ORPHAN_FLOOR_WINDOW_SEC = 1800

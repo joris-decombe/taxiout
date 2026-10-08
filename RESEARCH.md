@@ -109,7 +109,7 @@ the rare regimes matter more than the bulk.
 | 12 | Shrink orphan predictions outside LIRF a quarter of the way to their airport and lateness band's mean | Empirical Bayes; a plausibility audit of 2026 predictions against 2025 outcomes | **in: -0.5s** (95% CI -0.7s to -0.3s) |
 | – | Clip matched predictions to 2025's range around the NM taxi time | The same audit | rejected: +3s to +13s; the extremes are real (at-schedule copies) |
 | 13 | ADS-B ground observations (adsb.lol) through a corrector fitted on validation days | Direct observation of the push-back; idea credited in the README | **in: -7.3s** on 57 validation days (95% CI -9.7s to -5.6s; January -5.5s, July -9.2s), cross-validated by day (`experiments_round7.py`) |
-| 14 | Floor orphans outside LIRF at 0.95x the median take-off minus AOBT of their airport's matched departures within ±30 min, where it exceeds 1,500s | An orphan taxis like its neighbours (0.95x to 1.0x at every congestion level in 2025, outside LTFM); the orphan model has no live inputs | **in: -0.16s** on validation (95% CI -0.40s to 0.00s: two mild months), **-0.96s on the test set** (v10, 431 rows, nearly all on EHAM's de-icing days of 3 to 9 January 2026); `experiments_round8.py` |
+| 14 | Floor orphans outside LIRF at 0.95x the median take-off minus AOBT of their airport's matched departures within ±30 min, where it exceeds 1,500s | An orphan taxis like its neighbours (0.95x to 1.0x at every congestion level in 2025, outside LTFM); the orphan model has no live inputs | **in: -0.16s** on validation (95% CI -0.40s to 0.00s: two mild months), **-0.96s on the test set** (v10, 431 rows, nearly all on EHAM's de-icing days of 3 to 9 January 2026); **-3.98s on the February + December 2025 fold** (251 rows, 75% improved, mostly LTFM's storm), a check of the structure since 0.95 and 1,500s were read from all ten training months, February included; `experiments_round8.py`, `experiments_round9.py` |
 | – | Each flight number's history in the other ten months (copy rate, long-taxi rate, residual against the NM taxi), as corrector inputs | Target encoding of a stable identity | rejected: -4.5s on validation, but all of it LIRF orphans and 59% from 20 rows, matched rows +0.6s; LIRF's July 2026 flight numbers match 2025 for only half the departures |
 | – | Neighbours' ADS-B-observed residuals; a route and scheduled-time key; flight-number string patterns | Residuals are shared within an airport-runway-hour | rejected: +0.4s, +0.2s, worse than the history alone |
 | – | Neural nets, TabPFN, distributional boosting (NGBoost) | Wrong scale, or they model a full distribution when RMSE needs the mean | not pursued |
@@ -156,7 +156,11 @@ Matched predictions show no such bias (the NM anchor carries the level).
 January 2026 had what the validation months lacked: EHAM's de-icing days
 of 3 to 9 January put 223 orphans at levels of 2,800s to 3,700s, predicted
 at about 1,240s. Floored at 0.95x the level above 1,500s they scored 274.1s
-against 275.0s.
+against 275.0s. On the February and December 2025 fold the floor moves 251
+orphans and the fold's RMSE from 238.9s to 235.0s, three quarters of the
+rows improving, most of it LTFM's February storm. The ratio and the
+threshold were read from all ten training months, February included, so
+this checks the structure rather than untouched parameters.
 
 ## Tried and rejected
 
