@@ -53,6 +53,7 @@ def write_submission(
     predictions: dict[int, float],
     output_path: Path,
     data_dir: Path = data.DATA_DIR,
+    template_name: str = data.SUBMISSION_TEMPLATE,
 ) -> Path:
     """Fills the template with predicted taxi-out seconds.
 
@@ -60,7 +61,7 @@ def write_submission(
     has departures the pipeline dropped somewhere, and shipping zeros for
     those would quietly wreck the RMSE.
     """
-    template = data.load_submission_template(data_dir)
+    template = data.load_submission_template(data_dir, template_name)
     ids = template.select(schema.MVT_ID).to_numpy().ravel()
 
     missing = [int(i) for i in ids if int(i) not in predictions]
@@ -96,6 +97,7 @@ def verify_submission(
     path: Path,
     predictions: dict[int, float],
     data_dir: Path = data.DATA_DIR,
+    template_name: str = data.SUBMISSION_TEMPLATE,
 ) -> list[str]:
     """Problems with the file on disk. Empty means it is safe to upload.
 
@@ -104,7 +106,7 @@ def verify_submission(
     """
     problems: list[str] = []
     written = pl.read_parquet(path)
-    template = data.load_submission_template(data_dir)
+    template = data.load_submission_template(data_dir, template_name)
 
     if written.schema != template.schema:
         problems.append(f"schema {dict(written.schema)} != template {dict(template.schema)}")

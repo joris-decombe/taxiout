@@ -649,11 +649,13 @@ def fit(departures: pl.LazyFrame, around: pl.DataFrame) -> TrainedModel:
     )
 
 
-def validate(training: pl.LazyFrame) -> tuple[TrainedModel, pl.DataFrame, np.ndarray]:
-    """Fits on ten months; returns the model, the held-out frame and its predictions."""
+def validate(
+    training: pl.LazyFrame, months: tuple[int, ...] = data.VALIDATION_MONTHS
+) -> tuple[TrainedModel, pl.DataFrame, np.ndarray]:
+    """Fits on the other months; returns the model, the held-out frame and its predictions."""
     around = features.surroundings(training)
     departures = data.departures(training)
-    train_frame, validation_frame = data.train_validation_split(departures)
+    train_frame, validation_frame = data.train_validation_split(departures, months)
 
     # Fit the unimpeded reference on the training half ONLY. It is a low
     # quantile of the target, so deriving it from all of `training` would feed
