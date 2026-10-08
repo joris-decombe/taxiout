@@ -44,15 +44,16 @@ model put at many hours, which the structural rules removed.
 
 ## Open work, in priority order
 
-- [ ] **Reproducible final submission.** `pipeline/build_final.py` rebuilds
-      v10's chain from the challenge data and the adsb.lol archive, saving
-      each fitted stage under `data/build_final/`; the orphan floor sits in
-      `correct.rules`, so stages saved before it reuse unchanged. Run it,
-      check its output against `submission_v13`, and make its file the
-      final upload if it matches (a fresh fit differs slightly from v13,
-      which was assembled from experiment components).
-- [ ] **A full-year ADS-B corrector.** The corrector is fitted on 62
-      validation days. The best public write-up (EnioAguiar, 243.95s)
+- [x] **Reproducible final submission.** `pipeline/build_final.py` rebuilds
+      v10's chain from the challenge data and the adsb.lol archive (about
+      four hours, each fitted stage saved under `data/build_final/`). Its
+      file matches `submission_v13` to fit noise: RMS difference 12.6s on
+      matched rows and 37s on orphans, none above 359s; validation 316.7s
+      before the correction, as before. Not uploaded on its own: it is the
+      same model, and the next upload will be this build plus round 9.
+- [ ] **A full-year ADS-B corrector**, in progress as round 9
+      (`experiments_round9.py`): a February + December 2025 fold first.
+      The corrector is fitted on 62 validation days. The best public write-up (EnioAguiar, 243.95s)
       reports its largest single step, 314.8s to 275.9s with the LOBT
       window, from a corrector fitted on base predictions cross-fitted
       over all twelve months. That needs the other ~300 days of 2025
