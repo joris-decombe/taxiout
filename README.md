@@ -28,10 +28,10 @@ the excess is directly convertible into fuel burn and CO2.
 | | |
 |---|---|
 | Metric | **RMSE**, in seconds |
-| Ranked on | January and July 2026 movements |
+| Ranked on | January and July 2026 on the leaderboard; the final ranking on one file covering January, February, June and July 2026 |
 | Training data | all movements at the 10 airports, full year 2025 |
 | Prize | EUR 5,000 shared between the top three teams |
-| Open | 1 September to 11 October 2026, 23:59:59 CET |
+| Open | 1 September to 14 October 2026, 10:00 UTC (noon in Brussels; extended on 8 October) |
 
 RMSE is worth taking literally: it is dominated by the worst predictions,
 so the long tail in the target (see Status) matters more than its bulk.
@@ -51,6 +51,13 @@ day (1 GB per bucket). Both are on the site's
 [ranking page](https://prc-data-challenge-2026.netlify.app/ranking.html),
 along with a public leaderboard.
 
+**The final phase** (announced 8 October 2026) replaces the leaderboard as
+the ranking: one final submission, `gentle-octopus_final.parquet` over
+`final_submitting.parquet`, predicting January, February, June and July
+2026. It is ranked on January + July, February + June and all four
+together, alongside a review of the code and documentation. The organisers
+added it to reward models that hold up beyond the two leaderboard months.
+
 Teams from sanctioned countries are excluded; the full terms are on the
 eligibility page linked from the challenge site.
 
@@ -59,7 +66,7 @@ to the 2026 site). Note the announcement email says 11 airports and the
 site says both 10 and 11 in different places; the data itself has 10, which
 is what this repo goes by. The submission format is `submitting.parquet`
 with `TAXITIME_SEC_mvt` filled in for every `MVT_ID_mvt`, as the ranking page
-describes.
+describes (`final_submitting.parquet` for the final phase).
 
 ## Why simulate at all
 
@@ -125,7 +132,8 @@ LightGBM per airport, a CatBoost twin for each group, and a CatBoost
 classifier beside LightGBM's for the matched group). Finally, a small
 corrector learns the model's error from what adsb.lol's ADS-B receivers saw
 on the ground, the push-back itself for about one 2026 departure in five,
-fitted on the validation days only.
+fitted on held-out predictions for January, July, February and December
+2025.
 
 [RESEARCH.md](RESEARCH.md) explains why each of these works and records what
 was tried and rejected. **[Taxi-Out, Measured](https://joris-decombe.github.io/taxiout/)**
@@ -219,8 +227,13 @@ It ships with a sample run so it is not an empty shell on first open.
 ## Validation split
 
 Train on 2025 minus January and July; validate on January and July 2025. The
-test set is January and July 2026, and taxi-out has a strong seasonal signal, so
-any other split flatters the model.
+leaderboard scored January and July 2026, and taxi-out has a strong seasonal
+signal, so any other split flatters the model.
+
+The final ranking adds February and June 2026, so a second fold holds out
+February and December 2025 (`experiments_round9.py`): the model scores
+238.9s there before the ADS-B correction, against 316.5s on January and
+July. The corrector learns from both folds' held-out predictions.
 
 Note that the split keys on off-block month, which is blank on the ranking set.
 That is fine, because the split only ever runs over training data.
@@ -237,7 +250,8 @@ submission is silently ignored.
 | Submission bucket | `prc-2026-gentle-octopus` |
 | Submission filename | `gentle-octopus_v<N>.parquet`, N being the version number |
 | Console | <https://s3-console.opensky-network.org> |
-| Deadline | 11 October 2026, 23:59:59 CET |
+| Final filename | `gentle-octopus_final.parquet`, one upload only |
+| Deadline | 14 October 2026, 10:00 UTC |
 
 **Logging in.** The console's default form will not accept OpenSky credentials.
 Click *Other Authentication Methods*, choose *Login with SSO*, and authenticate
@@ -253,7 +267,8 @@ first, since that is the easiest thing to get wrong.
 
 ## Key dates
 
-Submissions close **11 October 2026, 23:59:59 CET**.
+Submissions close **14 October 2026, 10:00 UTC** (noon in Brussels), extended
+from 11 October when the final phase was announced.
 
 ## Prior work
 

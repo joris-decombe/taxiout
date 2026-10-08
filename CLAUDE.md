@@ -180,8 +180,16 @@ double.
 
 ## Competition rules
 
-Scored on **RMSE in seconds** over January and July 2026 movements, which is
-why `train.py` optimises RMSE, confirmed on the challenge site rather than assumed.
+Scored on **RMSE in seconds**, which is why `train.py` optimises RMSE,
+confirmed on the challenge site rather than assumed. The leaderboard scores
+January and July 2026. **The final ranking** (announced 8 October 2026) is
+one submission, `gentle-octopus_final.parquet` over
+`final_submitting.parquet`, covering January, February, June and July 2026,
+ranked per pair of months and combined, with a review of code and docs.
+It exists to reward generalisation, so nothing should be tuned to January
+and July alone. `data.RANKING_FILE` and `data.SUBMISSION_TEMPLATE` point at
+the final files; `data.LEADERBOARD_TEMPLATE` keeps the January and July one.
+The final file is uploaded once, and only when the user says so.
 RMSE is dominated by the worst predictions, so the target's -12s..87,177s
 tail matters more than its bulk.
 
@@ -218,7 +226,8 @@ at 220.7s on 29 September 2026.
 
 These come from the provisioning email and are reproduced in `README.md`:
 team `gentle-octopus`, submissions named `gentle-octopus_v<N>.parquet` into
-`prc-2026-gentle-octopus`, deadline 11 October 2026 23:59:59 CET. A submission
+`prc-2026-gentle-octopus`, deadline 14 October 2026 10:00 UTC (extended from
+11 October with the final phase). A submission
 whose filename does not match the pattern is dropped with no result file and no
 error, which is why `bucket.submission_name` centralises it. Derive N from
 `bucket.next_version()` rather than locally: overwriting a submission loses its

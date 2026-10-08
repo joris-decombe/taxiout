@@ -1,7 +1,11 @@
 # TODO
 
-Submissions close **11 October 2026, 23:59:59 CET**. Ranking takes each
-team's **best** score, at up to 5 uploads a day.
+Submissions close **14 October 2026, 10:00 UTC**. The ranking is the
+**final phase**: one upload of `gentle-octopus_final.parquet`, predicting
+January, February, June and July 2026, ranked on January + July,
+February + June and all four, with a review of the code and documentation.
+The leaderboard (January and July only, best of up to 5 uploads a day)
+stays open as a check.
 
 **Best upload: v10, 274.1s on the test set, rank 68 of 237** (8 October
 2026; leader 213.5s, 10th 223.7s, median 295.9s). Its model scores
@@ -51,31 +55,34 @@ model put at many hours, which the structural rules removed.
       matched rows and 37s on orphans, none above 359s; validation 316.7s
       before the correction, as before. Not uploaded on its own: it is the
       same model, and the next upload will be this build plus round 9.
-- [ ] **A full-year ADS-B corrector**, in progress as round 9
-      (`experiments_round9.py`): a February + December 2025 fold first.
-      The corrector is fitted on 62 validation days. The best public write-up (EnioAguiar, 243.95s)
-      reports its largest single step, 314.8s to 275.9s with the LOBT
-      window, from a corrector fitted on base predictions cross-fitted
-      over all twelve months. That needs the other ~300 days of 2025
-      streamed (about 1 TB; the last 124 days took about two hours) and
-      five production-size fits for the out-of-fold base. The most
-      credible large gain left, and the most expensive.
-- [ ] **ADS-B on congested days.** adsb.lol dates push-backs late when
-      the airport is congested: BLOCK_TIME minus the observed push-back
-      has a median of 13s to 23s where the NM taxi level is under 1,200s
-      and 111s to 219s above it (de-icing pads and queues look like stands
-      to a dwell detector; `experiments_round8.py adsb`). The NM anchor
-      protects matched rows and the floor protects orphans; giving the
-      corrector the congestion level would address it directly.
-- [ ] **Winter check of the live excess signal** on a February + December
-      2025 holdout: January 2025 was mild, January 2026 was not.
+- [ ] **The final file.** `build_final.py` predicts all four months.
+      Needs adsb.lol for February and June 2026 (streaming, about 3 to 4
+      minutes a day), then a build from the saved stages. Upload once,
+      with the user's go-ahead; upload its January and July part to the
+      leaderboard first as a check.
+- [ ] **A June fold.** June 2026 is a final month no fold covers yet:
+      hold out June and August 2025 (`FOLDS` in `build_final.py`) and
+      stream those months, every other day being enough for the corrector.
+- [x] **A second fold for the corrector** (round 9): February and
+      December 2025. Pooled with January and July it beats January and
+      July alone, -0.60s there (95% CI -1.26 to -0.04) and -2.28s on
+      February and December. More folds remain worth having: the best
+      public write-up (EnioAguiar, 243.95s) cross-fits its corrector over
+      all twelve months.
+- [x] **ADS-B on congested days.** adsb.lol dates push-backs late when
+      the airport is congested (`experiments_round8.py adsb`), but giving
+      the corrector the live congestion level added nothing with winter
+      days to learn from (+0.11s, round 9). The NM anchor protects matched
+      rows and the floor protects orphans.
+- [x] **Winter check** on a February + December 2025 holdout: 238.9s
+      before the correction, 224.4s after (round 9).
 - [ ] **Two LFPG easyJet orphans** with an off-block logged a day early
       (84,240s and 58,206s against a 30-minute schedule gap) carry about a
       quarter of all validation squared error. Nothing recorded flags them.
 
 What was tried, and why the current model is built the way it is, is in
 [RESEARCH.md](RESEARCH.md) and the `pipeline/experiments_round*.py`
-docstrings (rounds 3 to 8 cover 6 to 8 October 2026).
+docstrings (rounds 3 to 9 cover 6 to 9 October 2026).
 
 ## Data quality, unexplained
 
