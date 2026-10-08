@@ -104,11 +104,14 @@ ul{padding-left:20px;margin:0 0 18px} li{margin-bottom:8px}
 /* Departure board */
 .board{background:var(--board-bg);border-radius:6px;padding:16px 14px 14px;margin:30px 0 8px;
   box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 18px 40px -24px rgba(0,0,0,.6)}
-.board-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin:0 2px 12px}
-.board-title{font-family:var(--display);font-weight:700;font-size:26px;letter-spacing:.14em;color:var(--board-amber);margin:0}
-.board-sub{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--board-dim);text-transform:uppercase}
+.board-head{display:flex;justify-content:space-between;align-items:flex-start;gap:6px 12px;flex-wrap:wrap;margin:0 2px 12px}
+.board-title{font-family:var(--display);font-weight:700;font-size:26px;letter-spacing:.14em;color:var(--board-amber);margin:0;line-height:1}
+.board-sub{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--board-dim);text-transform:uppercase;margin-top:6px}
+.board-clock{font-family:var(--mono);font-size:13px;letter-spacing:.12em;color:var(--board-amber);font-variant-numeric:tabular-nums;white-space:nowrap}
+.board-clock b{font-weight:500;color:var(--board-fg)}
 .board-scroll{overflow-x:auto;overflow-y:hidden;padding-bottom:2px}
-.board-grid{display:grid;grid-template-columns:repeat(6,max-content);gap:5px 12px;width:max-content}
+.board-grid{display:grid;grid-template-columns:repeat(5,max-content);gap:5px 12px;width:max-content}
+.board-rule{grid-column:1/-1;height:0;border-top:1px dashed #3a3e45;margin:3px 0}
 .bh{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--board-dim);text-transform:uppercase;padding-bottom:2px}
 .flaps{display:flex;gap:2px}
 .flap{font-family:var(--mono);font-weight:500;font-size:14px;color:var(--board-fg);background:var(--board-cell);
@@ -117,10 +120,24 @@ ul{padding-left:20px;margin:0 0 18px} li{margin-bottom:8px}
 .flap::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:var(--board-bg);opacity:.9}
 .flap.amber{color:var(--board-amber)}
 .flap.red{color:#ff6b78}
+.flap.green{color:#5fd38a}
 @media (prefers-reduced-motion:no-preference){
-  .flap{animation:flip .5s ease-out both;animation-delay:calc(var(--i,0) * 18ms)}
+  /* Flaps cascade in when the board first scrolls into view, and flip again when a status changes. */
+  .board.go .flap{animation:flip .5s ease-out both;animation-delay:var(--d,0ms)}
+  .board .flap.re{animation:reflip .45s ease-out both;animation-delay:var(--k,0ms)}
+  .flap.blink{animation:blink 1.4s steps(1) infinite!important}
   @keyframes flip{0%{transform:rotateX(0)}35%{transform:rotateX(-75deg)}100%{transform:rotateX(0)}}
+  @keyframes reflip{0%{transform:rotateX(0)}35%{transform:rotateX(-75deg)}100%{transform:rotateX(0)}}
+  @keyframes blink{50%{opacity:.35}}
 }
+/* Announcement line along the foot of the board */
+.ticker{overflow:hidden;border-top:1px solid #2a2e35;margin:12px 2px 0;padding-top:9px}
+.ticker-track{display:inline-flex;white-space:nowrap;font-family:var(--mono);font-size:12px;letter-spacing:.12em;
+  color:var(--board-amber);text-transform:uppercase;animation:marquee 110s linear infinite}
+.ticker-track span{padding-right:4em}
+.ticker:hover .ticker-track{animation-play-state:paused}
+@keyframes marquee{to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){.ticker-track{display:block;white-space:normal;line-height:1.6}.ticker-track span+span{display:none}}
 .board-note{font-family:var(--mono);font-size:11px;color:var(--board-dim);margin:12px 2px 0;letter-spacing:.02em}
 
 /* The task in one picture: an apron scene, then the three moments as cards */
@@ -226,6 +243,16 @@ footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);font-si
   <h1>Taxi-Out, Measured</h1>
   <p class="lede">Every departure is logged twice: when it leaves its stand, and when it lifts off. This challenge erases the first, keeps the second, and asks for the gap between them.</p>
 
+  <div class="board" id="board-box" role="img" aria-labelledby="board-cap">
+    <div class="board-head">
+      <div><p class="board-title">DEPARTURES</p><span class="board-sub">Taxi-out · stand to wheels-up · ten hubs · 2025</span></div>
+      <span class="board-clock">UTC <b id="board-clock">14:37:12</b></span>
+    </div>
+    <div class="board-scroll"><div class="board-grid" id="board"></div></div>
+    <div class="ticker" aria-hidden="true"><div class="ticker-track" id="ticker"></div></div>
+    <p class="board-note" id="board-cap">Each row is an airport, not a flight: its busiest departure runway, its typical (median) taxi-out and the time one departure in ten takes longer than, from 2.1 million 2025 departures. Status: de-icing where January 2026 brought snow, runway change where a runway's share of departures moved ten points or more from 2025, check records where off-blocks were copied from the timetable. The last row is the one the challenge is about.</p>
+  </div>
+
   <div class="scene"><div class="chart" id="c-hero"></div></div>
   <div class="steps3">
     <div class="step" style="--c:var(--stop)"><p class="n">1 · Leaves the stand</p><p class="clock" style="color:var(--stop)">??:??:??</p><p class="d">Pushed back from its stand. This time is erased for every 2026 departure.</p></div>
@@ -285,15 +312,7 @@ footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);font-si
     <h2>Ten airports, ten layouts</h2>
     <p>Taxi-out is first of all geography. Heathrow's two runways run either side of a crowded central terminal area, and its median taxi-out is the longest here. Schiphol's Polderbaan (36L) is several kilometres from the terminal, and departures on it take about seven minutes longer than on runway 24. Zurich chooses its runways by the clock, under noise rules and a German airspace ordinance, so the time of day largely decides the taxi route.</p>
   </div>
-  <div class="board" role="img" aria-labelledby="board-cap">
-    <div class="board-head">
-      <p class="board-title">DEPARTURES</p>
-      <span class="board-sub">Taxi-out · 2025 · median and 90th percentile</span>
-    </div>
-    <div class="board-scroll"><div class="board-grid" id="board"></div></div>
-    <p class="board-note" id="board-cap">Each row is an airport, not a flight: its busiest departure runway, its median taxi-out and the time nine departures in ten stay under, from 2.1 million 2025 departures. Remarks name what sets each airport apart in the data: off-blocks copied from the timetable, snow in January 2026, or a runway's share of departures moving between 2025 and 2026, in percentage points. On time: nothing stands out.</p>
-  </div>
-  <div class="legend" style="margin-top:26px"><span><i style="background:var(--asphalt)"></i>runway</span><span><i style="background:var(--edge)"></i>departure direction, width by 2025 share</span></div>
+  <div class="legend"><span><i style="background:var(--asphalt)"></i>runway</span><span><i style="background:var(--edge)"></i>departure direction, width by 2025 share</span></div>
   <div class="tiles" id="tiles"></div>
   <figcaption>Schematic. Orientation comes from the runway numbers, which are magnetic headings divided by ten; parallel runways are drawn side by side, but positions and lengths are not to scale. Under each airport: its main departure runways, their share of 2025 departures and their median taxi-out.</figcaption>
   <div class="col">
@@ -526,38 +545,85 @@ function add(p,c){p.appendChild(c);return c;}
 if(!D.airports){return;}
 
 /* ---------- departure board ---------- */
-function remarks(){
+// Each airport's status: a word, then the number behind it, alternating the
+// way real boards alternate languages. [text, colour, blink]
+function statuses(){
   var snow={};(D.snow||[]).forEach(function(r){snow[r.icao]=r;});
   var longest=D.airports.reduce(function(a,b){return b.p50>a.p50?b:a;});
   return D.airports.map(function(a){
-    if(a.at_share>0.1)return ["SCHED COPIED "+pct(a.at_share),"red"];
-    if(a.icao===longest.icao)return ["LONGEST TAXI","amber"];
-    var s=snow[a.icao];if(s&&s.jan26>=0.07)return ["SNOW JAN26 "+pct(s.jan26),"amber"];
     var best=null,bd=0;
     a.runways.forEach(function(r){[["JUL",r.jul25,r.jul26],["JAN",r.jan25,r.jan26]].forEach(function(m){
       var d=m[2]-m[1];if(Math.abs(d)>Math.abs(bd)){bd=d;best=[r.rwy,m[0]];}});});
-    if(best&&Math.abs(bd)>=0.1)return ["RWY "+best[0]+" "+(bd>0?"+":"")+Math.round(100*bd)+"PT "+best[1],"amber"];
-    return ["ON TIME",""];
+    var shift=best&&Math.abs(bd)>=0.1?best[0]+" "+(bd>0?"+":"−")+Math.round(100*Math.abs(bd))+"PT "+best[1]:null;
+    if(a.at_share>0.1)return [["CHECK RECORDS","red",1],["SCHED COPIED "+pct(a.at_share),"red"]];
+    if(a.icao===longest.icao)return [["LONGEST TAXI","amber"]].concat(shift?[[shift,"amber"]]:[]);
+    var s=snow[a.icao];if(s&&s.jan26>=0.07)return [["DE-ICING","amber"],["SNOW JAN26 "+pct(s.jan26),"amber"]];
+    if(shift)return [["RWY CHANGE","amber"],[shift,"amber"]];
+    return [["ON TIME","green"]];
   });
 }
+var BOARD={cells:[],spin:[],tick:0,seen:false};
+function motion(){return !(window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches);}
 function board(){
-  var g=document.getElementById("board");g.textContent="";
-  ["Airport","ICAO","Rwy","Taxi","P90","Remarks"].forEach(function(h){g.appendChild(el("div","bh",h));});
-  var rm=remarks(),i=0;
-  function flaps(txt,n,cls){
-    var box=el("div","flaps");txt=String(txt).toUpperCase();
-    for(var k=0;k<n;k++){var c=el("span","flap"+(cls?" "+cls:""),txt[k]||" ");c.style.setProperty("--i",i++);box.appendChild(c);}
-    return box;
+  var g=document.getElementById("board");g.textContent="";BOARD.cells=[];
+  ["Airport","Rwy","Typical","1 in 10 over","Status"].forEach(function(h){g.appendChild(el("div","bh",h));});
+  var st=statuses(),row=0;
+  function flaps(txt,n,cls,r){
+    var box=el("div","flaps"),f=[];
+    for(var k=0;k<n;k++){var c=el("span","flap");c.style.setProperty("--d",(r*70+k*16)+"ms");c.style.setProperty("--k",(k*22)+"ms");box.appendChild(c);f.push(c);}
+    var cell={box:box,f:f,n:n};setFlaps(cell,txt,cls,false);g.appendChild(box);return cell;
   }
-  D.airports.forEach(function(a,r){
+  D.airports.forEach(function(a){
+    row++;
     var city=a.name.split(" ")[0].replace("London","Heathrow").replace("Amsterdam","Schiphol").replace("Paris","Paris CDG").replace("Rome","Fiumicino");
-    g.appendChild(flaps(city,10));
-    g.appendChild(flaps(a.icao,4,"amber"));
-    g.appendChild(flaps(a.runways[0].rwy,3));
-    g.appendChild(flaps(mmss(a.p50),5));
-    g.appendChild(flaps(mmss(a.p90),5));
-    g.appendChild(flaps(rm[r][0],18,rm[r][1]));
+    flaps(city,11,"",row);flaps(a.runways[0].rwy,3,"",row);
+    flaps(Math.round(a.p50/60)+" min",6,"",row);flaps(Math.round(a.p90/60)+" min",6,"",row);
+    var s=st[row-1],c=flaps(s[0][0],16,s[0][1]+(s[0][2]?" blink":""),row);
+    if(s.length>1)BOARD.cells.push({cell:c,list:s});
   });
+  // The row the challenge is about: every 2026 departure, off-block unknown.
+  g.appendChild(el("div","board-rule"));row++;
+  flaps("Your flight",11,"red",row);flaps("09R",3,"",row);
+  flaps("?? min",6,"red",row);flaps("?? min",6,"red",row);
+  BOARD.cells.push({cell:flaps("Left stand ??:??",16,"red",row),list:[["Left stand ??:??","red"],["Wheels up 14:37","amber"],["Taxi: your guess","red"]]});
+  BOARD.spin=[].slice.call(g.querySelectorAll(".flap")).filter(function(f){return f.dataset.q==="1";});
+  // ticker: two copies, so the loop is seamless
+  var deps=D.airports.reduce(function(a,b){return a+(b.deps_2026||0);},0);
+  var msg=["Passengers are reminded that off-block times left unattended in January and July 2026 have been removed",
+    "Take-off times remain on the board","All "+fmt(deps)+" departures are delayed pending reconstruction",
+    "Fiumicino: some flights left exactly on schedule, according to the paperwork",
+    "A few aircraft left their stand the day before they took off. We are looking into it",
+    "Every miss is squared. Please mind the gap","This is not a forecast: all flights have already departed"].join("  +++  ")+"  +++";
+  var t=document.getElementById("ticker");t.textContent="";t.appendChild(el("span",null,msg));t.appendChild(el("span",null,msg));
+}
+function setFlaps(cell,txt,cls,flip){
+  txt=String(txt).toUpperCase();
+  cell.f.forEach(function(c,k){
+    var ch=txt[k]||" ";c.textContent=ch;c.dataset.q=ch==="?"?"1":"";
+    c.className="flap"+(cls?" "+cls:"");
+    if(flip){void c.offsetWidth;c.classList.add("re");}
+  });
+}
+function boardLive(){
+  var box=document.getElementById("board-box");if(!box)return;
+  function start(){
+    if(BOARD.seen)return;BOARD.seen=true;box.classList.add("go");
+    if(!motion())return;
+    var t0=14*3600+37*60+12,clock=document.getElementById("board-clock");
+    setInterval(function(){
+      t0++;clock.textContent=[Math.floor(t0/3600)%24,Math.floor(t0/60)%60,t0%60].map(function(x){return String(x).padStart(2,"0");}).join(":");
+      if(++BOARD.tick%4)return;
+      BOARD.cells.forEach(function(b){
+        b.i=((b.i||0)+1)%b.list.length;var s=b.list[b.i];setFlaps(b.cell,s[0],s[1]+(s[2]?" blink":""),true);
+      });
+      BOARD.spin=[].slice.call(document.querySelectorAll("#board .flap")).filter(function(f){return f.dataset.q==="1";});
+    },1000);
+    setInterval(function(){BOARD.spin.forEach(function(f){f.textContent="0123456789"[Math.floor(Math.random()*10)];});},130);
+  }
+  if("IntersectionObserver" in window){
+    var io=new IntersectionObserver(function(es){if(es.some(function(e){return e.isIntersecting;})){start();io.disconnect();}},{threshold:.25});
+    io.observe(box);
+  }else start();
 }
 
 /* ---------- departure diagram ---------- */
@@ -1071,7 +1137,7 @@ function render(){
   hero();squares();board();departure();kept();tiles();scorecards();conc();tbl();dist();clip();lirf();lirfOrph();strips();deice();metar();snow();shift();lboard();text();
 }
 var rt;window.addEventListener("resize",function(){clearTimeout(rt);rt=setTimeout(function(){hero();squares();departure();kept();conc();dist();clip();lirf();lirfOrph();deice();snow();shift();lboard();},150);});
-render();
+render();boardLive();
 })();
 </script>
 
