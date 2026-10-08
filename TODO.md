@@ -51,9 +51,6 @@ model put at many hours, which the structural rules removed.
       check its output against `submission_v13`, and make its file the
       final upload if it matches (a fresh fit differs slightly from v13,
       which was assembled from experiment components).
-- [ ] **Regenerate the report** with `pipeline/report_findings.py` once the
-      build is done: its scores, leaderboard, ladder and ADS-B section are
-      current, its model-derived charts still come from the 317.9s model.
 - [ ] **A full-year ADS-B corrector.** The corrector is fitted on 62
       validation days. The best public write-up (EnioAguiar, 243.95s)
       reports its largest single step, 314.8s to 275.9s with the LOBT
