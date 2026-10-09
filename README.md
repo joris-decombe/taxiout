@@ -99,10 +99,11 @@ The structure that matters more is in Status.
 
 | | |
 |---|---|
-| Best upload | **v10: 274.1s** on the test set, rank 68 of 237 (8 October 2026; leader 213.5s, median 295.9s) |
-| Validation (Jan + Jul 2025) | **308.6s**, 316.7s before the ADS-B correction |
-| Target sd, those months | 686s, the two hardest months of the year |
-| Uploads | v1 370.9s, v5 359.0s, v6 311.3s, v7 287.2s, v8 287.0s, v9 275.0s, v10 274.1s; see [TODO.md](TODO.md) |
+| Best upload | **v11: 271.9s** on the leaderboard (January and July 2026), rank 68 of 239 (9 October 2026; leader 213.0s, median 294.6s) |
+| Final file | built: `build_final.py` over January, February, June and July 2026; uploaded once, at the end |
+| Validation (Jan + Jul 2025) | **308.0s**, 316.7s before the ADS-B correction |
+| Held-out folds | February + December 2025 224.5s, June + August 2025 276.1s (234.9s and 279.5s before the correction); see [RESEARCH.md](RESEARCH.md#generalisation-beyond-the-leaderboard-months) |
+| Uploads | v1 370.9s, v5 359.0s, v6 311.3s, v7 287.2s, v8 287.0s, v9 275.0s, v10 274.1s, v11 271.9s; see [TODO.md](TODO.md) |
 
 ### How the model works
 
@@ -136,8 +137,8 @@ LightGBM per airport, a CatBoost twin for each group, and a CatBoost
 classifier beside LightGBM's for the matched group). Finally, a small
 corrector learns the model's error from what adsb.lol's ADS-B receivers saw
 on the ground, the push-back itself for about one 2026 departure in five,
-fitted on held-out predictions for January, July, February and December
-2025.
+fitted on held-out predictions for January, July, February, June, August
+and December 2025.
 
 [RESEARCH.md](RESEARCH.md) explains why each of these works and records what
 was tried and rejected. **[Taxi-Out, Measured](https://joris-decombe.github.io/taxiout/)**

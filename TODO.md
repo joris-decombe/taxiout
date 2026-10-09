@@ -7,11 +7,12 @@ February + June and all four, with a review of the code and documentation.
 The leaderboard (January and July only, best of up to 5 uploads a day)
 stays open as a check.
 
-**Best upload: v10, 274.1s on the test set, rank 68 of 237** (8 October
-2026; leader 213.5s, 10th 223.7s, median 295.9s). Its model scores
-**308.6s** on the January and July 2025 validation days (308.8s without
-the orphan congestion floor, 316.7s before the ADS-B correction), against a
-686s standard deviation for those months.
+**Best upload: v11, 271.9s on the leaderboard, rank 68 of 239** (9 October
+2026; leader 213.0s, 10th 222.9s, median 294.6s). v11 is the January and
+July part of the final build, uploaded to check it and nothing else. Its
+model scores **308.0s** on the January and July 2025 validation days
+(316.7s before the ADS-B correction), 224.5s on February + December and
+276.1s on June + August, each held out of its fit.
 
 ## Uploads
 
@@ -29,7 +30,8 @@ the last column maps them.
 | v7 | 317.2s | 287.2s | CatBoost orphan twin, three seeds, per-airport models, deeper CatBoost, CatBoost classifier, orphan cap outside LIRF, two-day guard | `submission_v10` |
 | v8 | 316.7s | 287.0s | orphans outside LIRF shrunk towards their lateness band's mean | `submission_v11` |
 | v9 | 308.8s | 275.0s | ADS-B corrector from adsb.lol ground observations | `submission_v12` |
-| v10 | 308.6s | **274.1s** | orphans outside LIRF floored at 0.95x their airport's live NM taxi level (431 rows, nearly all on EHAM's de-icing days of 3 to 9 January 2026) | `submission_v13` |
+| v10 | 308.6s | 274.1s | orphans outside LIRF floored at 0.95x their airport's live NM taxi level (431 rows, nearly all on EHAM's de-icing days of 3 to 9 January 2026) | `submission_v13` |
+| v11 | 308.0s | **271.9s** | the final build's January and July: corrector pooled over three folds, fresh twelve-month fit | `submission_leaderboard` |
 
 From v6 on, every upload scored better on the test set than on
 validation, and by more than validation predicted. Most of the gap came
@@ -55,14 +57,17 @@ model put at many hours, which the structural rules removed.
       matched rows and 37s on orphans, none above 359s; validation 316.7s
       before the correction, as before. Not uploaded on its own: it is the
       same model, and the next upload will be this build plus round 9.
-- [ ] **The final file.** `build_final.py` predicts all four months.
-      Needs adsb.lol for February and June 2026 (streaming, about 3 to 4
-      minutes a day), then a build from the saved stages. Upload once,
-      with the user's go-ahead; upload its January and July part to the
-      leaderboard first as a check.
-- [ ] **A June fold.** June 2026 is a final month no fold covers yet:
-      hold out June and August 2025 (`FOLDS` in `build_final.py`) and
-      stream those months, every other day being enough for the corrector.
+- [ ] **Upload the final file**, `data/submission_final.parquet` from
+      `build_final.py` (670,790 rows, verified), once and with the user's
+      go-ahead. Its January and July part scored 271.9s as v11. The orphan
+      floor moves 573 of its rows: 404 in January (EHAM 216, LFPG 87),
+      92 in February, 53 in June, 24 in July; no day above 56.
+- [x] **A June fold** (round 10): June + August 2025, held out like the
+      others. Pooling three folds beats two by -0.29s (95% CI -0.56 to
+      -0.06), no fold worse. adsb.lol has no releases for 1 to 9 June 2025.
+- [ ] **More folds, optional:** March + September, April + October,
+      May + November would cross-fit the corrector over the whole year
+      (about 4 hours each: streaming every other day, then a fit).
 - [x] **A second fold for the corrector** (round 9): February and
       December 2025. Pooled with January and July it beats January and
       July alone, -0.60s there (95% CI -1.26 to -0.04) and -2.28s on
