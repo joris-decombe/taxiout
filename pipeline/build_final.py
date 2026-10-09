@@ -38,7 +38,7 @@ import polars as pl
 sys.path.insert(0, "pipeline")
 from taxiout import adsb, correct, data, features, schema, submit, train  # noqa: E402
 
-FOLDS = [(1, 7), (2, 12)]
+FOLDS = [(1, 7), (2, 12), (6, 8)]
 FINAL_MONTHS = [(2026, 1), (2026, 2), (2026, 6), (2026, 7)]
 OUTPUT = Path("data/submission_final.parquet")
 LEADERBOARD_OUTPUT = Path("data/submission_leaderboard.parquet")
@@ -75,6 +75,9 @@ def fold_rows(training: pl.LazyFrame, months: tuple[int, int]) -> pl.DataFrame:
     def make():
         model, held_out, _ = train.validate(training, months)
         log(f"fold {months}: RMSE before the correction {model.validation_rmse:.1f}s")
+        # Kept so each rule can be switched off on held-out months (experiments_round10.py).
+        STAGES.mkdir(parents=True, exist_ok=True)
+        pickle.dump(model, open(STAGES / f"fold_{months[0]}_{months[1]}_model.pkl", "wb"))
         return correct.inputs(model, held_out)
 
     # (1, 7) keeps the name it had when it was the only fold.
