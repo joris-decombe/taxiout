@@ -3,6 +3,10 @@
 PRC Data Challenge 2026: predicting taxi-out time at 10 major European
 airports: EDDF, EDDM, EGLL, EHAM, LEBL, LEMD, LFPG, LIRF, LSZH, LTFM.
 
+**Read the illustrated write-up: [Taxi-Out, Measured](https://joris-decombe.github.io/taxiout/)**
+(<https://joris-decombe.github.io/taxiout/>). It shows what the challenge
+erases, where the error sits, and what moved the score.
+
 Two tracks:
 
 - **`pipeline/`**. Python. The submitted model: loads the challenge parquet

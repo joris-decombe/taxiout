@@ -104,11 +104,14 @@ ul{padding-left:20px;margin:0 0 18px} li{margin-bottom:8px}
 /* Departure board */
 .board{background:var(--board-bg);border-radius:6px;padding:16px 14px 14px;margin:30px 0 8px;
   box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 18px 40px -24px rgba(0,0,0,.6)}
-.board-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin:0 2px 12px}
-.board-title{font-family:var(--display);font-weight:700;font-size:26px;letter-spacing:.14em;color:var(--board-amber);margin:0}
-.board-sub{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--board-dim);text-transform:uppercase}
+.board-head{display:flex;justify-content:space-between;align-items:flex-start;gap:6px 12px;flex-wrap:wrap;margin:0 2px 12px}
+.board-title{font-family:var(--display);font-weight:700;font-size:26px;letter-spacing:.14em;color:var(--board-amber);margin:0;line-height:1}
+.board-sub{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--board-dim);text-transform:uppercase;margin-top:6px}
+.board-clock{font-family:var(--mono);font-size:13px;letter-spacing:.12em;color:var(--board-amber);font-variant-numeric:tabular-nums;white-space:nowrap}
+.board-clock b{font-weight:500;color:var(--board-fg)}
 .board-scroll{overflow-x:auto;overflow-y:hidden;padding-bottom:2px}
-.board-grid{display:grid;grid-template-columns:repeat(6,max-content);gap:5px 12px;width:max-content}
+.board-grid{display:grid;grid-template-columns:repeat(5,max-content);gap:5px 12px;width:max-content}
+.board-rule{grid-column:1/-1;height:0;border-top:1px dashed #3a3e45;margin:3px 0}
 .bh{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--board-dim);text-transform:uppercase;padding-bottom:2px}
 .flaps{display:flex;gap:2px}
 .flap{font-family:var(--mono);font-weight:500;font-size:14px;color:var(--board-fg);background:var(--board-cell);
@@ -117,14 +120,38 @@ ul{padding-left:20px;margin:0 0 18px} li{margin-bottom:8px}
 .flap::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:var(--board-bg);opacity:.9}
 .flap.amber{color:var(--board-amber)}
 .flap.red{color:#ff6b78}
+.flap.green{color:#5fd38a}
 @media (prefers-reduced-motion:no-preference){
-  .flap{animation:flip .5s ease-out both;animation-delay:calc(var(--i,0) * 18ms)}
+  /* Flaps cascade in when the board first scrolls into view, and flip again when a status changes. */
+  .board.go .flap{animation:flip .5s ease-out both;animation-delay:var(--d,0ms)}
+  .board .flap.re{animation:reflip .45s ease-out both;animation-delay:var(--k,0ms)}
+  .flap.blink{animation:blink 1.4s steps(1) infinite!important}
   @keyframes flip{0%{transform:rotateX(0)}35%{transform:rotateX(-75deg)}100%{transform:rotateX(0)}}
+  @keyframes reflip{0%{transform:rotateX(0)}35%{transform:rotateX(-75deg)}100%{transform:rotateX(0)}}
+  @keyframes blink{50%{opacity:.35}}
 }
+/* Announcement line along the foot of the board */
+.ticker{overflow:hidden;border-top:1px solid #2a2e35;margin:12px 2px 0;padding-top:9px}
+.ticker-track{display:inline-flex;white-space:nowrap;font-family:var(--mono);font-size:12px;letter-spacing:.12em;
+  color:var(--board-amber);text-transform:uppercase;animation:marquee 110s linear infinite}
+.ticker-track span{padding-right:4em}
+.ticker:hover .ticker-track{animation-play-state:paused}
+@keyframes marquee{to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){.ticker-track{display:block;white-space:normal;line-height:1.6}.ticker-track span+span{display:none}}
 .board-note{font-family:var(--mono);font-size:11px;color:var(--board-dim);margin:12px 2px 0;letter-spacing:.02em}
 
+/* The task in one picture: an apron scene, then the three moments as cards */
+.scene{background:var(--panel);border:1px solid var(--line);border-radius:4px;margin:28px 0 10px;overflow:hidden}
+.steps3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0 0 26px}
+@media (max-width:600px){.steps3{grid-template-columns:1fr}}
+.step{background:var(--panel);border:1px solid var(--line);border-top:4px solid var(--c);border-radius:4px;padding:12px 14px;min-width:0}
+.step .n{font-family:var(--display);font-weight:700;font-size:16px;letter-spacing:.06em;text-transform:uppercase;color:var(--c);margin:0 0 2px}
+.step .clock{font-family:var(--mono);font-weight:700;font-size:26px;line-height:1.15;margin:0 0 6px;font-variant-numeric:tabular-nums}
+.step .d{font-size:14.5px;color:var(--ink-2);line-height:1.45;margin:0}
+.label{font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin:30px 0 4px}
+
 /* Numbers and cards */
-.duo{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:24px 0}
+.duo{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:24px 0}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:16px 18px;min-width:0}
 .card .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin:0 0 6px}
 .card .v{font-family:var(--display);font-weight:700;font-size:44px;line-height:1;margin:0 0 8px;font-variant-numeric:tabular-nums}
@@ -159,6 +186,10 @@ td.e{color:var(--edge)} td.t{color:var(--taxi)} tr.now td{font-weight:700}
 .strip .sc span{font-size:11px;color:var(--lead)}
 .strip.x .sc span{color:var(--stop)}
 .strip .bar{height:3px;background:var(--edge);margin-top:5px;opacity:.55}
+.strip-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:16px 2px 0;padding-bottom:4px;
+  border-bottom:1px solid var(--line);font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2)}
+.strip-head:first-child{margin-top:0}
+.strip-head b{color:var(--lead);font-weight:700;white-space:nowrap}
 
 /* METAR */
 .metar{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:16px;margin:22px 0}
@@ -208,17 +239,38 @@ footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);font-si
     <span class="sign loc">G12</span>
     <span class="sign dir">Departures <svg viewBox="0 0 16 16"><path d="M2 8h10M8 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.4"/></svg></span>
   </div>
-  <p class="kicker">PRC Data Challenge 2026 · ten European hubs</p>
+  <p class="kicker">EUROCONTROL PRC Data Challenge 2026 · ten European hubs</p>
   <h1>Taxi-Out, Measured</h1>
-  <p class="lede">How long an airliner spends between leaving its stand and lifting off, why most of the error in predicting it sits in a few flights, and what the airport around each departure gives away.</p>
+  <p class="lede">Every departure is logged twice: when it leaves its stand, and when it lifts off. This challenge erases the first, keeps the second, and asks for the gap between them.</p>
 
-  <div class="board" role="img" aria-labelledby="board-cap">
+  <div class="board" id="board-box" role="img" aria-labelledby="board-cap">
     <div class="board-head">
-      <p class="board-title">DEPARTURES</p>
-      <span class="board-sub">Taxi-out · 2025 · median and 90th percentile</span>
+      <div><p class="board-title">DEPARTURES</p><span class="board-sub">Taxi-out · stand to wheels-up · ten hubs · 2025</span></div>
+      <span class="board-clock">UTC <b id="board-clock">14:37:12</b></span>
     </div>
     <div class="board-scroll"><div class="board-grid" id="board"></div></div>
-    <p class="board-note" id="board-cap">Each row is an airport, not a flight: its busiest departure runway, its median taxi-out and the time nine departures in ten stay under, from 2.1 million 2025 departures. Remarks name what sets the airport apart in the data.</p>
+    <div class="ticker" aria-hidden="true"><div class="ticker-track" id="ticker"></div></div>
+    <p class="board-note" id="board-cap">Each row is an airport, not a flight: its busiest departure runway, its typical (median) taxi-out and the time one departure in ten takes longer than, from 2.1 million 2025 departures. Status: de-icing where January 2026 brought snow, runway change where a runway's share of departures moved ten points or more from 2025, check records where off-blocks were copied from the timetable. The last row is the one the challenge is about.</p>
+  </div>
+
+  <p class="label" style="margin-top:36px">One departure, seen from above</p>
+  <div class="col"><p style="margin:0">Follow it from its stand to the runway. The challenge erases the time at 1 and keeps the time at 3.</p></div>
+  <div class="scene" style="margin-top:12px"><div class="chart" id="c-hero"></div></div>
+  <div class="steps3">
+    <div class="step" style="--c:var(--stop)"><p class="n">1 · Leaves the stand</p><p class="clock" style="color:var(--stop)">??:??:??</p><p class="d">Pushed back from its stand. This time is erased for every 2026 departure.</p></div>
+    <div class="step" style="--c:var(--taxi)"><p class="n">2 · Taxis and queues</p><p class="clock">? min</p><p class="d">Taxi-out: the number each team must send, in seconds, for every departure.</p></div>
+    <div class="step" style="--c:var(--edge)"><p class="n">3 · Wheels up</p><p class="clock" style="color:var(--edge)">14:37:12</p><p class="d">Take-off. This time stays in the file.</p></div>
+  </div>
+  <div class="col">
+    <p><strong>The task.</strong> For each of the <span id="h-deps"></span> departures from ten European airports in January and July 2026, the organisers erased moment 1 and kept moment 3. Teams send back the time between them. Everything else in the picture stays in the file with all its times: the parked aircraft, the arrivals, the queue, the runway in use. All of 2025, with both moments recorded, is there to learn from.</p>
+    <p><strong>Not a forecast.</strong> These flights have long since flown. The question is how much the rest of the records give away about the moment each one left its stand, and some of those records turn out not to be measurements at all.</p>
+  </div>
+
+  <p class="label">How a guess is marked</p>
+  <div class="chart" id="c-squares" style="margin-bottom:16px"></div>
+  <div class="col">
+    <p>Each miss is squared: a guess 12 minutes out counts 144, one a minute out counts 1. The score is the side of the average square, in seconds, so lower is better, and a few big misses outweigh thousands of small ones.</p>
+    <p><strong>Where we stand.</strong> <span id="h-ours"></span></p>
   </div>
 </header>
 
@@ -228,33 +280,31 @@ footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);font-si
     <h2>From stand to wheels-up</h2>
     <p>A departure's taxi-out starts when the aircraft leaves its parking position, pushed back by a tug or under its own power, and ends when its wheels leave the runway. In between it follows a taxiway to the runway, in winter perhaps stops at a de-icing pad, and waits at the holding point until the tower clears it to line up and take off.</p>
     <p>At these ten airports the median is <span id="t-median"></span>. The drive itself is a few minutes at 10 to 20 knots. The rest is waiting: for other aircraft on the taxiway, for a gap in arrivals when crossing a runway, and in the queue at the holding point, where departures leave one at a time with a wake-turbulence gap between them.</p>
+    <p>That queue is why the number matters. An airliner taxiing on its engines burns fuel for every minute it stands still, so minutes of queueing multiply into tonnes of fuel and CO<sub>2</sub> across a day at a hub. Airports estimate taxi-out before each departure to plan when it will take off, and EUROCONTROL's Performance Review Commission tracks the excess over an unimpeded taxi as a measure of congestion. Its 2026 data challenge asks how well taxi-out can be recovered from the records.</p>
   </div>
   <figure>
     <div class="chart" id="c-departure"></div>
-    <figcaption>One departure, schematic. Above the line are the timestamps each party keeps: the schedule, the flight plan's estimate, the airport's actual off-block and take-off. Taxi-out is the airport's take-off minus the airport's off-block. At airports running Airport Collaborative Decision Making (all but Istanbul here), the target start-up time holds an aircraft at the stand, engines off, instead of in the queue.</figcaption>
+    <figcaption>One departure, schematic, with the times on record above the line: the timetable, the flight plan's planned off-block, and the airport's actual off-block and take-off. Taxi-out is the last two apart. At airports running Airport Collaborative Decision Making (all but Istanbul here), part of the queue is served at the stand instead: the aircraft is given a start-up time and waits there, engines off, before off-block.</figcaption>
   </figure>
-  <div class="col">
-    <p>That queue is also why the number matters. An airliner taxiing on its engines burns fuel for every minute it stands still, so minutes of queueing multiply into tonnes of fuel and CO<sub>2</sub> across a day at a hub. EUROCONTROL's Performance Review Commission publishes an "additional taxi-out time" indicator for this reason, and the 2026 edition of its data challenge asks for the best prediction of taxi-out itself.</p>
-  </div>
 </section>
 
 <section id="records">
   <div class="signs"><span class="sign loc">B</span><span class="sign dir">Records <svg viewBox="0 0 16 16"><path d="M2 8h10M8 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.4"/></svg></span></div>
   <div class="col">
     <h2>What the data keeps, and the one thing it removes</h2>
-    <p>The movements come from EUROCONTROL's Airport Operator Data Flow: every airport reports every arrival and departure, with its stand, runway and times. Each departure is also linked to the Network Manager's record of its flight plan. The airport's definitions are exact:</p>
+    <p>The movements come from EUROCONTROL's Airport Operator Data Flow: every airport reports every arrival and departure, with its stand, runway and times. Taxi-out is not measured separately. It <em>is</em> take-off minus off-block: across all <span id="ident-rows"></span> 2025 departures the subtraction matches the published figure to the second. The definition of the erased time is exact:</p>
   </div>
   <div class="quote"><p>Actual off-block time: the date and time the aircraft has vacated the parking position (pushed back or on its own power).</p><cite>EUROCONTROL-SPEC-175, Airport Operator Data Flow, ODI 11</cite></div>
-  <div class="quote"><p>Actual take-off time: the date and time that an aircraft has taken off from the runway (wheels-up).</p><cite>EUROCONTROL-SPEC-175, ODI 12</cite></div>
   <div class="col">
-    <p>Taxi-out is not measured separately. It <em>is</em> take-off minus off-block: across all <span id="ident-rows"></span> 2025 departures the subtraction matches the published figure to the second. So the scored file for January and July 2026 blanks the off-block time together with taxi-out. Everything else stays, and that includes <span id="arr-2026"></span> arrivals with their in-block times, every take-off time, every stand and runway.</p>
+    <p>So the 2026 file blanks the off-block time together with taxi-out, and keeps everything else: every take-off time, every stand and runway, and <span id="arr-2026"></span> arrivals with their in-block times. The prediction runs backwards. The take-off time is known, and the task is to reconstruct when the aircraft left its stand.</p>
   </div>
   <figure>
     <div class="chart" id="c-kept"></div>
-    <figcaption>Which timestamps survive in the scored 2026 file. The Network Manager's off-block is a second, independent record of the same event, fed at A-CDM airports by a message the airport sends at off-block. It agrees with the airport's within a minute for only 9% (Istanbul) to 26% (Barcelona) of departures.</figcaption>
+    <figcaption>Which timestamps survive in the 2026 file: green kept, red removed. The flight plan's times and the Network Manager's off-block come from EUROCONTROL's records of the flight, not the airport's.</figcaption>
   </figure>
   <div class="col">
-    <p>The prediction therefore runs backwards: the take-off time is known, and the task is to reconstruct when the aircraft left its stand.</p>
+    <p>Is the off-block time not also in the flight plan? A copy of sorts is. Each departure is linked, where possible, to the record of EUROCONTROL's Network Manager, which handles every flight plan in European airspace, and that record keeps its own off-block time into 2026. But it is a separate measurement of the same moment, and it agrees with the airport's within a minute for only 9% (Istanbul) to 26% (Barcelona) of departures. A strong clue, not the answer.</p>
+    <p>Blanking one column also leaves the rest of the airport in view. For every 2026 departure the file shows which aircraft blocked in at the same stand and when, how many departures took off from the same runway in the minutes before and after, how many aircraft had pushed back without yet taking off, and which runways were in use that hour. Each of these reads the queue the departure was part of.</p>
   </div>
 </section>
 
@@ -266,9 +316,9 @@ footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);font-si
   </div>
   <div class="legend"><span><i style="background:var(--asphalt)"></i>runway</span><span><i style="background:var(--edge)"></i>departure direction, width by 2025 share</span></div>
   <div class="tiles" id="tiles"></div>
-  <figcaption>Schematic. Orientation comes from the runway numbers, which are magnetic headings divided by ten; parallel runways are drawn side by side, but positions and lengths are not to scale. Figures are 2025 departures.</figcaption>
+  <figcaption>Schematic. Orientation comes from the runway numbers, which are magnetic headings divided by ten; parallel runways are drawn side by side, but positions and lengths are not to scale. Under each airport: its main departure runways, their share of 2025 departures and their median taxi-out.</figcaption>
   <div class="col">
-    <p>EUROCONTROL's own reference for an unimpeded taxi works at this level: the 10th percentile of taxi-out for each stand and runway pair over twelve months, valid only where at least ten flights fall at or below it. The model starts from the same reference and learns what adds to it.</p>
+    <p>EUROCONTROL's own reference for an unimpeded taxi works at this level: the 10th percentile of taxi-out for each stand and runway pair over twelve months, valid only where at least ten flights fall at or below it. The model, a set of gradient-boosted decision trees trained on 2025, starts from the same reference and learns what adds to it.</p>
   </div>
 </section>
 
@@ -276,7 +326,7 @@ footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);font-si
   <div class="signs"><span class="sign loc">D</span><span class="sign dir">Holding point <svg viewBox="0 0 16 16"><path d="M2 8h10M8 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.4"/></svg></span></div>
   <div class="col">
     <h2>A score that punishes the worst miss</h2>
-    <p>Entries are ranked by root mean square error: square each miss in seconds, average, take the square root. A ten-minute miss costs a hundred times a one-minute miss. The same predictions, measured two ways on the January and July 2025 flights held back from training:</p>
+    <p>The squared score has a name, root mean square error: square each miss in seconds, average, take the square root. A ten-minute miss costs a hundred times a one-minute miss. Here are the same predictions measured two ways, on the January and July 2025 flights held back from training to rehearse on, beside a guess that knows nothing about each flight:</p>
   </div>
   <div class="duo" id="scorecards"></div>
   <div class="col">
@@ -288,7 +338,8 @@ footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);font-si
   </figure>
   <div class="col">
     <p id="conc-text"></p>
-    <p>The worst predictions cluster in one group: about fifteen departures in a thousand whose airport record never linked to a flight plan. They have no Network Manager off-block, no callsign, no airline. Most of them taxi like anyone else. A few are recorded at hours.</p>
+    <p>The worst predictions cluster in one group: about fifteen departures in a thousand whose airport record never linked to a flight plan. They have no Network Manager off-block, no callsign, no airline. Most of them taxi like anyone else. A few are recorded as taxiing for hours.</p>
+    <p>The likeliest reason they are unlinked points at those few. Every linked record has its off-block within an hour of the flight plan's last planned off-block (the flight plan's window, below), so a record further than that from its plan stays unlinked. An off-block copied from the timetable for a flight that left hours late, or logged a day early, is exactly such a record. Two Paris departures of this kind carry about a quarter of all the error on their own: each took off on time, its off-block was logged about a day earlier, and nothing in the file flags it.</p>
   </div>
   <figure>
     <div class="card scroll"><table id="tbl"></table></div>
@@ -304,12 +355,15 @@ footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);font-si
   </div>
   <figure>
     <div class="chart" id="c-clip"></div>
-    <figcaption>Validation score with predictions capped at each value. The cap sits at a full day, where it only catches a runaway prediction.</figcaption>
+    <figcaption>Score on the held-back months with predictions capped at each value. The submitted file caps at two days, only to catch a runaway prediction.</figcaption>
   </figure>
+  <div class="col">
+    <p>Most of those very large misses trace back to records that are not measurements.</p>
+  </div>
 </section>
 
 <section id="artifacts">
-  <div class="signs"><span class="sign stop">SCHED = AOBT</span><span class="sign loc">E</span></div>
+  <div class="signs"><span class="sign stop">OFF-BLOCK = SCHED</span><span class="sign loc">E</span></div>
   <div class="col">
     <h2>Records that are not measurements</h2>
     <p>At Rome Fiumicino, the recorded off-block time of <span id="lirf-at"></span> of departures equals the scheduled departure time to the minute, against 1 to 6% at the other airports. For those flights the published "taxi-out" is take-off minus schedule. A flight that left four hours late shows four hours of taxi-out.</p>
@@ -324,11 +378,12 @@ footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);font-si
   </figure>
   <div class="col">
     <p>The flag follows the data source more than the aircraft: some airlines have it on half their flights and others almost never, it peaks on late-evening schedules, and it is three times as common when the filed flight plan was never updated. The records look filled in from the timetable when no actual time was captured.</p>
-    <p>The scored file keeps the schedule and the take-off time, so the schedule gap is known for every 2026 departure. Whether a given record was filled in is not. The model hedges between the two readings:</p>
+    <p>The 2026 file keeps the schedule and the take-off time, so the schedule gap is known for every 2026 departure. Whether a given record was filled in is not. The model hedges between the two readings:</p>
   </div>
   <div class="formula">prediction = p × (take-off − schedule) + (1 − p) × <b>normal taxi</b></div>
   <div class="col">
-    <p>where p is a classifier's estimate that the off-block was copied from the schedule. Under a squared score this blend is the best single guess. Among flights with no flight-plan record the same pattern reaches <span id="lirf-orph"></span> at Rome, and a rarer one appears at several airports: an off-block logged a day before take-off, so the taxi-out reads about 24 hours plus a normal taxi. <span id="neg-text"></span></p>
+    <p>where p is a classifier's estimate that the off-block was copied from the schedule. Take a flight that lifted off three hours after its scheduled time, where records like it turn out to be timetable copies three times in ten. Answer three hours, and seven times in ten the miss is nearly three hours. Answer a normal fifteen-minute taxi, and three times in ten the miss is nearly three hours, which the squared score still punishes hard. The blend, about an hour, is never right, but it costs the least on average.</p>
+    <p>Among flights with no flight-plan record the same pattern reaches <span id="lirf-orph"></span> at Rome, and a rarer one appears at several airports: an off-block logged a day before take-off, so the taxi-out reads about 24 hours plus a normal taxi.</p>
     <p>At Rome the two patterns sort cleanly by how late the flight took off. The later it left, the likelier its off-block is the schedule, until past eight hours every one is. Between 14 and 26 hours late only two kinds are left, never a normal taxi: copied from the schedule, or logged a day early.</p>
   </div>
   <figure>
@@ -337,12 +392,9 @@ footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);font-si
     <figcaption>Rome Fiumicino, 2025 departures with no flight-plan record, by take-off minus schedule. Each bar splits its departures by what the recorded taxi-out turned out to be. Numbers: departures in each band.</figcaption>
   </figure>
   <div class="col">
-    <p>So for those flights the model no longer guesses a free-form normal taxi. Past six hours late it uses the share copied from the schedule in 2025's records directly, and between 14 and 26 hours the alternative to the schedule is a day plus a normal taxi:</p>
-  </div>
-  <div class="formula">14 to 26 h late at Rome: prediction = p × (take-off − schedule) + (1 − p) × (<b>24 h</b> + normal taxi)</div>
-  <div class="col">
+    <p>So for those flights the model stops guessing freely. Past six hours late it takes the share copied from the schedule straight from 2025's records, and between 14 and 26 hours late it weighs the schedule gap against a day plus a normal taxi.</p>
     <h3>The flight plan's two-hour window</h3>
-    <p>A record that does link to a flight plan carries one more clock: the plan's last off-block time. On all <span id="lobt-n"></span> such departures of 2025 the airport's off-block lies within an hour of it, never more than <span id="lobt-max"></span> seconds away. The two tables look to have been joined on that window. Whatever the reason, it bounds the answer, and for the <span id="lobt-out"></span> departures whose schedule falls outside the window, the off-block cannot have been copied from the schedule at all.</p>
+    <p>A record that does link to a flight plan carries one more clock: the plan's last off-block time. On all <span id="lobt-n"></span> such departures of 2025 the airport's off-block lies within an hour of it, never more than <span id="lobt-max"></span> seconds away. The two tables look to have been joined on that window, which would also leave unlinked every record further out, the no-record flights above. Whatever the reason, it bounds the answer, and for the <span id="lobt-out"></span> departures whose schedule falls outside the window, the off-block cannot have been copied from the schedule at all.</p>
   </div>
   <div class="formula">take-off − LOBT − 1 h ≤ <b>taxi-out</b> ≤ take-off − LOBT + 1 h</div>
   <div class="col">
@@ -350,16 +402,27 @@ footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);font-si
   </div>
 </section>
 
-<section id="surroundings">
-  <div class="signs"><span class="sign loc">F</span><span class="sign dir">Queue <svg viewBox="0 0 16 16"><path d="M2 8h10M8 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.4"/></svg></span></div>
+<section id="adsb">
+  <div class="signs"><span class="sign loc">F</span><span class="sign dir">Apron <svg viewBox="0 0 16 16"><path d="M2 8h10M8 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.4"/></svg></span></div>
   <div class="col">
-    <h2>The airport around each departure</h2>
-    <p>Blanking one column leaves the rest of the airport in view. For every 2026 departure the scored file shows which aircraft blocked in at the same stand and when, how many departures took off from the same runway in the minutes before and after, how many aircraft had pushed back without yet taking off, and which runways were in use that hour. Each of these reads the queue the departure was part of.</p>
-    <p>Each flight strip below is one change to the model, scored on the held-back months and kept only when a paired bootstrap put the gain clear of zero.</p>
+    <h2>Watching the push-back</h2>
+    <p>Aircraft broadcast their position by radio, on the ground as well as in the air, and volunteers' ADS-B receivers record it; adsb.lol publishes their archive under an open licence. Where a receiver near the airport can see the stands, the trace shows the aircraft parked and then moving: the push-back itself, a median 35 seconds from the airport's record, against three minutes for the Network Manager's. That is visible for one 2025 departure in eight and one 2026 departure in five, best at Munich, Amsterdam and Heathrow, never at Istanbul or Paris. Most of the others are first heard already taxiing, which still shows the taxi took at least that long.</p>
+    <p>A small second model learns the first one's error from what the receivers saw, using predictions made for 2025 days the first model never trained on, and corrects the 2026 predictions with it. Scored day by day on days it never saw, it took the held-back error from 316.7 to 308.8 seconds; on the test months the upload carrying it gained 12 seconds.</p>
+    <p>The receivers have a blind spot that matters in winter. On a congested day an aircraft can stand for ten minutes or more away from its stand, at a de-icing pad or in a queue, and a trace that only sees "parked, then moving" dates the push-back from there. Where the airport's departures were taking over 20 minutes, the observed push-back fell a median two to four minutes after the airport's record, against a quarter of a minute on quiet days. Flights with a Network Manager record keep its off-block as an anchor; flights without one do not.</p>
+  </div>
+</section>
+
+<section id="steps">
+  <div class="signs"><span class="sign loc">G</span><span class="sign dir">Queue <svg viewBox="0 0 16 16"><path d="M2 8h10M8 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.4"/></svg></span></div>
+  <div class="col">
+    <h2>What moved the score</h2>
+    <p>Each flight strip is one change to the model, scored on the held-back months and kept only when the gain held up under resampling (a paired bootstrap). They are grouped by idea, largest first; the number on each strip is the order it was added.</p>
+    <p id="steps-text"></p>
   </div>
   <div class="strips" id="strips"></div>
   <div class="col">
     <h3>Tried and rejected</h3>
+    <p>Each was scored against the model it was tried on, so its baseline is not always a step above. Most made the score worse. Two improved it: one by too little to trust, one in a way 2026 would not keep.</p>
   </div>
   <div class="strips" id="strips-x"></div>
   <div class="col">
@@ -370,18 +433,14 @@ footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);font-si
   <div class="col">
     <p>The copied part is known exactly, so the error sits in the probabilities. Getting Rome's right was worth more than any feature. The flight-plan window works for a geometric reason: moving a prediction onto a range that contains the truth can only bring it closer, flight by flight. Starting the trees from the Network Manager's own taxi time leaves them only the difference to learn. A second kind of boosted tree, CatBoost, averaged with the first, cancels part of each one's noise.</p>
     <p>Queue counts from queueing theory, which predict taxi-out well in the research literature, added nothing here: the Network Manager's off-block already contains the outcome of the queue. The full survey is in the repository's <a href="https://github.com/joris-decombe/taxiout/blob/main/RESEARCH.md" target="_blank" rel="noopener">RESEARCH.md</a>.</p>
-    <h3>Watching the push-back</h3>
-    <p>Volunteer ADS-B receivers near an airport hear an aircraft's transponder on the ground. Where one can see the stands, the trace shows the aircraft parked and then moving: the push-back itself, a median 35 seconds from the airport's record, against three minutes for the Network Manager's. That is visible for one 2025 departure in eight and one 2026 departure in five, best at Munich, Amsterdam and Heathrow, never at Istanbul or Paris. Most of the others are first heard already taxiing, which still bounds the answer from below.</p>
-    <p>A small second model learns the first one's error from what the receivers saw, on the 2025 days held back from training, and corrects the 2026 predictions with it. Scored day by day on days it never saw, it took the held-back error from 316.7 to 308.8 seconds; on the test set the upload carrying it gained 12 seconds.</p>
-    <p>The receivers have a blind spot that matters in winter. On a congested day an aircraft can stand for ten minutes or more away from its stand, at a de-icing pad or in a queue, and a trace that only sees "parked, then moving" dates the push-back from there. Where the airport's departures were taking over 20 minutes, the observed push-back fell a median two to four minutes after the airport's record, against a quarter of a minute on quiet days. Flights with a Network Manager record keep its off-block as an anchor; flights without one do not.</p>
   </div>
 </section>
 
 <section id="winter">
-  <div class="signs"><span class="sign loc">G</span><span class="sign dir">De-icing pad <svg viewBox="0 0 16 16"><path d="M13 13L3 3M3 10V3h7" fill="none" stroke="currentColor" stroke-width="2.4"/></svg></span></div>
+  <div class="signs"><span class="sign loc">H</span><span class="sign dir">De-icing pad <svg viewBox="0 0 16 16"><path d="M13 13L3 3M3 10V3h7" fill="none" stroke="currentColor" stroke-width="2.4"/></svg></span></div>
   <div class="col">
     <h2>January 2026 was a winter month</h2>
-    <p>Aircraft de-iced on the stand wait before off-block, which does not count. Aircraft de-iced at a remote pad do it during taxi-out, which does. The data shows which airports do which: in 2025 snow, taxi-out stretches at Paris, Munich and Istanbul, while at Heathrow the delay lands before off-block instead.</p>
+    <p>The held-back months stand in for the test months only as far as the two behave alike, and in 2026 they did not quite. Aircraft de-iced on the stand wait before off-block, which does not count. Aircraft de-iced at a remote pad do it during taxi-out, which does. The data shows which airports do which: in 2025 snow, taxi-out stretches at Paris, Munich and Istanbul, while at Heathrow the delay lands before off-block instead.</p>
   </div>
   <figure>
     <div class="legend"><span><i style="background:var(--edge)"></i>extra taxi-out in snow</span><span><i style="background:var(--ink-3)"></i>extra wait before off-block in snow</span></div>
@@ -390,12 +449,12 @@ footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);font-si
   </figure>
   <div class="metar" id="metar"></div>
   <div class="col">
-    <p>The months held back for validation could not show this. January 2025 was mild at most of these airports; January 2026 was not.</p>
-    <p>Amsterdam's first week of January 2026 shows what that does to the flights with no flight-plan record. From the 3rd to the 9th, the departures around them were taking 40 minutes to an hour from off-block to take-off, against about 15 on an ordinary day, and the scored file holds over 200 of these flights on those days. Their model had been predicting about 20 minutes for them: it is built from the flight's own fields, and a flight with no record has few, none of them about the weather or the queue.</p>
-    <p>Yet a flight with no record taxis like the flights around it. In 2025, outside Istanbul, such flights took 0.95 to 1.0 times the median taxi time of the departures at their airport in the same half hour, on quiet days and on the worst ones alike; Istanbul's February snowstorm ran at twice. Those are departures whose take-off and Network Manager off-block are both in the scored file, so the level is there to read for every 2026 flight. Where it exceeds 25 minutes, each flight with no record is now predicted at least 0.95 times it. The held-back months barely move, having had almost no such days; the test score went from 275.0 to 274.1 seconds on the 431 flights it changed.</p>
+    <p>The held-back months could not show this. January 2025 was mild at most of these airports; January 2026 was not.</p>
+    <p>Amsterdam's first week of January 2026 shows what that does to the flights with no flight-plan record. From the 3rd to the 9th, the departures around them were taking 40 minutes to an hour from off-block to take-off, against about 15 on an ordinary day, and the test months hold over 200 such flights on those days. Their model, built from the flight's own few fields, had been predicting about 20 minutes.</p>
+    <p>Yet a flight with no record taxis like the flights around it: in 2025, outside Istanbul, 0.95 to 1.0 times the median of the departures at its airport in the same half hour, on quiet days and the worst alike. That median can be read for every 2026 flight from the take-off and Network Manager off-block times the file keeps, so where it exceeds 25 minutes, each no-record flight is now predicted at least 0.95 times it. It changed 431 flights and took the test score from 275.0 to 274.1 seconds.</p>
   </div>
   <figure>
-    <div class="legend"><span><i style="background:var(--ink-3)"></i>January 2025 (validation)</span><span><i style="background:var(--stop)"></i>January 2026 (scored)</span></div>
+    <div class="legend"><span><i style="background:var(--ink-3)"></i>January 2025 (held back)</span><span><i style="background:var(--stop)"></i>January 2026 (test)</span></div>
     <div class="chart" id="c-snow"></div>
     <figcaption>Share of departures taking off in snow or freezing precipitation, from the METAR nearest before take-off.</figcaption>
   </figure>
@@ -410,24 +469,25 @@ footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);font-si
 </section>
 
 <section id="takeoff">
-  <div class="signs"><span class="sign stop" id="rwy-sign">09R-27L</span><span class="sign loc">H</span></div>
+  <div class="signs"><span class="sign stop" id="rwy-sign">09R-27L</span><span class="sign loc">J</span></div>
   <div class="col">
     <h2>Cleared for take-off</h2>
-    <p>Each upload to the competition is scored on the real January and July 2026 flights, and only a team's best score counts. The validation score tracked the test score only loosely: the first model did better on the test set than on validation, the next four did worse, which is what a snowier January and a different runway mix would produce. The sixth, built on the structure of the records rather than on more features, did better on the test set again: 311.3 seconds, against 359.0 for the fifth.</p>
+    <p>Each upload is scored on the January and July 2026 departures, and the leaderboard keeps a team's best. <span id="lb-text"></span></p>
+    <p>The final ranking takes one more file per team, uploaded once, that covers February and June 2026 as well. It is scored on January and July, on February and June, and on all four months together, alongside a review of the code and documentation.</p>
   </div>
   <figure>
-    <div class="legend"><span><i style="background:var(--ink-3)"></i>other teams, best score</span><span><i style="background:var(--edge)"></i>our uploads, test</span><span><i style="border:2px solid var(--edge);background:transparent"></i>same, validation</span></div>
+    <div class="legend"><span><i style="background:var(--ink-3)"></i>other teams, best score</span><span><i style="background:var(--edge)"></i>our uploads, test months</span><span><i style="border:2px solid var(--edge);background:transparent"></i>same, held-back months</span></div>
     <div class="chart" id="c-board"></div>
     <figcaption id="lb-cap"></figcaption>
   </figure>
   <div class="col">
-    <h3>Still ahead</h3>
+    <h3>Limits</h3>
     <ul>
-      <li><strong>Winter, measured on a winter.</strong> The live reading of how far other departures run over their reference is in the model, but January 2025 was too mild to show its de-icing side. A February and December 2025 holdout can.</li>
-      <li><strong>ADS-B for the whole year.</strong> The correction from the receivers is learned on the 62 held-back days only. Fitted on predictions made for every 2025 month by models that never saw it, it would have six times the examples, winter days among them.</li>
-      <li><strong>Stands that opened in 2026.</strong> Munich's stands 103 to 108 and a handful of new Frankfurt positions (consistent with its Terminal 3 opening) never appear in 2025. They now borrow a reference from neighbouring stands or their runway; only the 2026 score can say what that is worth.</li>
-      <li><strong>Rome.</strong> Still the airport with the largest error per flight. For flights with a flight-plan record, the classifier still decides between schedule and normal taxi without a rule as clean as the no-record one.</li>
-      <li><strong>Two Paris departures.</strong> Two easyJet flights with no flight-plan record logged their off-block about a day early on flights that left on time. They carry about a quarter of all the validation error, and nothing recorded flags them.</li>
+      <li><strong>Winter.</strong> The held-back January was mild, so the model's handling of de-icing days rests on 2025's few snowy days and on the test months themselves.</li>
+      <li><strong>What the receivers miss.</strong> ADS-B dates the push-back for about one 2026 departure in five, and for none at Istanbul or Paris.</li>
+      <li><strong>Stands that opened in 2026.</strong> Munich's stands 103 to 108 and a handful of new Frankfurt positions (consistent with its Terminal 3 opening) never appear in 2025. They borrow a reference from neighbouring stands or their runway; only the 2026 score can say what that is worth.</li>
+      <li><strong>Rome.</strong> Still the airport with the largest error per flight. For flights with a flight-plan record, the classifier decides between schedule and normal taxi without a rule as clean as the no-record one.</li>
+      <li><strong>Day-early records.</strong> An off-block logged a day before an on-time take-off, like the two Paris flights, leaves nothing in the file to flag it.</li>
     </ul>
   </div>
 </section>
@@ -487,46 +547,195 @@ function add(p,c){p.appendChild(c);return c;}
 if(!D.airports){return;}
 
 /* ---------- departure board ---------- */
-function remarks(){
+// Each airport's status: a word, then the number behind it, alternating the
+// way real boards alternate languages. [text, colour, blink]
+function statuses(){
   var snow={};(D.snow||[]).forEach(function(r){snow[r.icao]=r;});
   var longest=D.airports.reduce(function(a,b){return b.p50>a.p50?b:a;});
   return D.airports.map(function(a){
-    if(a.at_share>0.1)return ["SCHED COPIED "+pct(a.at_share),"red"];
-    if(a.icao===longest.icao)return ["LONGEST TAXI","amber"];
-    var s=snow[a.icao];if(s&&s.jan26>=0.07)return ["SNOW JAN26 "+pct(s.jan26),"amber"];
     var best=null,bd=0;
     a.runways.forEach(function(r){[["JUL",r.jul25,r.jul26],["JAN",r.jan25,r.jan26]].forEach(function(m){
       var d=m[2]-m[1];if(Math.abs(d)>Math.abs(bd)){bd=d;best=[r.rwy,m[0]];}});});
-    if(best&&Math.abs(bd)>=0.1)return ["RWY "+best[0]+" "+(bd>0?"+":"")+Math.round(100*bd)+"PT "+best[1],"amber"];
-    return ["ON TIME",""];
+    var shift=best&&Math.abs(bd)>=0.1?best[0]+" "+(bd>0?"+":"−")+Math.round(100*Math.abs(bd))+"PT "+best[1]:null;
+    if(a.at_share>0.1)return [["CHECK RECORDS","red",1],["SCHED COPIED "+pct(a.at_share),"red"]];
+    if(a.icao===longest.icao)return [["LONGEST TAXI","amber"]].concat(shift?[[shift,"amber"]]:[]);
+    var s=snow[a.icao];if(s&&s.jan26>=0.07)return [["DE-ICING","amber"],["SNOW JAN26 "+pct(s.jan26),"amber"]];
+    if(shift)return [["RWY CHANGE","amber"],[shift,"amber"]];
+    return [["ON TIME","green"]];
   });
 }
+var BOARD={cells:[],spin:[],tick:0,seen:false};
+function motion(){return !(window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches);}
 function board(){
-  var g=document.getElementById("board");g.textContent="";
-  ["Airport","ICAO","Rwy","Taxi","P90","Remarks"].forEach(function(h){g.appendChild(el("div","bh",h));});
-  var rm=remarks(),i=0;
-  function flaps(txt,n,cls){
-    var box=el("div","flaps");txt=String(txt).toUpperCase();
-    for(var k=0;k<n;k++){var c=el("span","flap"+(cls?" "+cls:""),txt[k]||" ");c.style.setProperty("--i",i++);box.appendChild(c);}
-    return box;
+  var g=document.getElementById("board");g.textContent="";BOARD.cells=[];
+  ["Airport","Rwy","Typical","1 in 10 over","Status"].forEach(function(h){g.appendChild(el("div","bh",h));});
+  var st=statuses(),row=0;
+  function flaps(txt,n,cls,r){
+    var box=el("div","flaps"),f=[];
+    for(var k=0;k<n;k++){var c=el("span","flap");c.style.setProperty("--d",(r*70+k*16)+"ms");c.style.setProperty("--k",(k*22)+"ms");box.appendChild(c);f.push(c);}
+    var cell={box:box,f:f,n:n};setFlaps(cell,txt,cls,false);g.appendChild(box);return cell;
   }
-  D.airports.forEach(function(a,r){
+  D.airports.forEach(function(a){
+    row++;
     var city=a.name.split(" ")[0].replace("London","Heathrow").replace("Amsterdam","Schiphol").replace("Paris","Paris CDG").replace("Rome","Fiumicino");
-    g.appendChild(flaps(city,10));
-    g.appendChild(flaps(a.icao,4,"amber"));
-    g.appendChild(flaps(a.runways[0].rwy,3));
-    g.appendChild(flaps(mmss(a.p50),5));
-    g.appendChild(flaps(mmss(a.p90),5));
-    g.appendChild(flaps(rm[r][0],18,rm[r][1]));
+    flaps(city,11,"",row);flaps(a.runways[0].rwy,3,"",row);
+    flaps(Math.round(a.p50/60)+" min",6,"",row);flaps(Math.round(a.p90/60)+" min",6,"",row);
+    var s=st[row-1],c=flaps(s[0][0],16,s[0][1]+(s[0][2]?" blink":""),row);
+    if(s.length>1)BOARD.cells.push({cell:c,list:s});
   });
+  // The row the challenge is about: every 2026 departure, off-block unknown.
+  g.appendChild(el("div","board-rule"));row++;
+  flaps("Your flight",11,"red",row);flaps("09R",3,"",row);
+  flaps("?? min",6,"red",row);flaps("?? min",6,"red",row);
+  BOARD.cells.push({cell:flaps("Left stand ??:??",16,"red",row),list:[["Left stand ??:??","red"],["Wheels up 14:37","amber"],["Taxi: your guess","red"]]});
+  BOARD.spin=[].slice.call(g.querySelectorAll(".flap")).filter(function(f){return f.dataset.q==="1";});
+  // ticker: two copies, so the loop is seamless
+  var deps=D.airports.reduce(function(a,b){return a+(b.deps_2026||0);},0);
+  var msg=["Passengers are reminded that off-block times left unattended in January and July 2026 have been removed",
+    "Take-off times remain on the board","All "+fmt(deps)+" departures are delayed pending reconstruction",
+    "Fiumicino: some flights left exactly on schedule, according to the paperwork",
+    "A few aircraft left their stand the day before they took off. We are looking into it",
+    "Every miss is squared. Please mind the gap","This is not a forecast: all flights have already departed"].join("  +++  ")+"  +++";
+  var t=document.getElementById("ticker");t.textContent="";t.appendChild(el("span",null,msg));t.appendChild(el("span",null,msg));
+}
+function setFlaps(cell,txt,cls,flip){
+  txt=String(txt).toUpperCase();
+  cell.f.forEach(function(c,k){
+    var ch=txt[k]||" ";c.textContent=ch;c.dataset.q=ch==="?"?"1":"";
+    c.className="flap"+(cls?" "+cls:"");
+    if(flip){void c.offsetWidth;c.classList.add("re");}
+  });
+}
+function boardLive(){
+  var box=document.getElementById("board-box");if(!box)return;
+  function start(){
+    if(BOARD.seen)return;BOARD.seen=true;box.classList.add("go");
+    if(!motion())return;
+    var t0=14*3600+37*60+12,clock=document.getElementById("board-clock");
+    setInterval(function(){
+      t0++;clock.textContent=[Math.floor(t0/3600)%24,Math.floor(t0/60)%60,t0%60].map(function(x){return String(x).padStart(2,"0");}).join(":");
+      if(++BOARD.tick%4)return;
+      BOARD.cells.forEach(function(b){
+        b.i=((b.i||0)+1)%b.list.length;var s=b.list[b.i];setFlaps(b.cell,s[0],s[1]+(s[2]?" blink":""),true);
+      });
+      BOARD.spin=[].slice.call(document.querySelectorAll("#board .flap")).filter(function(f){return f.dataset.q==="1";});
+    },1000);
+    setInterval(function(){BOARD.spin.forEach(function(f){f.textContent="0123456789"[Math.floor(Math.random()*10)];});},130);
+  }
+  if("IntersectionObserver" in window){
+    var io=new IntersectionObserver(function(es){if(es.some(function(e){return e.isIntersecting;})){start();io.disconnect();}},{threshold:.25});
+    io.observe(box);
+  }else start();
 }
 
 /* ---------- departure diagram ---------- */
+var PLANE="M20,0 C20,-2.6 17,-3.2 13,-3.2 L-18,-2.4 Q-21,0 -18,2.4 L13,3.2 C17,3.2 20,2.6 20,0Z M3,-2.6 L-6,-17 L-10,-17 L-5,-2.6Z M3,2.6 L-6,17 L-10,17 L-5,2.6Z M-14,-2.2 L-18.5,-8 L-20.5,-8 L-18,-2.2Z M-14,2.2 L-18.5,8 L-20.5,8 L-18,2.2Z";
 function plane(p,x,y,rot,sc,cls){
   var gp=add(p,S("g",{transform:"translate("+x+","+y+") rotate("+rot+") scale("+sc+")"}));
-  add(gp,S("path",{d:"M20,0 C20,-2.6 17,-3.2 13,-3.2 L-18,-2.4 Q-21,0 -18,2.4 L13,3.2 C17,3.2 20,2.6 20,0Z M3,-2.6 L-6,-17 L-10,-17 L-5,-2.6Z M3,2.6 L-6,17 L-10,17 L-5,2.6Z M-14,-2.2 L-18.5,-8 L-20.5,-8 L-18,-2.2Z M-14,2.2 L-18.5,8 L-20.5,8 L-18,2.2Z",
-    fill:"currentColor",style:"color:var("+(cls||"--ink")+")"}));
+  add(gp,S("path",{d:PLANE,fill:"currentColor",style:"color:var("+(cls||"--ink")+")"}));
   return gp;
+}
+// The outline of an aircraft that is no longer there.
+function ghost(p,x,y,rot,sc,cls){
+  var gp=add(p,S("g",{transform:"translate("+x+","+y+") rotate("+rot+") scale("+sc+")"}));
+  add(gp,S("path",{d:PLANE,fill:"none",stroke:"var("+cls+")","stroke-width":1.3/sc,"stroke-dasharray":(3/sc)+" "+(2.4/sc)}));
+  return gp;
+}
+function marker(p,x,y,n,cls){
+  add(p,S("circle",{cx:x,cy:y,r:11,fill:"var("+cls+")",stroke:"var(--panel)","stroke-width":2}));
+  add(p,S("text",{x:x,y:y+4.5,"text-anchor":"middle",class:"dl",fill:"#fff"},String(n)));
+}
+function pill(p,x,y,txt,cls,anchor){
+  var w=txt.length*7.6+12,x0=anchor==="end"?x-w:x;
+  add(p,S("rect",{x:x0,y:y-11,width:w,height:21,rx:3,fill:"var(--panel)",stroke:"var("+cls+")","stroke-width":1.2}));
+  add(p,S("text",{x:x0+w/2,y:y+4,"text-anchor":"middle",class:"lbb",fill:"var("+cls+")"},txt));
+}
+
+/* ---------- the task in one picture ---------- */
+// Top-down apron: stands under a terminal, a taxiway to a holding point, a
+// runway. One departure's stand is empty (its off-block time is erased); the
+// same aircraft is lifting off at the far end (its take-off time is kept).
+function hero(){
+  var host=document.getElementById("c-hero");
+  var narrow=(host.clientWidth||640)<560,o=svgIn("c-hero",narrow?262:300,"An airport seen from above: one departure has left its stand, taxied past a queue and is lifting off from the runway"),s=o.s,W=o.w,H=o.h;
+  var sc=Math.max(.6,Math.min(1,W/880)),m=14;
+  // runway, vertical at the right, departures roll north
+  var rwW=narrow?24:30,rx=W-m-rwW-(narrow?4:24),rcx=rx+rwW/2,ry0=14,ry1=H-14;
+  add(s,S("rect",{x:rx,y:ry0,width:rwW,height:ry1-ry0,fill:"var(--asphalt)"}));
+  for(var k=0;k<4;k++){var kx=rx+3+k*(rwW-6)/4+1;
+    add(s,S("rect",{x:kx,y:ry1-16,width:(rwW-6)/4-3,height:11,fill:"var(--paint)"}));
+    add(s,S("rect",{x:kx,y:ry0+5,width:(rwW-6)/4-3,height:11,fill:"var(--paint)"}));}
+  for(var c=ry1-40;c>ry0+30;c-=24)add(s,S("rect",{x:rcx-1.2,y:c-12,width:2.4,height:12,fill:"var(--paint)",opacity:.8}));
+  add(s,S("text",{x:rcx,y:ry1-24,"text-anchor":"middle",class:"dl",fill:"var(--paint)","font-size":"12"},"36"));
+  // terminal and stands
+  var tx0=m,tx1=narrow?W*.56:W*.55,n=narrow?4:5,sp=(tx1-tx0)/n,sy=36+24*sc+8,ours=1;
+  add(s,S("rect",{x:tx0,y:12,width:tx1-tx0,height:24,rx:2,fill:"var(--line)"}));
+  add(s,S("text",{x:tx0+8,y:28,class:"ax"},"terminal"));
+  // taxiway: along the stands, then down a link to the runway's southern end
+  var ty=Math.round(sy+20*sc+36),xl=rx-28,hy=ry1-46;
+  var twy="M"+(m+2)+","+ty+" H"+xl+" V"+hy+" H"+rcx;
+  add(s,S("path",{d:twy,fill:"none",stroke:"var(--line-soft)","stroke-width":20,"stroke-linejoin":"round"}));
+  add(s,S("path",{d:twy,fill:"none",stroke:"var(--taxi-bright)","stroke-width":2.5,"stroke-linejoin":"round",opacity:.9}));
+  for(var e=m+16;e<xl-8;e+=26){add(s,S("circle",{cx:e,cy:ty-11,r:1.8,fill:"var(--edge)"}));add(s,S("circle",{cx:e,cy:ty+11,r:1.8,fill:"var(--edge)"}));}
+  add(s,S("line",{x1:rx-6,y1:hy-10,x2:rx-6,y2:hy+10,stroke:"var(--stop)","stroke-width":3.5}));
+  var cxo=0;
+  for(var i=0;i<n;i++){
+    var cx=tx0+sp*(i+.5);
+    add(s,S("line",{x1:cx,y1:36,x2:cx,y2:ty-11,stroke:"var(--taxi-bright)","stroke-width":1.2,opacity:.75}));
+    if(i===ours){cxo=cx;ghost(s,cx,sy,-90,sc,"--stop");}
+    else plane(s,cx,sy,-90,sc,"--ink-3");
+  }
+  // the departure's route: push back, taxi, queue, roll, lift off
+  var route="M"+cxo+","+(sy+12*sc)+" V"+ty+" H"+xl+" V"+hy+" H"+rcx+" V"+(ry0+70);
+  add(s,S("path",{d:route,fill:"none",stroke:"var(--ink)","stroke-width":1.8,"stroke-dasharray":"6 5","stroke-linejoin":"round"}));
+  // others still on the move: two departures queueing, one arrival taxiing in
+  plane(s,xl,hy-24*sc-6,90,sc*.9,"--ink-3");plane(s,xl,hy-58*sc-10,90,sc*.9,"--ink-3");
+  plane(s,m+22*sc+4,ty,180,sc*.9,"--ink-3");
+  // the departure itself, wheels up, with its shadow on the runway
+  plane(s,rcx,ry0+62,-90,sc*1.1,"--line");
+  plane(s,rcx+7,ry0+44,-90,sc*1.15,"--ink");
+  // the three moments
+  var m1y=Math.round((sy+12*sc+ty)/2)+2;
+  marker(s,cxo+16,m1y,1,"--stop");pill(s,cxo+32,m1y,"??:??:??","--stop","start");
+  var m2x=Math.round((cxo+xl)/2)+(narrow?6:0);
+  marker(s,m2x,ty,2,"--taxi");pill(s,m2x+16,ty,narrow?"? min":"taxi-out = ?","--taxi","start");
+  marker(s,rx-16,ry0+40,3,"--edge");pill(s,rx-32,ry0+40,"14:37:12","--edge","end");
+  // key, in the open apron below the taxiway
+  var ky=ty+44,kc=narrow?"ax":"lb",ks=narrow?.5:.6;
+  [[function(x,y){plane(s,x,y,0,ks,"--ink-3");},narrow?"others: every time kept":"other flights: every time kept"],
+   [function(x,y){ghost(s,x,y,0,ks,"--stop");},"our stand: off-block erased"],
+   [function(x,y){plane(s,x,y,0,ks,"--ink");},"our flight: take-off kept"]].forEach(function(r,i){
+    var y=ky+i*(narrow?22:26);if(y>H-12)return;
+    r[0](m+18,y);add(s,S("text",{x:m+36,y:y+4,class:kc},r[1]));
+  });
+}
+
+/* ---------- how a miss is marked ---------- */
+function squares(){
+  var host=document.getElementById("c-squares"),Wh=host.clientWidth||640;
+  var misses=[1,2,3,12],avg=Math.sqrt(misses.reduce(function(a,b){return a+b*b;},0)/misses.length);
+  // Each square sits in a slot at least as wide as its label.
+  var narrow=Wh<480,gap=narrow?10:22,slot=narrow?44:60,arrow=narrow?22:44;
+  var u=Math.min(11,(Wh-16-3*slot-4*gap-arrow-slot*.3)/(12+avg));
+  var o=svgIn("c-squares",Math.round(12*u)+58,"Four misses drawn as squares, and the average square that sets the score"),s=o.s,H=o.h;
+  var base=H-38,x=4;
+  function sq(side,w,fill,dash,l1,l2){
+    var r={x:x+(w-side)/2,y:base-side,width:side,height:side};
+    if(dash){r.fill="none";r.stroke="var(--ink)";r["stroke-width"]=1.6;r["stroke-dasharray"]="5 4";}else{r.fill="var("+fill+")";r.opacity=.85;}
+    add(s,S("rect",r));
+    add(s,S("text",{x:x+w/2,y:base+15,"text-anchor":"middle",class:narrow?"ax":"lbb"},l1));
+    add(s,S("text",{x:x+w/2,y:base+29,"text-anchor":"middle",class:"ax"},l2));
+    x+=w;
+  }
+  misses.forEach(function(mn,i){
+    var side=mn*u;sq(side,Math.max(side,slot),mn>=10?"--stop":"--edge",false,mn+" min","counts "+mn*mn);
+    x+=i<misses.length-1?gap:0;
+  });
+  var ay=base-avg*u/2;
+  add(s,S("path",{d:"M"+(x+6)+","+ay+" H"+(x+arrow-6)+" M"+(x+arrow-11)+","+(ay-5)+" L"+(x+arrow-5)+","+ay+" L"+(x+arrow-11)+","+(ay+5),fill:"none",stroke:"var(--ink-2)","stroke-width":1.6}));
+  x+=arrow;
+  sq(avg*u,Math.max(avg*u,slot*1.3),null,true,"score "+avg.toFixed(1)+" min","average square");
+  add(s,S("line",{x1:2,y1:base,x2:x+4,y2:base,class:"base"}));
 }
 function departure(){
   // On narrow screens the take-off label needs a tier of its own.
@@ -562,8 +771,8 @@ function departure(){
   // gets its own tier, joined to its mark by a leader line.
   add(s,S("line",{x1:x0,y1:T,x2:x1,y2:T,class:"base"}));
   var marks=[[stand-10,"schedule","SCHED_TIME",null,"--ink-3",2,"start"],
-             [stand+22,"plan · TOBT · TSAT","EOBT_1 · LOBT",null,"--ink-3",1,"start"],
-             [push,"off-block","BLOCK_TIME","blank in 2026","--stop",0,"start"],
+             [stand+22,"flight plan","planned off-block · LOBT",null,"--ink-3",1,"start"],
+             [push,"off-block","BLOCK_TIME","erased in 2026","--stop",0,"start"],
              [rw1-40,"take-off","MVT_TIME","kept in 2026","--edge",narrow?3:0,"end"]];
   marks.forEach(function(m){
     var mx=m[0],tier=m[5],ly=T-16-tier*34,dx=m[6]==="start"?6:-6;
@@ -650,10 +859,10 @@ function tiles(){
     t.appendChild(el("h4",null,a.icao));
     t.appendChild(el("div","city",a.name));
     var tx=el("div","tx");
-    tx.appendChild(document.createTextNode("median "));tx.appendChild(el("b",null,mmss(a.p50)));
-    tx.appendChild(document.createTextNode(" · P90 "+mmss(a.p90)));
-    tx.appendChild(document.createElement("br"));
-    tx.appendChild(document.createTextNode(a.runways.slice(0,3).map(function(r){return r.rwy+" "+pct(r.share);}).join(" · ")));
+    a.runways.slice(0,3).forEach(function(r,j){
+      if(j)tx.appendChild(document.createElement("br"));
+      tx.appendChild(el("b",null,r.rwy));tx.appendChild(document.createTextNode(" "+pct(r.share)+" · "+mmss(r.p50)));
+    });
     t.appendChild(tx);
   });
 }
@@ -661,10 +870,12 @@ function tiles(){
 /* ---------- score ---------- */
 function scorecards(){
   var h=document.getElementById("scorecards");h.textContent="";
+  var fin=D.ladder[D.ladder.length-1].rmse;
   [["typical miss",D.mae_final,"edge","Average distance between prediction and truth, ignoring direction."],
-   ["the competition's score",D.rmse_final,"stop","The same predictions, squared, averaged and rooted. The few large misses more than double it."]
+   ["the score (RMSE)",D.rmse_final,"stop","The same predictions, squared, averaged and rooted. The few large misses more than double it. The ADS-B correction (section F) takes it to "+fin.toFixed(1)+" s."],
+   ["one guess for all",D.rmse_predict_mean,"","The score for predicting the same average taxi-out for every flight: the yardstick."]
   ].forEach(function(x){
-    var c=el("div","card");c.appendChild(el("p","k",x[0]));c.appendChild(el("p","v "+x[2],fmt(x[1])+" s"));
+    var c=el("div","card");c.appendChild(el("p","k",x[0]));c.appendChild(el("p","v"+(x[2]?" "+x[2]:""),fmt(x[1])+" s"));
     c.appendChild(el("p","s",x[3]));h.appendChild(c);
   });
 }
@@ -758,7 +969,6 @@ function lirf(){
   add(s,S("line",{x1:x0,y1:y1,x2:x1,y2:y1,class:"base"}));
   set("lirf-at",pct(L.at_share));set("lirf-long",pct(L.long_at_share));
   set("lirf-orph",pct(D.artifact.lirf_at_share));
-  set("neg-text","At the other extreme, "+fmt(D.negative.n)+" departures in 2025 took off before they left the stand by the record, by up to "+Math.abs(D.negative.min)+" seconds; "+fmt(D.negative.lszh)+" of them are at Zurich.");
 }
 
 function lirfOrph(){
@@ -775,19 +985,50 @@ function lirfOrph(){
 }
 
 /* ---------- strips ---------- */
+// Ladder steps grouped by idea, by position in D.ladder (0 is the start).
+// A step added later and not listed here falls into "Other".
+var GROUPS=[
+  {name:"No-record flights, modelled apart",phrase:"modelling the flights with no flight-plan record apart",steps:[1,2,3]},
+  {name:"Hedging on timetable copies",phrase:"hedging on whether a record was copied from the timetable",steps:[4,8,14,15]},
+  {name:"The airport, the flight plan, the weather",phrase:"reading the airport, the flight plan and the weather",steps:[5,6,9,10]},
+  {name:"Watching the push-back (ADS-B)",phrase:"ADS-B",steps:[23]},
+  {name:"Tuning the trees",phrase:"tuning the trees",steps:[7,16,17,18,19,20]},
+  {name:"Anchors and bounds",phrase:"anchors and bounds",steps:[11,12,13,21,22,24]}
+];
+function ladderGroups(){
+  var L=D.ladder,seen={},gain=function(i){return L[i-1].rmse-L[i].rmse;};
+  var gs=GROUPS.map(function(g){
+    var st=g.steps.filter(function(i){return i>0&&i<L.length;});st.forEach(function(i){seen[i]=1;});
+    return {name:g.name,phrase:g.phrase,steps:st};});
+  var rest=[];for(var i=1;i<L.length;i++)if(!seen[i])rest.push(i);
+  if(rest.length)gs.push({name:"Other",phrase:"other steps",steps:rest});
+  gs.forEach(function(g){g.gain=g.steps.reduce(function(a,i){return a+gain(i);},0);});
+  return gs.filter(function(g){return g.steps.length;}).sort(function(a,b){return b.gain-a.gain;});
+}
 function strips(){
   var h=document.getElementById("strips");h.textContent="";
-  var L=D.ladder,top=L[0].rmse,low=L[L.length-1].rmse;
-  L.forEach(function(r,i){
+  var L=D.ladder,gs=ladderGroups(),maxGain=0;
+  for(var i=1;i<L.length;i++)maxGain=Math.max(maxGain,L[i-1].rmse-L[i].rmse);
+  function head(name,val){var e=el("div","strip-head");e.appendChild(el("span",null,name));e.appendChild(el("b",null,val));h.appendChild(e);}
+  function strip(i,label){
     var st=el("div","strip");st.appendChild(el("div","no",String(i+1).padStart(2,"0")));
-    var nm=el("div","nm",r.name);var bar=el("div","bar");bar.style.width=(100*(r.rmse-low*0.9)/(top-low*0.9)).toFixed(1)+"%";nm.appendChild(bar);st.appendChild(nm);
-    var sc=el("div","sc");sc.appendChild(el("b",null,r.rmse.toFixed(1)+" s"));
-    sc.appendChild(el("span",null,i?"−"+(L[i-1].rmse-r.rmse).toFixed(1)+" s":"start"));st.appendChild(sc);h.appendChild(st);
-  });
+    var nm=el("div","nm",L[i].name);
+    if(i){var bar=el("div","bar");bar.style.width=(100*(L[i-1].rmse-L[i].rmse)/maxGain).toFixed(1)+"%";nm.appendChild(bar);}
+    st.appendChild(nm);
+    var sc=el("div","sc");sc.appendChild(el("b",null,L[i].rmse.toFixed(1)+" s"));
+    sc.appendChild(el("span",null,label||"−"+(L[i-1].rmse-L[i].rmse).toFixed(1)+" s"));st.appendChild(sc);h.appendChild(st);
+  }
+  head("Starting point",L[0].rmse.toFixed(1)+" s");strip(0,"start");
+  gs.forEach(function(g){head(g.name,"−"+g.gain.toFixed(1)+" s");g.steps.forEach(function(i){strip(i);});});
+  var total=L[0].rmse-L[L.length-1].rmse,two=gs[0].gain+gs[1].gain;
+  set("steps-text","From "+L[0].rmse.toFixed(1)+" s to "+L[L.length-1].rmse.toFixed(1)+" s. Two ideas did most of the work: "+gs[0].phrase+" ("+
+    gs[0].gain.toFixed(1)+" s) and "+gs[1].phrase+" ("+gs[1].gain.toFixed(1)+" s), together "+Math.round(two)+" of the "+Math.round(total)+" seconds gained.");
+  var WHY={"Count the queue as queueing theory does (adjusted traffic, busy periods)":"gain within noise",
+           "Each flight number's record in the other months (all of it Rome, and lost to 2026's new callsigns)":"gain would not carry over to 2026"};
   var x=document.getElementById("strips-x");x.textContent="";
   D.rejected.forEach(function(r){
     var st=el("div","strip x");st.appendChild(el("div","no","×"));
-    var nm=el("div","nm",r.name);nm.appendChild(el("small",null,"against "+r.against.toFixed(1)+" s"));st.appendChild(nm);
+    var nm=el("div","nm",r.name);nm.appendChild(el("small",null,"against "+r.against.toFixed(1)+" s"+(WHY[r.name]?" · "+WHY[r.name]:"")));st.appendChild(nm);
     var sc=el("div","sc");sc.appendChild(el("b",null,r.rmse.toFixed(1)+" s"));var dd=r.rmse-r.against;sc.appendChild(el("span",null,(dd>=0?"+":"−")+Math.abs(dd).toFixed(1)+" s"));
     st.appendChild(sc);x.appendChild(st);
   });
@@ -869,23 +1110,36 @@ function lboard(){
     add(s,S("circle",{cx:V,cy:Y,r:5,fill:"none",stroke:"var(--edge)","stroke-width":2}));
     if(i===0||i===U.length-1)add(s,S("text",{x:X+(i===0?6:-6),y:Y+58,"text-anchor":i===0?"start":"end",class:"lbb"},u.v+" "+u.test));
   });
-  set("lb-cap","Best score per team on "+B.date+", "+B.teams+" teams; axis stops at 400 s. Filled blue dots are our uploads' test scores, rings the same models' validation scores. Our best, "+B.ours+" s, ranks "+B.rank+"th.");
+  set("lb-cap","Best score per team on "+B.date+", "+B.teams+" teams; axis stops at 400 s. Filled blue dots are our uploads on the test months, rings the same models on the held-back months. Our best, "+B.ours+" s, ranks "+ord(B.rank)+".");
+  // How the held-back months tracked the test months, upload by upload.
+  var d=U.map(function(u){return u.validation-u.test;}),early=d.slice(1,5),late=d.slice(5);
+  var t="Our best, "+U[U.length-1].v+", scores "+B.ours+" seconds, "+ord(B.rank)+" of "+B.teams+" teams on "+B.date+"; the leader has "+B.leader+".";
+  if(early.length&&late.length){
+    var worse=Math.round(-early.reduce(function(a,b){return a+b;},0)/early.length);
+    t+=" The held-back months tracked the test months only loosely: uploads two to five scored about "+worse+" seconds worse on the test months than on the held-back ones, and every upload from the sixth, which brought in the flight plan's window and Rome's rules, scored "+
+      Math.round(Math.min.apply(null,late))+" to "+Math.round(Math.max.apply(null,late))+" seconds better.";
+  }
+  set("lb-text",t);
 }
+function ord(n){var t=n%100,u=n%10;return n+(t>10&&t<14?"th":u===1?"st":u===2?"nd":u===3?"rd":"th");}
 
 function text(){
   var med=D.airports.map(function(a){return a.p50;}).sort(function(a,b){return a-b;});
   set("t-median",mmss((med[4]+med[5])/2)+" (minutes and seconds) at the middle airport, from "+mmss(med[0])+" at the quickest to "+mmss(med[9])+" at Heathrow");
   set("ident-rows",fmt(D.identity.rows));set("arr-2026",fmt(D.arrivals_2026));
+  set("h-deps",fmt(D.airports.reduce(function(a,b){return a+(b.deps_2026||0);},0)));
+  var B=D.leaderboard;
+  set("h-ours","Our best entry scores "+B.ours+" s on the test months, "+ord(B.rank)+" of "+B.teams+" teams on "+B.date+", where the leader has "+B.leader+" s. For scale, on the 2025 months held back to rehearse on, one guess for every flight scores "+fmt(D.rmse_predict_mean)+" s.");
   document.getElementById("foot").textContent="Model figures are measured on the January and July 2025 departures held back from training ("+
     fmt(D.groups.joined.n+D.groups.orphan.n)+" departures). Airport, runway and weather figures use all 2025 departures and the 2026 scored file, in aggregate only. "+
     "Everything on this page is regenerated by pipeline/report_findings.py in the project repository.";
 }
 
 function render(){
-  board();departure();kept();tiles();scorecards();conc();tbl();dist();clip();lirf();lirfOrph();strips();deice();metar();snow();shift();lboard();text();
+  hero();squares();board();departure();kept();tiles();scorecards();conc();tbl();dist();clip();lirf();lirfOrph();strips();deice();metar();snow();shift();lboard();text();
 }
-var rt;window.addEventListener("resize",function(){clearTimeout(rt);rt=setTimeout(function(){departure();kept();conc();dist();clip();lirf();lirfOrph();deice();snow();shift();lboard();},150);});
-render();
+var rt;window.addEventListener("resize",function(){clearTimeout(rt);rt=setTimeout(function(){hero();squares();departure();kept();conc();dist();clip();lirf();lirfOrph();deice();snow();shift();lboard();},150);});
+render();boardLive();
 })();
 </script>
 
