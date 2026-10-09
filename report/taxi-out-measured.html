@@ -392,7 +392,7 @@ footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);font-si
   <div class="col">
     <h2>Watching the push-back</h2>
     <p>Aircraft broadcast their position by radio, on the ground as well as in the air, and volunteers' ADS-B receivers record it; adsb.lol publishes their archive under an open licence. Where a receiver near the airport can see the stands, the trace shows the aircraft parked and then moving: the push-back itself, a median 35 seconds from the airport's record, against three minutes for the Network Manager's. That is visible for one 2025 departure in eight and one 2026 departure in five, best at Munich, Amsterdam and Heathrow, never at Istanbul or Paris. Most of the others are first heard already taxiing, which still shows the taxi took at least that long.</p>
-    <p>A small second model learns the first one's error from what the receivers saw, using predictions made for 2025 days the first model never trained on, and corrects the 2026 predictions with it. Scored day by day on days it never saw, it took the held-back error from 316.7 to 308.8 seconds; on the test months the upload carrying it gained 12 seconds.</p>
+    <p>A small second model learns the first one's error from what the receivers saw, and corrects the 2026 predictions with it. It learns from predictions the first model made for 2025 months it never trained on, three pairs of them: January and July, February and December, June and August. Scored on days it never saw, it takes the error from about 317 to 308 seconds on January and July, 235 to 225 on February and December, and 280 to 276 on June and August. On the test months, the first upload carrying it gained 12 seconds.</p>
     <p>The receivers have a blind spot that matters in winter. On a congested day an aircraft can stand for ten minutes or more away from its stand, at a de-icing pad or in a queue, and a trace that only sees "parked, then moving" dates the push-back from there. Where the airport's departures were taking over 20 minutes, the observed push-back fell a median two to four minutes after the airport's record, against a quarter of a minute on quiet days. Flights with a Network Manager record keep its off-block as an anchor; flights without one do not.</p>
   </div>
 </section>
@@ -459,6 +459,7 @@ footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);font-si
     <h2>Cleared for take-off</h2>
     <p>Each upload is scored on the January and July 2026 departures, and the leaderboard keeps a team's best. <span id="lb-text"></span></p>
     <p>The final ranking takes one more file per team, uploaded once, that covers February and June 2026 as well. It is scored on January and July, on February and June, and on all four months together, alongside a review of the code and documentation.</p>
+    <p>Every rule on this page was chosen while rehearsing on January and July 2025, so each was checked again on 2025 months the model never saw, held out in pairs: February with December, June with August. In every month the model's error is 40 to 61% of a simple baseline's (take-off minus the Network Manager's off-block), January the hardest. Switched off one at a time on June and August, each rule still helps, except two with little to act on there: the congestion floor, idle in summer (it gains 4 seconds on February and December), and Rome's day-early rule, which touches three flights. The tables are in the repository's <a href="https://github.com/joris-decombe/taxiout/blob/main/RESEARCH.md" target="_blank" rel="noopener">RESEARCH.md</a>.</p>
   </div>
   <figure>
     <div class="legend"><span><i style="background:var(--ink-3)"></i>other teams, best score</span><span><i style="background:var(--edge)"></i>our uploads, test months</span><span><i style="border:2px solid var(--edge);background:transparent"></i>same, held-back months</span></div>
@@ -468,7 +469,7 @@ footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);font-si
   <div class="col">
     <h3>Limits</h3>
     <ul>
-      <li><strong>Winter.</strong> The held-back January was mild, so the model's handling of de-icing days rests on 2025's few snowy days and on the test months themselves.</li>
+      <li><strong>Winter.</strong> January 2025 was mild. February and December 2025, held out since, check the winter rules on colder months; how they hold on a January like 2026's, only the test months can say.</li>
       <li><strong>What the receivers miss.</strong> ADS-B dates the push-back for about one 2026 departure in five, and for none at Istanbul or Paris.</li>
       <li><strong>Stands that opened in 2026.</strong> Munich's stands 103 to 108 and a handful of new Frankfurt positions (consistent with its Terminal 3 opening) never appear in 2025. They borrow a reference from neighbouring stands or their runway; only the 2026 score can say what that is worth.</li>
       <li><strong>Rome.</strong> Still the airport with the largest error per flight. For flights with a flight-plan record, the classifier decides between schedule and normal taxi without a rule as clean as the no-record one.</li>
@@ -985,7 +986,10 @@ function ladderGroups(){
   var gs=GROUPS.map(function(g){
     var st=g.steps.filter(function(i){return i>0&&i<L.length;});st.forEach(function(i){seen[i]=1;});
     return {name:g.name,phrase:g.phrase,steps:st};});
-  var rest=[];for(var i=1;i<L.length;i++)if(!seen[i])rest.push(i);
+  var rest=[];for(var i=1;i<L.length;i++)if(!seen[i]){
+    if(/ADS-B|corrector|receivers/i.test(L[i].name))gs.filter(function(g){return /ADS-B/.test(g.name);})[0].steps.push(i);
+    else rest.push(i);
+  }
   if(rest.length)gs.push({name:"Other",phrase:"other steps",steps:rest});
   gs.forEach(function(g){g.gain=g.steps.reduce(function(a,i){return a+gain(i);},0);});
   return gs.filter(function(g){return g.steps.length;}).sort(function(a,b){return b.gain-a.gain;});
