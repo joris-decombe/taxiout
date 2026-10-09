@@ -57,6 +57,7 @@ LADDER = [
     {"name": "Pull those towards their airport's usual taxi for that lateness", "rmse": 316.7},
     {"name": "Correct with what ADS-B receivers saw on the ground (cross-validated by day)", "rmse": 308.8},
     {"name": "No-record flights taxi at least as long as the departures around them", "rmse": 308.6},
+    {"name": "Teach the ADS-B corrector from three held-out folds of 2025, not one", "rmse": 308.0},
 ]
 REJECTED = [
     {"name": "Weight the schedule-copy classifier by what a mistake costs", "rmse": 344.4, "against": 344.3},
@@ -81,9 +82,10 @@ UPLOADS = [
     {"v": "v8", "validation": 316.7, "test": 287.0},
     {"v": "v9", "validation": 308.8, "test": 275.0},
     {"v": "v10", "validation": 308.6, "test": 274.1},
+    {"v": "v11", "validation": 308.0, "test": 271.9},
 ]
-LEADERBOARD = {"date": "8 October 2026", "teams": 237, "leader": 213.5, "tenth": 223.7,
-               "quartile": 270.0, "median": 295.9, "ours": 274.1, "rank": 68}
+LEADERBOARD = {"date": "9 October 2026", "teams": 239, "leader": 213.0, "tenth": 222.9,
+               "quartile": 268.7, "median": 294.6, "ours": 271.9, "rank": 68}
 # Iowa Environmental Mesonet METAR archive.
 METAR = {"station": "EHAM", "time": "2026-01-05 08:25 UTC",
          "raw": "EHAM 050825Z 20009KT 0700 R18C/1200N R27/1200U R18R/0700N R06/1400U SHSN VV005 00/M00 Q1008 TEMPO 2000"}
