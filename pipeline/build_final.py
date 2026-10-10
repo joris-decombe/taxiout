@@ -17,8 +17,9 @@
    `data/submission_leaderboard.parquet`.
 
 About two hours per fold and two for the final fit on a 20-thread machine
-with 32 GB, plus three to four minutes of streaming per day the first time
-(about 4 GB read per day, under 1% kept). Each fitted stage is saved under
+with 32 GB, so about fourteen in all, plus three to four minutes of
+streaming per day the first time (357 days, about 4 GB read per day,
+under 1% kept). Each fitted stage is saved under
 `data/build_final/` and reused on a rerun, so an interrupted build resumes,
 and adding a fold refits only that fold and the corrector.
 
@@ -49,7 +50,12 @@ def month_days(year: int, month: int) -> list[dt.date]:
     return [dt.date(year, month, d) for d in range(1, calendar.monthrange(year, month)[1] + 1)]
 
 
-FOLD_DAYS = [day for fold in FOLDS for m in fold for day in month_days(2025, m)]
+# adsb.lol was streamed for every day of the months the first folds held
+# out, and every other day of the rest: the corrector needs examples, not
+# every day. Listing exactly those days makes a rebuild reproduce the upload.
+EVERY_DAY = {1, 2, 7, 12}
+FOLD_DAYS = [day for fold in FOLDS for m in fold for day in month_days(2025, m)
+             if m in EVERY_DAY or day.day % 2 == 1]
 FINAL_DAYS = [day for y, m in FINAL_MONTHS for day in month_days(y, m)]
 
 

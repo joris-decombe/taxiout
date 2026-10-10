@@ -161,6 +161,8 @@ The challenge data lives in the shared `prc-2026-datasets` bucket;
 `bucket.upload_submission` pushes under the mandated
 `gentle-octopus_v<N>.parquet` name, and `bucket.next_version()` reads the
 bucket to pick N so a previous submission's result file is never overwritten.
+`bucket.upload_final` pushes the one final-phase file,
+`gentle-octopus_final.parquet`, and refuses to overwrite it.
 
 The S3 API is at `https://s3.opensky-network.org`. The console URL below is a
 web UI, not an endpoint. The store is MinIO, so path-style addressing is
@@ -175,10 +177,12 @@ required.
   (<https://github.com/adsblol/globe_history_2025>,
   <https://github.com/adsblol/globe_history_2026>), available under the
   [Open Database License 1.0](https://opendatacommons.org/licenses/odbl/1-0/),
-  with feeder data under CC0. `taxiout.adsb` streams each day of January and
-  July 2025 and 2026 (about 390 GB read in all, nothing kept whole) and keeps
-  only the points near the ten airports (about 3 GB) in
-  `data/external/adsblol/`. Those derived tables are not committed: anything
+  with feeder data under CC0. `taxiout.adsb` streams 357 days: every day of
+  January, February, July and December 2025 and of the four final months
+  of 2026, and every other day of the other 2025 months (about 1.4 TB read,
+  nothing kept whole). It keeps only the points near the ten airports
+  (about 6 GB) in `data/external/adsblol/`. The archive has no release for
+  1 to 9 June, 29 and 31 May, or 31 December 2025. Those derived tables are not committed: anything
   derived from adsb.lol that is published must carry the ODbL, and they are
   keyed to challenge rows. The code in this repo is the method that rebuilds
   them. Contains information from adsb.lol, which is made available under
@@ -191,11 +195,14 @@ PYTHONIOENCODING=utf-8 POLARS_UNKNOWN_EXTENSION_TYPE_BEHAVIOR=load_as_storage \
   .venv/Scripts/python.exe pipeline/build_final.py
 ```
 
-streams and observes the ADS-B days, fits the model on ten months for
-honest January and July 2025 predictions, fits the ADS-B corrector
-(`taxiout.correct`) on them, refits on all twelve months, and writes and
-verifies `data/submission_final.parquet`. About four hours of compute plus
-two of streaming the first time.
+streams and observes the ADS-B days, fits the model six times, each without
+one pair of 2025 months, for honest predictions of every month, fits the
+ADS-B corrector (`taxiout.correct`) on them, refits on all twelve months,
+and writes and verifies `data/submission_final.parquet` (January,
+February, June and July 2026) and its January and July part for the
+leaderboard. About fourteen hours of compute on 20 threads and 32 GB, plus
+about a day of streaming the first time. Every fitted stage is saved under
+`data/build_final/`, so an interrupted build resumes.
 
 ## Build
 
@@ -234,10 +241,12 @@ Train on 2025 minus January and July; validate on January and July 2025. The
 leaderboard scored January and July 2026, and taxi-out has a strong seasonal
 signal, so any other split flatters the model.
 
-The final ranking adds February and June 2026, so a second fold holds out
-February and December 2025 (`experiments_round9.py`): the model scores
-238.9s there before the ADS-B correction, against 316.5s on January and
-July. The corrector learns from both folds' held-out predictions.
+The final ranking adds February and June 2026, so the model is also fitted
+five more times, each holding out another pair of 2025 months, until every
+month has been predicted by a model that never saw it (`build_final.py`
+FOLDS, `experiments_round9.py` to `11`). The ADS-B corrector learns from
+all six folds' held-out predictions, and the rules were re-checked on
+them: [RESEARCH.md](RESEARCH.md#generalisation-beyond-the-leaderboard-months).
 
 Note that the split keys on off-block month, which is blank on the ranking set.
 That is fine, because the split only ever runs over training data.

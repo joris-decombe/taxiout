@@ -6,15 +6,17 @@ ground: the push-back where the aircraft is seen parked and then moving
 first ground position and the exact lift-off. A small LightGBM learns the
 model's error from those observations, the model's own prediction and
 at-schedule probability, the Network Manager's taxi time and the schedule
-gap. It is fitted on the January and July 2025 validation days, where the
-model's predictions are honest held-out ones, and applied unchanged to
-2026, after which the production rules bound the result again and
-floor the orphans at their airport's live taxi level (`rules`).
+gap. It is fitted on held-out predictions for every month of 2025, each
+made by a model fitted without that month and its pair (`build_final.py`
+FOLDS), and applied unchanged to 2026, after which the production rules
+bound the result again and floor the orphans at their airport's live taxi
+level (`rules`).
 
-Measured by cross-validation over whole days (`experiments_round7.py`):
--7.3s on 57 validation days (95% CI -9.7s to -5.6s), January -5.5s,
-July -9.2s. On the departures whose push-back was seen the error drops
-from 200s to 164s; most of the rest comes from the partial observations.
+Measured by cross-validation over whole days: -6.0s over 2025 (95% CI
+-6.9s to -5.2s), from -3.4s on June + August to -10.7s on February +
+December (`experiments_round11.py`). On the departures whose push-back was
+seen the error drops from 200s to 164s (`experiments_round7.py`, January
+and July); most of the rest comes from the partial observations.
 """
 
 from __future__ import annotations

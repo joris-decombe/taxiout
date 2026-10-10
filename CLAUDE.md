@@ -127,8 +127,9 @@ Two tracks that are meant to meet, but currently do not.
 
 **`pipeline/`** is the working path: parquet → features → LightGBM → submission.
 `data.py` scans `data/training_*.parquet` and splits January and July out for
-validation, matching the test set's months because taxi-out is strongly
-seasonal. `features.py` builds a per-stand/runway unimpeded reference (a low
+validation, matching the leaderboard's months because taxi-out is strongly
+seasonal; `train.validate(training, months)` holds out any other pair, which
+the folds in `build_final.py` use. `features.py` builds a per-stand/runway unimpeded reference (a low
 quantile, to approximate geometry without queueing) plus calendar, schedule and
 rolling congestion features, and `surroundings()` adds the dataset-wide ones:
 `context.py` (stand occupancy, queue counts, runway configuration, from all
@@ -148,8 +149,9 @@ ADS-B comes from the adsb.lol archive (ODbL): `adsb.fetch_day` streams a
 day's GitHub release (3 to 4 GB) and keeps the points near the airports,
 `adsb.observe_day` dates each departure's push-back where the aircraft is
 seen parked and then moving. `correct.py` fits a corrector of the model's
-error on those observations, on the validation days only, and
-`pipeline/build_final.py` runs the whole chain. Never commit anything under
+error on those observations, from held-out predictions for every month of
+2025 (six folds, `build_final.py` FOLDS), and `pipeline/build_final.py`
+runs the whole chain. Never commit anything under
 `data/external/`: it is derived from ODbL data and keyed to challenge rows.
 
 `bucket.py` talks to the object store: the challenge data is in the shared
