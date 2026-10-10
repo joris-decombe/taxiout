@@ -83,6 +83,7 @@ UPLOADS = [
     {"v": "v9", "validation": 308.8, "test": 275.0},
     {"v": "v10", "validation": 308.6, "test": 274.1},
     {"v": "v11", "validation": 308.0, "test": 271.9},
+    {"v": "v12", "validation": 307.8, "test": 272.1},
 ]
 LEADERBOARD = {"date": "9 October 2026", "teams": 239, "leader": 213.0, "tenth": 222.9,
                "quartile": 268.7, "median": 294.6, "ours": 271.9, "rank": 68}

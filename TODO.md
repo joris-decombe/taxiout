@@ -31,7 +31,9 @@ the last column maps them.
 | v8 | 316.7s | 287.0s | orphans outside LIRF shrunk towards their lateness band's mean | `submission_v11` |
 | v9 | 308.8s | 275.0s | ADS-B corrector from adsb.lol ground observations | `submission_v12` |
 | v10 | 308.6s | 274.1s | orphans outside LIRF floored at 0.95x their airport's live NM taxi level (431 rows, nearly all on EHAM's de-icing days of 3 to 9 January 2026) | `submission_v13` |
-| v11 | 308.0s | **271.9s** | the final build's January and July: corrector pooled over three folds, fresh twelve-month fit | `submission_leaderboard` |
+| v11 | 308.0s | **271.9s** | the final build's January and July: corrector pooled over three folds, fresh twelve-month fit | `submission_final_3folds` (January and July rows) |
+| v12 | 307.8s | 272.1s | the final file's January and July: corrector cross-fitted over six folds | `submission_leaderboard` |
+| **final** | 307.8s | not published | `gentle-octopus_final.parquet`, January, February, June and July 2026, uploaded 10 October 2026, accepted on all 670,790 rows | `submission_final` |
 
 From v6 on, every upload scored better on the test set than on
 validation, and by more than validation predicted. Most of the gap came
@@ -57,11 +59,11 @@ model put at many hours, which the structural rules removed.
       matched rows and 37s on orphans, none above 359s; validation 316.7s
       before the correction, as before. Not uploaded on its own: it is the
       same model, and the next upload will be this build plus round 9.
-- [ ] **Upload the final file**, `data/submission_final.parquet` from
-      `build_final.py` with six folds (670,790 rows, verified), once and
-      with the user's go-ahead. Against the three-fold build scored as v11
-      (271.9s on January and July) it moves predictions 14s RMS on matched
-      rows and 46s on orphans, none above 513s.
+- [x] **Final file uploaded** on 10 October 2026 as
+      `gentle-octopus_final.parquet` (`build_final.py`, six folds),
+      accepted on all 670,790 rows; the final ranking is not published
+      yet. Its January and July part scored 272.1s as v12, within noise of
+      the three-fold build's 271.9s (v11): no choice was made on it.
 - [x] **A June fold** (round 10): June + August 2025, held out like the
       others. Pooling three folds beats two by -0.29s (95% CI -0.56 to
       -0.06), no fold worse. adsb.lol has no releases for 1 to 9 June 2025.

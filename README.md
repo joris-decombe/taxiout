@@ -100,10 +100,10 @@ The structure that matters more is in Status.
 | | |
 |---|---|
 | Best upload | **v11: 271.9s** on the leaderboard (January and July 2026), rank 68 of 239 (9 October 2026; leader 213.0s, median 294.6s) |
-| Final file | built: `build_final.py` over January, February, June and July 2026; uploaded once, at the end |
+| Final file | **uploaded** 10 October 2026: `build_final.py` over January, February, June and July 2026, accepted on all 670,790 rows (score not published) |
 | Validation (Jan + Jul 2025) | **307.8s**, 316.7s before the ADS-B correction |
 | Held-out folds | six pairs of months cover 2025: 249.9s over the year, 255.9s before the correction; every month 0.40 to 0.64 of a Network Manager baseline; see [RESEARCH.md](RESEARCH.md#generalisation-beyond-the-leaderboard-months) |
-| Uploads | v1 370.9s, v5 359.0s, v6 311.3s, v7 287.2s, v8 287.0s, v9 275.0s, v10 274.1s, v11 271.9s; see [TODO.md](TODO.md) |
+| Uploads | v1 370.9s, v5 359.0s, v6 311.3s, v7 287.2s, v8 287.0s, v9 275.0s, v10 274.1s, v11 271.9s, v12 272.1s; see [TODO.md](TODO.md) |
 
 ### How the model works
 
