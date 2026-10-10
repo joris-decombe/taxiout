@@ -57,7 +57,7 @@ LADDER = [
     {"name": "Pull those towards their airport's usual taxi for that lateness", "rmse": 316.7},
     {"name": "Correct with what ADS-B receivers saw on the ground (cross-validated by day)", "rmse": 308.8},
     {"name": "No-record flights taxi at least as long as the departures around them", "rmse": 308.6},
-    {"name": "Teach the ADS-B corrector from three held-out folds of 2025, not one", "rmse": 308.0},
+    {"name": "Teach the ADS-B corrector from six held-out folds, the whole of 2025", "rmse": 307.8},
 ]
 REJECTED = [
     {"name": "Weight the schedule-copy classifier by what a mistake costs", "rmse": 344.4, "against": 344.3},

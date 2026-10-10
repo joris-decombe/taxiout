@@ -10,9 +10,9 @@ stays open as a check.
 **Best upload: v11, 271.9s on the leaderboard, rank 68 of 239** (9 October
 2026; leader 213.0s, 10th 222.9s, median 294.6s). v11 is the January and
 July part of the final build, uploaded to check it and nothing else. Its
-model scores **308.0s** on the January and July 2025 validation days
-(316.7s before the ADS-B correction), 224.5s on February + December and
-276.1s on June + August, each held out of its fit.
+final model scores **307.8s** on the January and July 2025 validation days
+(316.7s before the ADS-B correction) and 249.9s over all of 2025, each
+month held out of its own fit (six folds).
 
 ## Uploads
 
@@ -58,16 +58,17 @@ model put at many hours, which the structural rules removed.
       before the correction, as before. Not uploaded on its own: it is the
       same model, and the next upload will be this build plus round 9.
 - [ ] **Upload the final file**, `data/submission_final.parquet` from
-      `build_final.py` (670,790 rows, verified), once and with the user's
-      go-ahead. Its January and July part scored 271.9s as v11. The orphan
-      floor moves 573 of its rows: 404 in January (EHAM 216, LFPG 87),
-      92 in February, 53 in June, 24 in July; no day above 56.
+      `build_final.py` with six folds (670,790 rows, verified), once and
+      with the user's go-ahead. Against the three-fold build scored as v11
+      (271.9s on January and July) it moves predictions 14s RMS on matched
+      rows and 46s on orphans, none above 513s.
 - [x] **A June fold** (round 10): June + August 2025, held out like the
       others. Pooling three folds beats two by -0.29s (95% CI -0.56 to
       -0.06), no fold worse. adsb.lol has no releases for 1 to 9 June 2025.
-- [ ] **More folds, optional:** March + September, April + October,
-      May + November would cross-fit the corrector over the whole year
-      (about 4 hours each: streaming every other day, then a fit).
+- [x] **Six folds** (round 11): March + September, April + October,
+      May + November added. The corrector is cross-fitted over the whole
+      year, -0.14s against three folds (95% CI -0.20 to -0.07), no fold
+      worse; every rule re-checked on four held-out folds.
 - [x] **A second fold for the corrector** (round 9): February and
       December 2025. Pooled with January and July it beats January and
       July alone, -0.60s there (95% CI -1.26 to -0.04) and -2.28s on

@@ -31,7 +31,20 @@ to -5.2), from -3.4s (June + August, half the days streamed) to -10.7s
 
 `rules` repeats round 10's audit, each production rule switched off, on
 every fold whose model is saved (all but January + July and February +
-December, fitted before models were kept).
+December, fitted before models were kept). RMSE change with the rule
+switched off, positive meaning the rule helps:
+
+| Rule | Jun + Aug | Mar + Sep | Apr + Oct | May + Nov |
+|---|---|---|---|---|
+| LOBT window | +1.65s | +1.92s | +0.77s | +0.30s |
+| LIRF late-orphan rule | +4.34s | +2.56s | +0.05s | +1.81s |
+| LIRF day shift (1 to 5 rows) | -1.54s | +5.50s | -0.06s | +2.69s |
+| orphan cap at an hour | +1.03s | +0.62s | +0.31s | +0.71s |
+| orphan shrinkage | +0.28s | +0.48s | +0.19s | +0.11s |
+| orphan congestion floor | +0.01s | +0.68s | -0.13s | +0.28s |
+
+The window, the cap and the shrinkage help on every fold with intervals
+above zero; no rule is significantly worse on any fold.
 
 Usage: python pipeline/experiments_round11.py --score | rules
 """

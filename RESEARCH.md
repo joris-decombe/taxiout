@@ -167,9 +167,9 @@ this checks the structure rather than untouched parameters.
 The final ranking adds February and June 2026 to the leaderboard's January
 and July, because the organisers saw teams tune to those two months. Every
 component here was chosen while validating on January and July 2025, so
-each is checked on months the model never saw: February + December and
-June + August 2025, each held out of a fit on the other ten months
-(`build_final.py` FOLDS, rounds 9 and 10).
+each is checked on months the model never saw: six folds pair every month
+of 2025, each held out of a fit on the other ten (`build_final.py` FOLDS,
+rounds 9 to 11).
 
 Per month, before the ADS-B correction, against a baseline of take-off
 minus the Network Manager's off-block (the month's median where there is
@@ -179,28 +179,36 @@ none):
 |---|---|---|---|---|
 | January | 605s | 560s | 344s | 0.61 |
 | February | 628s | 561s | 260s | 0.46 |
+| March | 462s | 434s | 201s | 0.46 |
+| April | 436s | 416s | 197s | 0.47 |
+| May | 469s | 456s | 291s | 0.64 |
 | June | 555s | 544s | 306s | 0.56 |
 | July | 745s | 722s | 292s | 0.40 |
 | August | 534s | 524s | 251s | 0.48 |
+| September | 560s | 558s | 237s | 0.42 |
+| October | 437s | 421s | 219s | 0.52 |
+| November | 532s | 497s | 214s | 0.43 |
 | December | 515s | 489s | 211s | 0.43 |
 
 January and July sit at both ends of the range rather than ahead of it.
 January is the hardest month: two LFPG orphans with an off-block logged a
 day early carry about a quarter of its squared error.
 
-Each rule switched off on June + August (positive: the rule helps):
+Each rule switched off on the folds whose models are saved (RMSE change,
+positive: the rule helps; rounds 10 and 11):
 
-| Rule | Change | 95% CI over days | Rows |
-|---|---|---|---|
-| LOBT window | +1.65s | +0.25 to +3.85 | 12,893 |
-| LIRF late-orphan rule | +4.34s | +1.44 to +7.38 | 355 |
-| orphan cap at an hour | +1.03s | +0.24 to +2.19 | 10 |
-| orphan shrinkage | +0.28s | +0.12 to +0.46 | 4,407 |
-| orphan congestion floor | +0.01s | -0.00 to +0.02 | 44 |
-| LIRF day shift | -1.54s | -7.10 to +1.62 | 3 |
+| Rule | Jun + Aug | Mar + Sep | Apr + Oct | May + Nov |
+|---|---|---|---|---|
+| LOBT window | +1.65s | +1.92s | +0.77s | +0.30s |
+| LIRF late-orphan rule | +4.34s | +2.56s | +0.05s | +1.81s |
+| LIRF day shift (1 to 5 rows) | -1.54s | +5.50s | -0.06s | +2.69s |
+| orphan cap at an hour | +1.03s | +0.62s | +0.31s | +0.71s |
+| orphan shrinkage | +0.28s | +0.48s | +0.19s | +0.11s |
+| orphan congestion floor | +0.01s | +0.68s | -0.13s | +0.28s |
 
-The floor has nothing to do in summer; on February + December it is
--3.98s. The day shift touches three rows there, too few to judge.
+The window, the cap and the shrinkage help on every fold with 95%
+intervals over days above zero; no rule is significantly worse on any. The
+floor matters on congested days: +3.98s on February + December.
 
 Where the rules' numbers come from: the LOBT window's ±3,606s from every
 2025 departure that has a LOBT; the LIRF at-schedule rates, the day-shift
@@ -209,15 +217,19 @@ own training months; the hour cap from 2025's orphan lateness bands; the
 floor's 0.95 and 1,500s from the ten training months. None was read from a
 test score.
 
-The ADS-B corrector learns from all three folds' held-out predictions.
-Pooling them beats January and July alone on every fold (rounds 9 and 10):
+The ADS-B corrector learns from all six folds' held-out predictions, the
+whole of 2025. Each fold added helped (rounds 9 to 11):
 
-| Corrector fitted on | Jan + Jul | Feb + Dec | Jun + Aug |
-|---|---|---|---|
-| no correction | 316.5s | 234.9s | 279.5s |
-| January + July | 308.6s | 226.7s | n/a |
-| two folds | 308.1s | 224.6s | 276.7s |
-| three folds | **308.0s** | **224.5s** | **276.1s** |
+| Corrector fitted on | Jan + Jul | Feb + Dec | Jun + Aug | whole year |
+|---|---|---|---|---|
+| no correction | 316.5s | 234.9s | 279.5s | 255.9s |
+| January + July | 308.6s | 226.7s | n/a | n/a |
+| two folds | 308.1s | 224.6s | 276.7s | n/a |
+| three folds | 308.1s | 224.2s | 276.1s | 250.0s |
+| six folds | **307.8s** | **224.2s** | **276.1s** | **249.9s** |
+
+Six against three: -0.14s over the year (95% CI -0.20 to -0.07), no fold
+worse.
 
 **The leaderboard.** Uploads v3 to v5 (29 September) were close to
 single-change comparisons, made before this repo adopted a rule against
