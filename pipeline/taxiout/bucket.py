@@ -128,6 +128,23 @@ def upload_submission(path: Path, version: int, bucket: str = BUCKET) -> str:
     return key
 
 
+FINAL_NAME = f"{TEAM}_final.parquet"
+
+
+def upload_final(path: Path, bucket: str = BUCKET) -> str:
+    """Uploads the final-phase submission, `<team>_final.parquet`.
+
+    The ranking page asks for a unique final submission, so this refuses to
+    overwrite one already in the bucket.
+    """
+    if not path.exists():
+        raise FileNotFoundError(path)
+    if any(Path(key).name == FINAL_NAME for key, _ in list_objects(bucket)):
+        raise FileExistsError(f"{FINAL_NAME} is already in {bucket}")
+    _client().upload_file(str(path), bucket, FINAL_NAME)
+    return FINAL_NAME
+
+
 def next_version(bucket: str = BUCKET) -> int:
     """One past the highest version already in the bucket.
 
