@@ -7,8 +7,8 @@
 2. Folds (`train.validate`): the model fitted without each pair of months
    in FOLDS, with honest held-out predictions for that pair.
 3. The ADS-B corrector (`taxiout.correct`) fitted on every fold's held-out
-   predictions at once (`experiments_round9.py`: pooling January, July,
-   February and December beat January and July alone on both).
+   predictions at once. Six folds pair every month of 2025; each fold
+   added helped every fold's months (`experiments_round9.py` to `11`).
 4. The final fit on all twelve months, its predictions for the final
    ranking set (January, February, June and July 2026), corrected, orphans
    floored at their airport's live taxi level (`correct.rules`), written to
@@ -38,7 +38,7 @@ import polars as pl
 sys.path.insert(0, "pipeline")
 from taxiout import adsb, correct, data, features, schema, submit, train  # noqa: E402
 
-FOLDS = [(1, 7), (2, 12), (6, 8)]
+FOLDS = [(1, 7), (2, 12), (6, 8), (3, 9), (4, 10), (5, 11)]
 FINAL_MONTHS = [(2026, 1), (2026, 2), (2026, 6), (2026, 7)]
 OUTPUT = Path("data/submission_final.parquet")
 LEADERBOARD_OUTPUT = Path("data/submission_leaderboard.parquet")
