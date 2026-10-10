@@ -1,5 +1,9 @@
 """Does modelling the unmatched group's timestamp artifact beat least squares?
 
+Historical: written on 29 September 2026 against the `features.build` and
+`train.fit` of the time, and no longer runs. Its conclusions are built into
+`train.py`; it is kept as the record of how they were reached.
+
 About half of LIRF's departures with no Network Manager record have a
 BLOCK_TIME equal to SCHED_TIME to the second, so their taxi-out is exactly
 MVT_TIME - SCHED_TIME: hours, not minutes. The rest taxi normally. Which kind

@@ -1,5 +1,9 @@
 """Which of the claimed improvements survive a paired bootstrap?
 
+Historical: written on 29 September 2026 against the `features.build` and
+`train.fit` of the time, and no longer runs. Its conclusions are built into
+`train.py`; it is kept as the record of how they were reached.
+
 An independent confidence interval on the orphan group is 1,276s wide, because
 one row in 5,373 carries 22% of its squared error. But comparing two models is
 a paired question: both see the same rows, so the right test resamples rows

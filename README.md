@@ -219,6 +219,12 @@ only needed on multi-config generators such as MSVC.
 
 ## Run the simulator on synthetic movements
 
+The simulator is exploration and the submitted model does not use it: over
+March 2025 its queue delay correlated +0.21 with the real excess over
+geometry, and queue features computed directly from take-off times added
+nothing either, because take-off minus the Network Manager's off-block
+already contains the queue. It stays here as a documented attempt.
+
 ```
 python pipeline/taxiout/synthetic.py data/synthetic.csv
 ./sim/build/taxiout_sim data/synthetic.csv data/predictions.csv
@@ -233,7 +239,10 @@ single aerodrome, and running them separately parallelises for free.
 the run: each departure as a bar from pushback to wheels-up, split into apron
 transit and queue delay, with arrivals marked on the runway lane. Load the two
 files with the pickers at the top; nothing is uploaded, it parses in the page.
-It ships with a sample run so it is not an empty shell on first open.
+It ships with a sample run so it is not an empty shell on first open. That
+page's source, and the script that turned one run into
+`report/synthetic_run.json`, are not in the repo; neither feeds the
+submission.
 
 ## Validation split
 

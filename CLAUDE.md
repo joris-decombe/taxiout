@@ -175,10 +175,9 @@ Its remaining case is estimating how much of the pushback-to-takeoff gap was
 queueing rather than transit, but that case has not been made or acted on, and
 its output is not yet wired into `features.py` as a feature.
 
-`pipeline/taxiout/fixtures.py` and `synthetic.py` generate stand-in data for the
-two tracks. `fixtures.py` exists because the real files were unavailable for the
-first part of this project; it is scaffolding to delete, not a maintained test
-double.
+`pipeline/taxiout/synthetic.py` generates stand-in movements for the
+simulator. `sim/` stays in the repo as documented exploration: the submitted
+model does not use it.
 
 ## Competition rules
 

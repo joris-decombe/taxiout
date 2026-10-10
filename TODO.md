@@ -108,8 +108,8 @@ over geometry and reconstructs 17% of it. Queueing features computed
 directly from take-off times (round 4) added nothing either, because take-off
 minus the Network Manager's off-block already contains the queue.
 
-- [ ] Decide whether to keep `sim/` in the final repo as documented
-      exploration or remove it.
+- [x] `sim/` stays in the repo as documented exploration (README, "Run the
+      simulator on synthetic movements").
 
 ## Compliance and housekeeping
 
@@ -120,13 +120,15 @@ minus the Network Manager's off-block already contains the queue.
       stay uncommitted under `data/external/`). OPDI and OpenSky's
       historical database were not used: no open licence.
 - [x] **Ideas from other teams credited** in the README's prior-work section.
-- [ ] **Reproducible documentation.** `build_final.py` covers the
-      submission, `report_findings.py` the report. The surface replay page
-      and `synthetic_run.json` are not reproducible from the repo.
-- [ ] **`experiments_paired_bootstrap.py` and `experiments_unmatched.py`**
-      call `features.build` and `train.fit` with old signatures and no
-      longer run. Port them or mark them historical.
-- [ ] **Delete `pipeline/taxiout/fixtures.py`**, scaffolding from before the
-      real data arrived.
+- [x] **Reproducible documentation.** `build_final.py` rebuilds the final
+      submission (listing exactly the adsb.lol days it used),
+      `report_findings.py` the report. Outside the submission, the surface
+      replay page and `synthetic_run.json` are not reproducible from the
+      repo; the README says so.
+- [x] **`experiments_paired_bootstrap.py` and `experiments_unmatched.py`**
+      marked historical: they call `features.build` and `train.fit` with
+      29 September signatures and no longer run.
+- [x] **`pipeline/taxiout/fixtures.py` deleted**, scaffolding from before
+      the real data arrived.
 - [ ] Optional: the open-access paper in the Journal of Open Aviation Science
       that the rules encourage. *Taxi-Out, Measured* is the draft material.
