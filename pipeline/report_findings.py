@@ -231,7 +231,9 @@ AIRPORTS = {
     "LSZH": "Zurich", "LTFM": "Istanbul",
 }
 full = training.collect()
-ranking = data.load_ranking().collect()
+# The page describes the leaderboard's January and July 2026; the final ranking
+# file adds February and June, which its counts must not include.
+ranking = data.load_ranking().filter(pl.col(schema.MVT_TIME).dt.month().is_in([1, 7])).collect()
 dep_all = full.filter(pl.col(schema.PHASE) == schema.DEPARTURE)
 arr_all = full.filter(pl.col(schema.PHASE) == schema.ARRIVAL)
 rk_dep = ranking.filter(pl.col(schema.PHASE) == schema.DEPARTURE)
