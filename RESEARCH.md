@@ -112,7 +112,7 @@ the rare regimes matter more than the bulk.
 | 14 | Floor orphans outside LIRF at 0.95x the median take-off minus AOBT of their airport's matched departures within ±30 min, where it exceeds 1,500s | An orphan taxis like its neighbours (0.95x to 1.0x at every congestion level in 2025, outside LTFM); the orphan model has no live inputs | **in: -0.16s** on validation (95% CI -0.40s to 0.00s: two mild months), **-0.96s on the test set** (v10, 431 rows, nearly all on EHAM's de-icing days of 3 to 9 January 2026); **-3.98s on the February + December 2025 fold** (251 rows, 75% improved, mostly LTFM's storm), a check of the structure since 0.95 and 1,500s were read from all ten training months, February included; `experiments_round8.py`, `experiments_round9.py` |
 | – | Each flight number's history in the other ten months (copy rate, long-taxi rate, residual against the NM taxi), as corrector inputs | Target encoding of a stable identity | rejected: -4.5s on validation, but all of it LIRF orphans and 59% from 20 rows, matched rows +0.6s; LIRF's July 2026 flight numbers match 2025 for only half the departures |
 | – | Neighbours' ADS-B-observed residuals; a route and scheduled-time key; flight-number string patterns | Residuals are shared within an airport-runway-hour | rejected: +0.4s, +0.2s, worse than the history alone |
-| – | Neural nets, TabPFN, distributional boosting (NGBoost) | Wrong scale, or they model a full distribution when RMSE needs the mean | not pursued |
+| – | Neural nets, TabPFN, distributional boosting (NGBoost) | Wrong scale, or they model a full distribution when RMSE needs the mean | not pursued; the winners' ensembles used them ([after the challenge](#after-the-challenge-what-the-winners-did-differently)) |
 
 ## Observing the push-back: ADS-B
 
@@ -254,3 +254,173 @@ uploaded only to check the final build's January and July part.
   of the day-shift mass, and removing it left nothing in its place.
 - **A fitted day-shift share** `(1 − p)·q·86,400` at every airport: +5.3s.
   The structural LIRF rule replaced it.
+
+## After the challenge: what the winners did differently
+
+The results came out on 30 October 2026
+([winners page](https://ansperformance.eu/study/data-challenge/dc2026/winners.html)).
+Only the top ten were published, 176.16s to 188.22s; this entry is not
+among them and its final score was not released. 510 teams registered,
+61 shared a repo, 96 sent a final file and 56 were eligible (final file
+and public repo).
+
+The final ranking reshuffled the leaderboard, as it was built to:
+
+| Final rank | Team | Final RMSE | Best leaderboard score | Leaderboard rank |
+|---|---|---|---|---|
+| 1 | charming-eel | 176.16s | 213.25s | 5 |
+| 2 | zesty-puzzle | 180.18s | 221.16s | 15 |
+| 3 | youthful-giraffe | 183.66s | 223.31s | 17 |
+| 4 | vigorous-whistle | 183.84s | 214.34s | 7 |
+| 5 | gentle-igloo | 184.03s | 230.45s | 19 |
+| 6 | jolly-lobster | 185.06s | 213.29s | 6 |
+| 7 | strong-moose | 186.18s | 217.48s | 10 |
+| 8 | strong-crane | 186.56s | 211.73s | 2 |
+| 9 | versatile-watermelon | 186.87s | 208.11s | 1 |
+| 10 | spirited-tiger | 188.22s | 227.67s | 18 |
+
+Final scores sit 21s to 46s below the same teams' best leaderboard
+scores, so the two are not on one scale. The winners page does not say
+how the published figure combines the months (zesty-puzzle's README says
+the ranking is on February and June), and a best-of-many leaderboard
+score also carries selection on the test months. This entry's 271.9s was
+77th of 249 when uploads closed.
+
+The top three's READMEs describe their methods
+([charming-eel](https://github.com/TheAryamanC/prc-data-challenge-2026),
+[zesty-puzzle](https://github.com/Lys-fy/prc-data-challenge-2026-zesty-puzzle),
+[youthful-giraffe](https://github.com/mattmotoki/youthful-giraffe-prc2026)).
+Every one of the top ten uses adsb.lol. The numbers below are theirs, as
+reported, and none is verified on our data yet.
+
+### Where the gap is
+
+**Matched rows, not orphans.** zesty-puzzle's laptop baseline (one
+LightGBM on the residual to `MVT − AOBT_3`, 21 features from the
+challenge files) scores 209s to 244s on matched rows over six 2025
+month-pair folds; its full pipeline scores 166.5s. This model scores
+222.8s on matched rows of January and July 2025 before the ADS-B
+correction: at their baseline's level. The orphan structure (schedule
+copies, the LOBT window, LIRF's day shift) was found by the top teams
+too, and their mixtures have the same form as ours.
+
+**1. ADS-B as a model input, on most departures.** Here adsb.lol gives a
+push-back for 12% of 2025 departures (18% to 20% of 2026's), seen parked
+and then moving, and enters only through a corrector fitted on the
+model's error (-7.3s). zesty-puzzle has an ADS-B ground clock for 55% of
+matched rows, which score 124s against 208s without one. charming-eel
+reports that "left the stand" alone lies within 60s of `BLOCK_TIME` for
+77% to 83% of departures at well-covered airports, against about 20% for
+the Network Manager's AOBT. What makes the coverage:
+
+- Matching every movement, arrivals too, to an airframe in passes: by
+  callsign confirmed by the runway speed transition (slow to fast at
+  take-off) near `MVT_TIME`, then the nearest unused take-off transition
+  within 120s, then the same restricted to the aircraft type.
+- A stand map from where arrivals park at their in-block time, which the
+  ranking set keeps, so "parked" means parked at a known stand.
+- About 190 track features per departure (first seen, dwells, leaving
+  the parked position, reception gaps, path still to go, the state on a
+  time grid before take-off) fed to the model, not to a corrector.
+- A link for orphans too: zesty-puzzle's, by callsign with the take-off
+  within 60s, is worth -75 to -197 s² of MSE per fold at half strength.
+
+**2. Neural and sequence members in the ensemble.** RESEARCH.md ruled
+neural networks out on the tabular literature. charming-eel's 160 network
+jobs (ResNet, TabM, RealMLP, attention over the 16 or 32 neighbouring
+take-offs), averaged and corrected by an XGBoost second stage, were worth
+about 7s; single networks differed by 60s to 70s rms between seeds, so
+the gain is in the averaging. youthful-giraffe adds a transformer over
+the 64 movements either side of each departure; zesty-puzzle an
+airport-day set transformer and NVIDIA's Kumo Tabular foundation model
+used in context, its largest single gain (-405 to -552 s² of MSE per
+fold).
+
+**3. The orphan's own flight plan, from its arrival record.** When an
+orphan's destination is one of the ten airports, its arrival row there
+can carry the flight-plan link the departure lost. That says why the
+departure's join failed: an AOBT more than an hour from LOBT means the
+block time is genuine; a schedule more than an hour from LOBT means a
+real off-block would have joined, so the block holds the schedule. On
+2025 LIRF zesty-puzzle finds the block equal to the schedule in 26 of 28
+rows of the first kind and 0 of 100 of the second. charming-eel uses the
+same link for its no-link raises and caps.
+
+**4. Smaller signals for the schedule-copy classifier.** Whether the
+previous arrival at the same stand had its block copied from the
+schedule raises LIRF's departure copy rate from 16% to 39%
+(charming-eel). The airframe's turnaround (time since it last landed,
+from OPDI or ADS-B) feeds its Rome models. A copy-cost weight
+`clip(|msched - vbase|, 300, 14400) / 300` on the classifier, which
+failed here in an earlier form (344.4s against 344.3s), is in theirs.
+
+**5. Published aggregates of the scored period.** charming-eel shifts
+each airport-month by EUROCONTROL's monthly taxi-out figures;
+zesty-puzzle calibrates each day to EUROCONTROL's daily pre-departure
+delay (-207 to -629 s² of MSE per fold). Both read figures published
+after the scored months, which zesty-puzzle reports the organisers
+allowed. Check the rules of the edition before relying on it.
+
+**6. Stricter validation.** charming-eel holds out every fourth ISO
+week; zesty-puzzle seals 20% of airport-days, drawn once, and admits a
+change only if it beats a placebo with permuted inputs on at least three
+of four month-pair folds. Our six month-pair folds cover the year but
+were reused for every choice.
+
+### Where they agree with this model
+
+- Queue and arrival-interference features add nothing (charming-eel;
+  candidate 1 here).
+- METAR in the value model, a log target, Huber loss and capping during
+  training do not help (charming-eel).
+- The mixture `p·gap + (1 − p)·normal`, the LOBT window and the NM anchor
+  `MVT − AOBT_3` are in all three.
+
+### Why this entry did not do these
+
+What the repo recorded at the time, and where it recorded nothing:
+
+- **ADS-B as an input.** Recorded: `experiments_round7.py` chose a
+  corrector over retraining because a year of adsb.lol meant streaming
+  1.2 TB, on 7 October 2026, four days before the deadline as it then
+  stood. By 10 October 357 days were extracted for the six-fold corrector,
+  which removed that reason, but the design stayed a corrector. The low
+  coverage follows from two choices in `taxiout.adsb`, neither weighed
+  against an alternative. A clock needs ten minutes parked and then
+  moving (12% to 20% of departures; the 40% first seen already taxiing
+  give only a lower bound). And a departure without a callsign match,
+  every orphan among them, is matched only when a single lift-off lies
+  within ±60s of its take-off at that airport: no nearest-candidate
+  pass, no aircraft-type pass. A stand map from arrivals was not
+  considered.
+- **Neural and sequence models.** Recorded: "Why gradient-boosted trees"
+  above, on the tabular benchmarks and EUROCONTROL's CatBoost result, and
+  candidates marked "not pursued" for being the wrong scale. It rests on
+  the literature, with no experiment. The TabArena result cited there
+  (ensembling matters more than architecture) is the one the winners
+  acted on, and the foundation-model objection to two million rows does
+  not hold for in-context use on a subsample of each airport's rows.
+- **The orphan's arrival record.** Not recorded anywhere. The orphan
+  analysis reached the LOBT join window ("Orphans on congested days" and
+  the LOBT credit in the README) and stopped short of reading why each
+  orphan's join failed.
+- **Published aggregates.** Not recorded; never surveyed as a source.
+- **Sealed days.** Not recorded. The six folds were the only check, and
+  they were also used to choose.
+- **The last four days.** The deadline moved from 11 to 14 October on 8
+  October. The final file was uploaded on 10 October, and the final phase
+  allows one upload, so no later improvement could reach the ranking.
+  The repo records the upload but no reason for making it early, and no
+  work after it.
+
+### For a next edition, in order
+
+1. Match every movement to its airframe in adsb.lol in passes, build the
+   stand map from arrivals, and feed the ground clock and track features
+   to the main models, orphans included.
+2. Link orphans to their arrival records and apply the join-failure test
+   above.
+3. Add neural and sequence members (attention over neighbouring
+   movements) and a second stage fitted on held-out folds.
+4. Seal a share of airport-days for final checks only, apart from the
+   folds used to choose.

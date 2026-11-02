@@ -1,16 +1,18 @@
 # TODO
 
-Submissions close **14 October 2026, 10:00 UTC**. The ranking is the
-**final phase**: one upload of `gentle-octopus_final.parquet`, predicting
-January, February, June and July 2026, ranked on January + July,
-February + June and all four, with a review of the code and documentation.
-The leaderboard (January and July only, best of up to 5 uploads a day)
-stays open as a check.
+**The challenge is over.** Submissions closed on 14 October 2026, 10:00 UTC,
+and the results came out on 30 October 2026
+([winners page](https://ansperformance.eu/study/data-challenge/dc2026/winners.html)).
+The ranking was the **final phase**: one upload of
+`gentle-octopus_final.parquet`, predicting January, February, June and
+July 2026, with a review of the code and documentation. Only the top ten
+were published (176.16s to 188.22s, won by charming-eel); ours is not
+among them, and its score and rank were not released.
 
-**Best upload: v11, 271.9s on the leaderboard, rank 68 of 239** (9 October
-2026; leader 213.0s, 10th 222.9s, median 294.6s). v11 is the January and
-July part of the final build, uploaded to check it and nothing else. Its
-final model scores **307.8s** on the January and July 2025 validation days
+**Best upload: v11, 271.9s on the leaderboard, rank 77 of 249** when
+uploads closed (leader 208.1s, 10th 217.5s, median 295.9s). v11 is the
+January and July part of the final build, uploaded to check it and
+nothing else. Its final model scores **307.8s** on the January and July 2025 validation days
 (316.7s before the ADS-B correction) and 249.9s over all of 2025, each
 month held out of its own fit (six folds).
 
@@ -33,7 +35,7 @@ the last column maps them.
 | v10 | 308.6s | 274.1s | orphans outside LIRF floored at 0.95x their airport's live NM taxi level (431 rows, nearly all on EHAM's de-icing days of 3 to 9 January 2026) | `submission_v13` |
 | v11 | 308.0s | **271.9s** | the final build's January and July: corrector pooled over three folds, fresh twelve-month fit | `submission_final_3folds` (January and July rows) |
 | v12 | 307.8s | 272.1s | the final file's January and July: corrector cross-fitted over six folds | `submission_leaderboard` |
-| **final** | 307.8s | not published | `gentle-octopus_final.parquet`, January, February, June and July 2026, uploaded 10 October 2026, accepted on all 670,790 rows | `submission_final` |
+| **final** | 307.8s | outside the top ten (not released) | `gentle-octopus_final.parquet`, January, February, June and July 2026, uploaded 10 October 2026, accepted on all 670,790 rows | `submission_final` |
 
 From v6 on, every upload scored better on the test set than on
 validation, and by more than validation predicted. Most of the gap came
@@ -61,9 +63,10 @@ model put at many hours, which the structural rules removed.
       same model, and the next upload will be this build plus round 9.
 - [x] **Final file uploaded** on 10 October 2026 as
       `gentle-octopus_final.parquet` (`build_final.py`, six folds),
-      accepted on all 670,790 rows; the final ranking is not published
-      yet. Its January and July part scored 272.1s as v12, within noise of
-      the three-fold build's 271.9s (v11): no choice was made on it.
+      accepted on all 670,790 rows; it finished outside the published top
+      ten (176.16s to 188.22s). Its January and July part scored 272.1s
+      as v12, within noise of the three-fold build's 271.9s (v11): no
+      choice was made on it.
 - [x] **A June fold** (round 10): June + August 2025, held out like the
       others. Pooling three folds beats two by -0.29s (95% CI -0.56 to
       -0.06), no fold worse. adsb.lol has no releases for 1 to 9 June 2025.
@@ -91,6 +94,26 @@ model put at many hours, which the structural rules removed.
 What was tried, and why the current model is built the way it is, is in
 [RESEARCH.md](RESEARCH.md) and the `pipeline/experiments_round*.py`
 docstrings (rounds 3 to 9 cover 6 to 9 October 2026).
+
+## Next edition
+
+From the winners' write-ups; the reasoning and their reported numbers are
+in [RESEARCH.md](RESEARCH.md#after-the-challenge-what-the-winners-did-differently).
+None is verified on our data yet.
+
+- [ ] **ADS-B as a model input.** Match every movement, arrivals too, to
+      its airframe in passes (callsign and runway transition, then the
+      nearest unused lift-off, then by aircraft type), build a stand map
+      from where arrivals park, and feed the ground clock and track
+      features to the main models instead of a corrector.
+- [ ] **Orphans' arrival records.** Recover an orphan's flight plan from
+      the same flight's arrival row and read why its LOBT join failed.
+- [ ] **Neural and sequence members** beside the trees, with a second
+      stage fitted on held-out folds.
+- [ ] **Sealed airport-days** kept out of every choice, for the final
+      check only.
+- [ ] **Use the whole window.** Upload the one-shot final file close to
+      the deadline, not four days early.
 
 ## Data quality, unexplained
 
