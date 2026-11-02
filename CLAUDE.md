@@ -181,6 +181,11 @@ model does not use it.
 
 ## Competition rules
 
+**The challenge is over**: uploads closed on 14 October 2026 and the
+results came out on 30 October 2026. Only the top ten were published
+(176.16s to 188.22s); this entry is not among them, and its final score
+was not released. What follows is how it was run.
+
 Scored on **RMSE in seconds**, which is why `train.py` optimises RMSE,
 confirmed on the challenge site rather than assumed. The leaderboard scores
 January and July 2026. **The final ranking** (announced 8 October 2026) is
