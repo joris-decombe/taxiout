@@ -95,6 +95,26 @@ What was tried, and why the current model is built the way it is, is in
 [RESEARCH.md](RESEARCH.md) and the `pipeline/experiments_round*.py`
 docstrings (rounds 3 to 9 cover 6 to 9 October 2026).
 
+## Next edition
+
+From the winners' write-ups; the reasoning and their reported numbers are
+in [RESEARCH.md](RESEARCH.md#after-the-challenge-what-the-winners-did-differently).
+None is verified on our data yet.
+
+- [ ] **ADS-B as a model input.** Match every movement, arrivals too, to
+      its airframe in passes (callsign and runway transition, then the
+      nearest unused lift-off, then by aircraft type), build a stand map
+      from where arrivals park, and feed the ground clock and track
+      features to the main models instead of a corrector.
+- [ ] **Orphans' arrival records.** Recover an orphan's flight plan from
+      the same flight's arrival row and read why its LOBT join failed.
+- [ ] **Neural and sequence members** beside the trees, with a second
+      stage fitted on held-out folds.
+- [ ] **Sealed airport-days** kept out of every choice, for the final
+      check only.
+- [ ] **Use the whole window.** Upload the one-shot final file close to
+      the deadline, not four days early.
+
 ## Data quality, unexplained
 
 - [ ] **289 training departures have a negative taxi-out**, 241 of them at

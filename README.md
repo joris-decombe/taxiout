@@ -311,6 +311,12 @@ the LOBT projection and the anchor work, and which models to try next.
 - EUROCONTROL's additional taxi-out time indicator: the unimpeded reference
   per stand and runway (`features.unimpeded_taxi_reference`).
 
+**After the challenge**, the top three teams' READMEs were compared with
+this model: what they did differently, why this entry did not, and what
+to try first next time are in
+[RESEARCH.md](RESEARCH.md#after-the-challenge-what-the-winners-did-differently).
+None of it is in `pipeline/`.
+
 **Other teams' public write-ups.** Read for ideas (READMEs only, never
 their source), each idea verified on our data before use:
 
